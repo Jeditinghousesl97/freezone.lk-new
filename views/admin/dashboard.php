@@ -85,6 +85,33 @@
             $maxRevenue = max($maxRevenue, (float) ($chartRow['gross_total'] ?? 0));
             $maxOrders = max($maxOrders, (int) ($chartRow['orders_count'] ?? 0));
         }
+
+        $chartWidth = 720;
+        $chartHeight = 240;
+        $chartPaddingX = 24;
+        $chartPaddingTop = 18;
+        $chartPaddingBottom = 30;
+        $usableWidth = max(1, $chartWidth - ($chartPaddingX * 2));
+        $usableHeight = max(1, $chartHeight - $chartPaddingTop - $chartPaddingBottom);
+        $pointCount = count($chartRows);
+        $revenuePoints = [];
+        $orderPoints = [];
+        $xLabels = [];
+
+        foreach ($chartRows as $index => $row) {
+            $x = $chartPaddingX + ($pointCount > 1 ? ($usableWidth / ($pointCount - 1)) * $index : ($usableWidth / 2));
+            $revenueValue = (float) ($row['gross_total'] ?? 0);
+            $orderValue = (float) ($row['orders_count'] ?? 0);
+            $revenueY = $chartPaddingTop + ($usableHeight - (($maxRevenue > 0 ? $revenueValue / $maxRevenue : 0) * $usableHeight));
+            $orderY = $chartPaddingTop + ($usableHeight - (($maxOrders > 0 ? $orderValue / $maxOrders : 0) * $usableHeight));
+
+            $revenuePoints[] = round($x, 2) . ',' . round($revenueY, 2);
+            $orderPoints[] = round($x, 2) . ',' . round($orderY, 2);
+            $xLabels[] = [
+                'x' => round($x, 2),
+                'label' => date('M d', strtotime((string) $row['report_date']))
+            ];
+        }
         ?>
 
         <div class="dash-card" style="margin-bottom:18px;">
@@ -114,25 +141,65 @@
                     </div>
                 </div>
 
-                <div style="display:grid; gap:12px;">
+                <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:center; margin-bottom:14px; font-size:12px;">
+                    <div style="display:flex; align-items:center; gap:8px; color:#111; font-weight:700;">
+                        <span style="width:14px; height:4px; border-radius:999px; background:#007aff; display:inline-block;"></span>
+                        Revenue
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px; color:#111; font-weight:700;">
+                        <span style="width:14px; height:4px; border-radius:999px; background:#ff9800; display:inline-block;"></span>
+                        Orders
+                    </div>
+                </div>
+
+                <div style="overflow-x:auto; padding-bottom:4px;">
+                    <svg viewBox="0 0 <?= $chartWidth ?> <?= $chartHeight ?>" style="width:100%; min-width:680px; height:auto; display:block;">
+                        <defs>
+                            <linearGradient id="revenueStroke" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stop-color="#111111"/>
+                                <stop offset="100%" stop-color="#007aff"/>
+                            </linearGradient>
+                            <linearGradient id="ordersStroke" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stop-color="#ffb300"/>
+                                <stop offset="100%" stop-color="#ff6f00"/>
+                            </linearGradient>
+                        </defs>
+
+                        <line x1="<?= $chartPaddingX ?>" y1="<?= $chartHeight - $chartPaddingBottom ?>" x2="<?= $chartWidth - $chartPaddingX ?>" y2="<?= $chartHeight - $chartPaddingBottom ?>" stroke="#ececec" stroke-width="1" />
+                        <line x1="<?= $chartPaddingX ?>" y1="<?= $chartPaddingTop ?>" x2="<?= $chartPaddingX ?>" y2="<?= $chartHeight - $chartPaddingBottom ?>" stroke="#f2f2f2" stroke-width="1" />
+
+                        <?php foreach ([0.25, 0.5, 0.75, 1] as $guide): ?>
+                            <?php $guideY = round($chartPaddingTop + ($usableHeight - ($usableHeight * $guide)), 2); ?>
+                            <line x1="<?= $chartPaddingX ?>" y1="<?= $guideY ?>" x2="<?= $chartWidth - $chartPaddingX ?>" y2="<?= $guideY ?>" stroke="#f5f5f5" stroke-width="1" stroke-dasharray="4 6" />
+                        <?php endforeach; ?>
+
+                        <?php if (!empty($revenuePoints)): ?>
+                            <polyline fill="none" stroke="url(#revenueStroke)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" points="<?= htmlspecialchars(implode(' ', $revenuePoints)) ?>" />
+                            <?php foreach ($chartRows as $index => $row): ?>
+                                <?php
+                                [$revX, $revY] = explode(',', $revenuePoints[$index]);
+                                [$ordX, $ordY] = explode(',', $orderPoints[$index]);
+                                ?>
+                                <circle cx="<?= $revX ?>" cy="<?= $revY ?>" r="4.5" fill="#007aff" />
+                                <circle cx="<?= $ordX ?>" cy="<?= $ordY ?>" r="4.5" fill="#ff9800" />
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+
+                        <?php if (!empty($orderPoints)): ?>
+                            <polyline fill="none" stroke="url(#ordersStroke)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" points="<?= htmlspecialchars(implode(' ', $orderPoints)) ?>" />
+                        <?php endif; ?>
+
+                        <?php foreach ($xLabels as $label): ?>
+                            <text x="<?= $label['x'] ?>" y="<?= $chartHeight - 8 ?>" text-anchor="middle" font-size="11" fill="#777777"><?= htmlspecialchars($label['label']) ?></text>
+                        <?php endforeach; ?>
+                    </svg>
+                </div>
+
+                <div style="display:grid; gap:8px; margin-top:10px;">
                     <?php foreach ($chartRows as $row): ?>
-                        <?php
-                        $revenueWidth = $maxRevenue > 0 ? max(6, ((float) ($row['gross_total'] ?? 0) / $maxRevenue) * 100) : 0;
-                        $orderWidth = $maxOrders > 0 ? max(6, ((int) ($row['orders_count'] ?? 0) / $maxOrders) * 100) : 0;
-                        ?>
-                        <div style="display:grid; gap:6px;">
-                            <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; font-size:12px;">
-                                <strong style="color:#111;"><?= htmlspecialchars(date('M d', strtotime((string) $row['report_date']))) ?></strong>
-                                <span style="color:#666;"><?= htmlspecialchars($settings['currency_symbol'] ?? 'LKR') ?> <?= number_format((float) ($row['gross_total'] ?? 0), 2) ?> | <?= (int) ($row['orders_count'] ?? 0) ?> orders</span>
-                            </div>
-                            <div style="display:grid; gap:6px;">
-                                <div style="height:10px; background:#f1f1f1; border-radius:999px; overflow:hidden;">
-                                    <div style="width:<?= $revenueWidth ?>%; height:100%; background:linear-gradient(90deg, #111, #007aff); border-radius:999px;"></div>
-                                </div>
-                                <div style="height:8px; background:#f7f2e8; border-radius:999px; overflow:hidden;">
-                                    <div style="width:<?= $orderWidth ?>%; height:100%; background:linear-gradient(90deg, #ffb300, #ff7a00); border-radius:999px;"></div>
-                                </div>
-                            </div>
+                        <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; font-size:12px; color:#666;">
+                            <strong style="color:#111;"><?= htmlspecialchars(date('M d', strtotime((string) $row['report_date']))) ?></strong>
+                            <span><?= htmlspecialchars($settings['currency_symbol'] ?? 'LKR') ?> <?= number_format((float) ($row['gross_total'] ?? 0), 2) ?> | <?= (int) ($row['orders_count'] ?? 0) ?> orders</span>
                         </div>
                     <?php endforeach; ?>
                 </div>
