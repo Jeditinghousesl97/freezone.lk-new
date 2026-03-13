@@ -173,32 +173,16 @@ require_once 'views/layouts/customer_header.php';
 
                 <!-- Bottom Actions -->
                 <div class="pd-bottom-actions">
-                    <!-- Order Now Button (Triggers Modal) -->
                     <?php $codEnabled = !isset($settings['cod_enabled']) ? (!isset($settings['whatsapp_ordering_enabled']) || !empty($settings['whatsapp_ordering_enabled'])) : !empty($settings['cod_enabled']); ?>
-                    <?php if ($codEnabled): ?>
-                        <button class="btn-action btn-whatsapp" onclick="openOrderModal('cod')">
-                            <i class="fas fa-box"></i>
-                            <span class="btn-action-label">Cash on Delivery</span>
-                        </button>
-                    <?php endif; ?>
+                    <button class="btn-action btn-order-now" onclick="openPaymentMethodSheet()">
+                        <i class="fas fa-bag-shopping"></i>
+                        <span class="btn-action-label">Order Now</span>
+                    </button>
 
-                    <!-- Add to Cart -->
                     <button class="btn-action btn-cart" onclick="addToCartFromProductPage()">
                         <i class="fas fa-cart-plus"></i>
                         <span class="btn-action-label">Add to cart</span>
                     </button>
-                    <?php if (!empty($settings['payhere_enabled'])): ?>
-                        <button class="btn-action btn-payhere" onclick="openOrderModal('payhere')">
-                            <i class="fas fa-credit-card"></i>
-                            <span class="btn-action-label">Pay Now</span>
-                        </button>
-                    <?php endif; ?>
-                    <?php if (!empty($settings['koko_enabled'])): ?>
-                        <button class="btn-action btn-koko" onclick="openOrderModal('koko')">
-                            <i class="fas fa-wallet"></i>
-                            <span class="btn-action-label">KOKO Pay in 3</span>
-                        </button>
-                    <?php endif; ?>
                 </div>
 
             </div>
@@ -405,6 +389,56 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
     }
 </script>
 
+<div id="paymentMethodSheet" class="payment-sheet-overlay" style="display: none;" onclick="closePaymentMethodSheet()">
+    <div class="payment-sheet" onclick="event.stopPropagation()">
+        <div class="payment-sheet-handle"></div>
+        <div class="payment-sheet-header">
+            <div>
+                <div class="payment-sheet-eyebrow">Choose Payment Method</div>
+                <h3>Select how you want to order</h3>
+            </div>
+            <button type="button" class="payment-sheet-close" onclick="closePaymentMethodSheet()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div class="payment-sheet-options">
+            <?php if ($codEnabled): ?>
+                <button type="button" class="payment-method-card method-cod" onclick="choosePaymentMethod('cod')">
+                    <span class="payment-method-icon"><i class="fas fa-box"></i></span>
+                    <span class="payment-method-copy">
+                        <strong>Cash on Delivery</strong>
+                        <small>Place the order now and pay when it is delivered.</small>
+                    </span>
+                    <span class="payment-method-arrow"><i class="fas fa-chevron-right"></i></span>
+                </button>
+            <?php endif; ?>
+
+            <?php if (!empty($settings['payhere_enabled'])): ?>
+                <button type="button" class="payment-method-card method-payhere" onclick="choosePaymentMethod('payhere')">
+                    <span class="payment-method-icon"><i class="fas fa-credit-card"></i></span>
+                    <span class="payment-method-copy">
+                        <strong>PayHere</strong>
+                        <small>Pay online securely before your order is confirmed.</small>
+                    </span>
+                    <span class="payment-method-arrow"><i class="fas fa-chevron-right"></i></span>
+                </button>
+            <?php endif; ?>
+
+            <?php if (!empty($settings['koko_enabled'])): ?>
+                <button type="button" class="payment-method-card method-koko" onclick="choosePaymentMethod('koko')">
+                    <span class="payment-method-icon"><i class="fas fa-wallet"></i></span>
+                    <span class="payment-method-copy">
+                        <strong>KOKO Pay in 3</strong>
+                        <small>Split your payment into 3 interest-free installments.</small>
+                    </span>
+                    <span class="payment-method-arrow"><i class="fas fa-chevron-right"></i></span>
+                </button>
+            <?php endif; ?>
+        </div>
+    </div>
+</div>
+
 
 <!-- Order Form Modal -->
 <div id="orderModal" class="modal-overlay" style="display: none;">
@@ -505,6 +539,19 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
         // Store selection
         selectedVariations[name] = value;
         console.log("Selected:", selectedVariations);
+    }
+
+    function openPaymentMethodSheet() {
+        document.getElementById('paymentMethodSheet').style.display = 'flex';
+    }
+
+    function closePaymentMethodSheet() {
+        document.getElementById('paymentMethodSheet').style.display = 'none';
+    }
+
+    function choosePaymentMethod(mode) {
+        closePaymentMethodSheet();
+        openOrderModal(mode);
     }
 
     function openOrderModal(mode = 'cod') {
