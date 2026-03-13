@@ -304,6 +304,11 @@ class Order extends BaseModel
             $params[':payment_status'] = trim($filters['payment_status']);
         }
 
+        if (!empty($filters['payment_method'])) {
+            $where[] = "payment_method = :payment_method";
+            $params[':payment_method'] = trim($filters['payment_method']);
+        }
+
         if (!empty($filters['order_status'])) {
             $where[] = "order_status = :order_status";
             $params[':order_status'] = trim($filters['order_status']);
@@ -367,6 +372,8 @@ class Order extends BaseModel
                 SUM(CASE WHEN admin_seen_at IS NULL THEN 1 ELSE 0 END) AS new_orders,
                 SUM(CASE WHEN payment_status = 'paid' THEN 1 ELSE 0 END) AS paid_orders,
                 SUM(CASE WHEN payment_status = 'pending' THEN 1 ELSE 0 END) AS payment_pending_orders,
+                SUM(CASE WHEN payment_method = 'cod' THEN 1 ELSE 0 END) AS cod_orders,
+                SUM(CASE WHEN payment_method = 'payhere' THEN 1 ELSE 0 END) AS payhere_orders,
                 SUM(CASE WHEN order_status = 'processing' THEN 1 ELSE 0 END) AS processing_orders,
                 SUM(CASE WHEN order_status = 'completed' THEN 1 ELSE 0 END) AS completed_orders
             FROM orders
@@ -386,9 +393,74 @@ class Order extends BaseModel
             'new_orders' => (int) ($row['new_orders'] ?? 0),
             'paid_orders' => (int) ($row['paid_orders'] ?? 0),
             'payment_pending_orders' => (int) ($row['payment_pending_orders'] ?? 0),
+            'cod_orders' => (int) ($row['cod_orders'] ?? 0),
+            'payhere_orders' => (int) ($row['payhere_orders'] ?? 0),
             'processing_orders' => (int) ($row['processing_orders'] ?? 0),
             'completed_orders' => (int) ($row['completed_orders'] ?? 0),
         ];
+    }
+
+    public function getFinanceSummary(array $filters = [])
+    {
+        [$sqlWhere, $params] = $this->buildFilterParts($filters);
+
+        $sql = "
+            SELECT
+                COALESCE(SUM(total_amount), 0) AS gross_total,
+                COALESCE(SUM(CASE WHEN payment_status = 'paid' THEN total_amount ELSE 0 END), 0) AS paid_total,
+                COALESCE(SUM(CASE WHEN payment_method = 'cod' AND payment_status = 'pending' AND order_status != 'cancelled' THEN total_amount ELSE 0 END), 0) AS cod_outstanding_total,
+                COALESCE(SUM(CASE WHEN order_status = 'completed' THEN total_amount ELSE 0 END), 0) AS completed_total,
+                COALESCE(AVG(total_amount), 0) AS avg_order_value,
+                SUM(CASE WHEN payment_method = 'cod' AND payment_status = 'pending' AND order_status != 'cancelled' THEN 1 ELSE 0 END) AS cod_outstanding_count
+            FROM orders
+            {$sqlWhere}
+        ";
+
+        $stmt = $this->conn->prepare($sql);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+
+        $stmt->execute();
+        $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        return [
+            'gross_total' => (float) ($row['gross_total'] ?? 0),
+            'paid_total' => (float) ($row['paid_total'] ?? 0),
+            'cod_outstanding_total' => (float) ($row['cod_outstanding_total'] ?? 0),
+            'completed_total' => (float) ($row['completed_total'] ?? 0),
+            'avg_order_value' => (float) ($row['avg_order_value'] ?? 0),
+            'cod_outstanding_count' => (int) ($row['cod_outstanding_count'] ?? 0),
+        ];
+    }
+
+    public function getReportRows(array $filters = [], $limit = 14)
+    {
+        [$sqlWhere, $params] = $this->buildFilterParts($filters);
+
+        $sql = "
+            SELECT
+                DATE(created_at) AS report_date,
+                COUNT(*) AS orders_count,
+                COALESCE(SUM(total_amount), 0) AS gross_total,
+                COALESCE(SUM(CASE WHEN payment_status = 'paid' THEN total_amount ELSE 0 END), 0) AS paid_total,
+                COALESCE(SUM(CASE WHEN payment_method = 'cod' THEN total_amount ELSE 0 END), 0) AS cod_total,
+                COALESCE(SUM(CASE WHEN payment_method = 'payhere' THEN total_amount ELSE 0 END), 0) AS payhere_total
+            FROM orders
+            {$sqlWhere}
+            GROUP BY DATE(created_at)
+            ORDER BY report_date DESC
+            LIMIT :limit
+        ";
+
+        $stmt = $this->conn->prepare($sql);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+        $stmt->bindValue(':limit', (int) $limit, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
     public function updatePaymentStatus($orderNumber, $status, $paymentId = null, $statusCode = null, $message = null)

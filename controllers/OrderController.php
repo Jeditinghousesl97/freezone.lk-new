@@ -94,6 +94,7 @@ class OrderController extends BaseController
         $filters = [
             'search' => trim($_GET['search'] ?? ''),
             'payment_status' => trim($_GET['payment_status'] ?? ''),
+            'payment_method' => trim($_GET['payment_method'] ?? ''),
             'order_status' => trim($_GET['order_status'] ?? ''),
             'date_from' => trim($_GET['date_from'] ?? ''),
             'date_to' => trim($_GET['date_to'] ?? ''),
@@ -101,13 +102,17 @@ class OrderController extends BaseController
         ];
         $orders = $this->orderModel->getFiltered($filters, 150);
         $summary = $this->orderModel->getSummaryCounts($filters);
+        $finance = $this->orderModel->getFinanceSummary($filters);
+        $reportRows = $this->orderModel->getReportRows($filters, 14);
 
         $this->view('admin/orders/index', [
             'title' => 'Orders',
             'settings' => $settings,
             'orders' => $orders,
             'filters' => $filters,
-            'summary' => $summary
+            'summary' => $summary,
+            'finance' => $finance,
+            'reportRows' => $reportRows
         ]);
     }
 
@@ -137,6 +142,7 @@ class OrderController extends BaseController
         $filters = [
             'search' => trim($_GET['search'] ?? ''),
             'payment_status' => trim($_GET['payment_status'] ?? ''),
+            'payment_method' => trim($_GET['payment_method'] ?? ''),
             'order_status' => trim($_GET['order_status'] ?? ''),
             'date_from' => trim($_GET['date_from'] ?? ''),
             'date_to' => trim($_GET['date_to'] ?? ''),
@@ -164,6 +170,7 @@ class OrderController extends BaseController
             'Address',
             'City',
             'District',
+            'Order Type',
             'Payment Gateway',
             'Payment Status',
             'Order Status',
@@ -185,6 +192,7 @@ class OrderController extends BaseController
                 preg_replace('/\s+/', ' ', trim((string) ($order['address'] ?? ''))),
                 $order['city'] ?? '',
                 $order['district'] ?? '',
+                strtoupper((string) ($order['payment_method'] ?? '')),
                 strtoupper((string) ($order['payment_gateway'] ?? '')),
                 ucfirst(str_replace('_', ' ', (string) ($order['payment_status'] ?? ''))),
                 ucfirst(str_replace('_', ' ', (string) ($order['order_status'] ?? ''))),
@@ -211,6 +219,36 @@ class OrderController extends BaseController
         $order = $this->orderModel->getByOrderNumber($orderNumber);
         if ($order) {
             $this->orderModel->updateOrderStatus($orderNumber, 'completed');
+        }
+
+        $this->redirect('order/details/' . urlencode($orderNumber));
+    }
+
+    public function markPaymentReceived($orderNumber = null)
+    {
+        $this->requireAdminSession();
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($orderNumber)) {
+            $this->redirect('order/manage');
+        }
+
+        $order = $this->orderModel->getByOrderNumber($orderNumber);
+        if ($order && ($order['payment_method'] ?? '') === 'cod' && ($order['payment_status'] ?? 'pending') !== 'paid') {
+            $this->orderModel->updatePaymentStatus($orderNumber, 'paid', $order['gateway_payment_id'] ?? null, 'COD_RECEIVED', 'Cash on delivery payment received.');
+            $this->orderModel->recordTransaction(
+                (int) $order['id'],
+                'cod',
+                'payment_received',
+                null,
+                'COD_RECEIVED',
+                (float) ($order['total_amount'] ?? 0),
+                $order['currency'] ?? 'LKR',
+                ['marked_by' => 'shop_owner']
+            );
+
+            if (($order['order_status'] ?? 'pending') === 'pending') {
+                $this->orderModel->updateOrderStatus($orderNumber, 'processing');
+            }
         }
 
         $this->redirect('order/details/' . urlencode($orderNumber));

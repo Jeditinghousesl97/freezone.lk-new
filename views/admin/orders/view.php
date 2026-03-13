@@ -22,6 +22,7 @@
                 <h3 style="margin:0 0 14px;">Payment Summary</h3>
                 <div style="display:grid; gap:10px; font-size:14px;">
                     <div><strong>Status:</strong> <?= htmlspecialchars(ucfirst(str_replace('_', ' ', $order['payment_status'] ?? 'pending'))) ?></div>
+                    <div><strong>Order Type:</strong> <?= htmlspecialchars(strtoupper($order['payment_method'] ?? $order['payment_gateway'] ?? '-')) ?></div>
                     <div><strong>Order Status:</strong> <?= htmlspecialchars(ucfirst(str_replace('_', ' ', $order['order_status'] ?? 'pending'))) ?></div>
                     <div><strong>Gateway:</strong> <?= htmlspecialchars(strtoupper($order['payment_gateway'])) ?></div>
                     <div><strong>Amount:</strong> <?= htmlspecialchars($order['currency']) ?> <?= number_format((float) $order['total_amount'], 2) ?></div>
@@ -30,6 +31,13 @@
                     <div><strong>Created:</strong> <?= htmlspecialchars($order['created_at']) ?></div>
                 </div>
                 <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;">
+                <?php if (($order['payment_method'] ?? '') === 'cod' && ($order['payment_status'] ?? 'pending') !== 'paid'): ?>
+                    <form action="<?= BASE_URL ?>order/markPaymentReceived/<?= urlencode($order['order_number']) ?>" method="POST" onsubmit="return confirm('Mark COD payment as received?');">
+                        <button type="submit" onclick="showGlobalLoader()" style="border:none; background:#1a9b57; color:#fff; padding:12px 18px; border-radius:999px; font-weight:700; cursor:pointer;">
+                            Payment Received
+                        </button>
+                    </form>
+                <?php endif; ?>
                 <?php if (($order['order_status'] ?? 'pending') !== 'completed'): ?>
                     <form action="<?= BASE_URL ?>order/markCompleted/<?= urlencode($order['order_number']) ?>" method="POST" onsubmit="return confirm('Mark this order as completed?');">
                         <button type="submit" onclick="showGlobalLoader()" style="border:none; background:#111; color:#fff; padding:12px 18px; border-radius:999px; font-weight:700; cursor:pointer;">
