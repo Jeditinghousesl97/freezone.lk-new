@@ -164,7 +164,7 @@ p {
     min-width: 100%;
     scroll-snap-align: center;
     padding: 0;
-    aspect-ratio: 16 / 10;
+    aspect-ratio: 12 / 5;
 }
 
 .hero-slide-link {
@@ -1437,7 +1437,7 @@ p {
     }
 
     .hero-slide {
-        aspect-ratio: 16 / 10;
+        aspect-ratio: 12 / 5;
     }
 
 
