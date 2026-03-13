@@ -761,6 +761,12 @@ p {
     color: #fff;
 }
 
+.btn-koko {
+    background: linear-gradient(180deg, #fff7db 0%, #ffe8a3 100%);
+    color: #2b2104;
+    border: 1px solid #f1d28a;
+}
+
 .btn-payhere-standalone {
     background: #111;
     color: #fff;
@@ -779,6 +785,54 @@ p {
 .btn-payhere-submit {
     background: #111 !important;
     color: #fff !important;
+}
+
+.btn-action-label {
+    display: inline-block;
+}
+
+@media (max-width: 767px) {
+    .pd-bottom-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        padding: 0 16px 4px;
+        align-items: stretch;
+    }
+
+    .btn-action {
+        max-width: none;
+        min-height: 64px;
+        padding: 12px 10px;
+        border-radius: 22px;
+        flex-direction: column;
+        gap: 6px;
+        text-align: center;
+        font-size: 12px;
+        line-height: 1.15;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+    }
+
+    .btn-action i {
+        font-size: 17px;
+    }
+
+    .btn-action-label {
+        max-width: 92px;
+        font-weight: 800;
+    }
+
+    .btn-whatsapp {
+        background: linear-gradient(180deg, #25d366 0%, #18b94f 100%);
+    }
+
+    .btn-cart {
+        background: linear-gradient(180deg, #171717 0%, #000000 100%);
+    }
+
+    .btn-payhere {
+        background: linear-gradient(180deg, #2290ff 0%, #0b6cd1 100%);
+    }
 }
 
 /* Desktop override for bottom actions */

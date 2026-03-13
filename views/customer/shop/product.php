@@ -177,22 +177,26 @@ require_once 'views/layouts/customer_header.php';
                     <?php $codEnabled = !isset($settings['cod_enabled']) ? (!isset($settings['whatsapp_ordering_enabled']) || !empty($settings['whatsapp_ordering_enabled'])) : !empty($settings['cod_enabled']); ?>
                     <?php if ($codEnabled): ?>
                         <button class="btn-action btn-whatsapp" onclick="openOrderModal('cod')">
-                            <i class="fas fa-box"></i> Cash on Delivery
+                            <i class="fas fa-box"></i>
+                            <span class="btn-action-label">Cash on Delivery</span>
                         </button>
                     <?php endif; ?>
 
                     <!-- Add to Cart -->
                     <button class="btn-action btn-cart" onclick="addToCartFromProductPage()">
-                        <i class="fas fa-cart-plus"></i> Add to cart
+                        <i class="fas fa-cart-plus"></i>
+                        <span class="btn-action-label">Add to cart</span>
                     </button>
                     <?php if (!empty($settings['payhere_enabled'])): ?>
                         <button class="btn-action btn-payhere" onclick="openOrderModal('payhere')">
-                            <i class="fas fa-credit-card"></i> Pay Now
+                            <i class="fas fa-credit-card"></i>
+                            <span class="btn-action-label">Pay Now</span>
                         </button>
                     <?php endif; ?>
                     <?php if (!empty($settings['koko_enabled'])): ?>
-                        <button class="btn-action" onclick="openOrderModal('koko')" style="background:#fff3dc; color:#111; border:1px solid #f1d28a;">
-                            <i class="fas fa-wallet"></i> KOKO Pay in 3
+                        <button class="btn-action btn-koko" onclick="openOrderModal('koko')">
+                            <i class="fas fa-wallet"></i>
+                            <span class="btn-action-label">KOKO Pay in 3</span>
                         </button>
                     <?php endif; ?>
                 </div>
