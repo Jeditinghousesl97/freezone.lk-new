@@ -14,6 +14,21 @@ class OrderController extends BaseController
         $this->settingModel = new Setting();
     }
 
+    private function logPayhereEvent($event, array $data = [])
+    {
+        $logDir = ROOT_PATH . 'storage/logs';
+        if (!is_dir($logDir)) {
+            @mkdir($logDir, 0775, true);
+        }
+
+        $line = '[' . date('Y-m-d H:i:s') . '] ' . $event;
+        if (!empty($data)) {
+            $line .= ' ' . json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        }
+
+        @file_put_contents($logDir . '/payhere.log', $line . PHP_EOL, FILE_APPEND);
+    }
+
     private function splitName($fullName)
     {
         $fullName = trim($fullName);
@@ -176,16 +191,36 @@ class OrderController extends BaseController
     public function payhereNotify()
     {
         $settings = $this->settingModel->getAllPairs();
-        $merchantId = $_POST['merchant_id'] ?? '';
-        $orderNumber = $_POST['order_id'] ?? '';
-        $paymentId = $_POST['payment_id'] ?? '';
-        $payhereAmount = $_POST['payhere_amount'] ?? '';
-        $payhereCurrency = $_POST['payhere_currency'] ?? '';
-        $statusCode = $_POST['status_code'] ?? '';
-        $md5sig = $_POST['md5sig'] ?? '';
+        $merchantId = trim((string) ($_POST['merchant_id'] ?? ''));
+        $orderNumber = trim((string) ($_POST['order_id'] ?? ''));
+        $paymentId = trim((string) ($_POST['payment_id'] ?? ''));
+        $payhereAmount = trim((string) ($_POST['payhere_amount'] ?? ''));
+        $payhereCurrency = trim((string) ($_POST['payhere_currency'] ?? ''));
+        $statusCode = trim((string) ($_POST['status_code'] ?? ''));
+        $md5sig = strtoupper(trim((string) ($_POST['md5sig'] ?? '')));
+        $statusMessage = trim((string) ($_POST['status_message'] ?? ''));
+        $configuredMerchantId = trim((string) ($settings['payhere_merchant_id'] ?? ''));
 
         $order = $this->orderModel->getByOrderNumber($orderNumber);
-        if (!$order || $merchantId !== ($settings['payhere_merchant_id'] ?? '')) {
+        if (!$order) {
+            $this->logPayhereEvent('notify_order_not_found', [
+                'merchant_id' => $merchantId,
+                'order_id' => $orderNumber,
+                'payment_id' => $paymentId,
+                'status_code' => $statusCode
+            ]);
+            http_response_code(400);
+            echo 'INVALID';
+            exit;
+        }
+
+        if ($merchantId !== $configuredMerchantId) {
+            $this->logPayhereEvent('notify_merchant_mismatch', [
+                'received_merchant_id' => $merchantId,
+                'configured_merchant_id' => $configuredMerchantId,
+                'order_id' => $orderNumber,
+                'payment_id' => $paymentId
+            ]);
             http_response_code(400);
             echo 'INVALID';
             exit;
@@ -214,32 +249,46 @@ class OrderController extends BaseController
 
         if ($localMd5Sig !== $md5sig) {
             $this->orderModel->updatePaymentStatus($orderNumber, 'verification_failed', $paymentId, $statusCode, 'Checksum verification failed');
+            $this->logPayhereEvent('notify_checksum_failed', [
+                'order_id' => $orderNumber,
+                'payment_id' => $paymentId,
+                'status_code' => $statusCode,
+                'received_md5sig' => $md5sig,
+                'expected_md5sig' => $localMd5Sig
+            ]);
             http_response_code(400);
             echo 'INVALID';
             exit;
         }
 
         $status = 'pending';
-        $message = 'Payment is pending.';
+        $message = $statusMessage !== '' ? $statusMessage : 'Payment is pending.';
 
         if ((string) $statusCode === '2') {
             $status = 'paid';
-            $message = 'Payment completed successfully.';
+            $message = $statusMessage !== '' ? $statusMessage : 'Payment completed successfully.';
         } elseif ((string) $statusCode === '-1') {
             $status = 'cancelled';
-            $message = 'Payment cancelled by customer.';
+            $message = $statusMessage !== '' ? $statusMessage : 'Payment cancelled by customer.';
         } elseif ((string) $statusCode === '-2') {
             $status = 'failed';
-            $message = 'Payment failed.';
+            $message = $statusMessage !== '' ? $statusMessage : 'Payment failed.';
         } elseif ((string) $statusCode === '-3') {
             $status = 'chargedback';
-            $message = 'Payment charged back.';
+            $message = $statusMessage !== '' ? $statusMessage : 'Payment charged back.';
         }
 
         $this->orderModel->updatePaymentStatus($orderNumber, $status, $paymentId, $statusCode, $message);
         if ($status === 'paid' && (($order['order_status'] ?? 'pending') === 'pending')) {
             $this->orderModel->updateOrderStatus($orderNumber, 'processing');
         }
+        $this->logPayhereEvent('notify_processed', [
+            'order_id' => $orderNumber,
+            'payment_id' => $paymentId,
+            'status_code' => $statusCode,
+            'payment_status' => $status,
+            'order_status' => $status === 'paid' ? 'processing' : ($order['order_status'] ?? 'pending')
+        ]);
         echo 'OK';
         exit;
     }
