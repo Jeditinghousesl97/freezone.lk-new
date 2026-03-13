@@ -32,7 +32,7 @@ class AdminController extends BaseController
             'orders' => $orderModel->countAll()
         ];
         $finance = $orderModel->getFinanceSummary([]);
-        $chartRows = array_reverse($orderModel->getReportRows([], 7));
+        $chartRows = array_reverse($orderModel->getReportRows([], 14));
 
         // 2. Get Recent Products (Limit 5)
         // LEFT JOIN to get category name
@@ -45,7 +45,7 @@ class AdminController extends BaseController
         // 3. Get Shop Settings (Logo/Name)
         require_once 'models/Setting.php';
         $settingModel = new Setting();
-        $settings = $settingModel->getMultiple(['shop_name', 'shop_logo']);
+        $settings = $settingModel->getMultiple(['shop_name', 'shop_logo', 'currency_symbol']);
 
         // Load the view
         $this->view('admin/dashboard', [
