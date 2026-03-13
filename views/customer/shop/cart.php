@@ -137,16 +137,6 @@ require_once 'views/layouts/customer_header.php';
             </div>
 
             <div class="form-group" style="margin-bottom: 15px;">
-                <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px;">Postal Code</label>
-                <input type="text" id="ordPostal" class="form-control" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
-            </div>
-
-            <div class="form-group" style="margin-bottom: 15px;">
-                <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px;">Country <span style="color:red">*</span></label>
-                <input type="text" id="ordCountry" class="form-control" value="Sri Lanka" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
-            </div>
-
-            <div class="form-group" style="margin-bottom: 15px;">
                 <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px;">Phone Number 01 <span style="color:red">*</span></label>
                 <input type="tel" id="ordPhone1" class="form-control" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
             </div>
@@ -217,8 +207,6 @@ require_once 'views/layouts/customer_header.php';
         if (localStorage.getItem('cus_address')) document.getElementById('ordAddress').value = localStorage.getItem('cus_address');
         if (localStorage.getItem('cus_city')) document.getElementById('ordCity').value = localStorage.getItem('cus_city');
         if (localStorage.getItem('cus_district')) document.getElementById('ordDistrict').value = localStorage.getItem('cus_district');
-        if (localStorage.getItem('cus_postal')) document.getElementById('ordPostal').value = localStorage.getItem('cus_postal');
-        if (localStorage.getItem('cus_country')) document.getElementById('ordCountry').value = localStorage.getItem('cus_country');
         if (localStorage.getItem('cus_phone1')) document.getElementById('ordPhone1').value = localStorage.getItem('cus_phone1');
         if (localStorage.getItem('cus_phone2')) document.getElementById('ordPhone2').value = localStorage.getItem('cus_phone2');
 
@@ -245,8 +233,6 @@ require_once 'views/layouts/customer_header.php';
         localStorage.setItem('cus_address', data.address);
         localStorage.setItem('cus_city', data.city);
         localStorage.setItem('cus_district', data.district);
-        localStorage.setItem('cus_postal', data.postal);
-        localStorage.setItem('cus_country', data.country);
         localStorage.setItem('cus_phone1', data.phone1);
         localStorage.setItem('cus_phone2', data.phone2);
     }
@@ -258,14 +244,12 @@ require_once 'views/layouts/customer_header.php';
             address: document.getElementById('ordAddress').value.trim(),
             city: document.getElementById('ordCity').value.trim(),
             district: document.getElementById('ordDistrict').value.trim(),
-            postal: document.getElementById('ordPostal').value.trim(),
-            country: document.getElementById('ordCountry').value.trim(),
             phone1: document.getElementById('ordPhone1').value.trim(),
             phone2: document.getElementById('ordPhone2').value.trim(),
             note: document.getElementById('ordNote').value.trim()
         };
 
-        if (!data.name || !data.email || !data.address || !data.city || !data.country || !data.phone1) {
+        if (!data.name || !data.email || !data.address || !data.city || !data.phone1) {
             alert('Please fill in required fields.');
             return;
         }
@@ -297,8 +281,6 @@ require_once 'views/layouts/customer_header.php';
         msg += "Address: " + data.address + "\n";
         msg += "City: " + data.city + "\n";
         msg += "District: " + data.district + "\n";
-        msg += "Postal: " + data.postal + "\n";
-        msg += "Country: " + data.country + "\n";
         msg += "Phone 01: " + data.phone1 + "\n";
         msg += "Phone 02: " + data.phone2 + "\n";
         if (data.note) msg += "Note: " + data.note + "\n";
@@ -327,8 +309,6 @@ require_once 'views/layouts/customer_header.php';
             address: data.address,
             city: data.city,
             district: data.district,
-            postal_code: data.postal,
-            country: data.country,
             phone: data.phone1,
             phone_alt: data.phone2,
             note: data.note

@@ -176,7 +176,7 @@ require_once 'views/layouts/customer_header.php';
                     <!-- Order Now Button (Triggers Modal) -->
                     <?php if (!isset($settings['whatsapp_ordering_enabled']) || !empty($settings['whatsapp_ordering_enabled'])): ?>
                         <button class="btn-action btn-whatsapp" onclick="openOrderModal('whatsapp')">
-                            <i class="fab fa-whatsapp"></i> Order Now
+                            <i class="fab fa-whatsapp"></i> Whatsapp
                         </button>
                     <?php endif; ?>
 
@@ -186,7 +186,7 @@ require_once 'views/layouts/customer_header.php';
                     </button>
                     <?php if (!empty($settings['payhere_enabled'])): ?>
                         <button class="btn-action btn-payhere" onclick="openOrderModal('payhere')">
-                            <i class="fas fa-credit-card"></i> PayHere
+                            <i class="fas fa-credit-card"></i> Pay Now
                         </button>
                     <?php endif; ?>
                 </div>
@@ -441,20 +441,6 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
             </div>
 
             <div class="form-group" style="margin-bottom: 15px;">
-                <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px;">Postal
-                    Code</label>
-                <input type="text" id="ordPostal" class="form-control"
-                    style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
-            </div>
-
-            <div class="form-group" style="margin-bottom: 15px;">
-                <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px;">Country <span
-                        style="color:red">*</span></label>
-                <input type="text" id="ordCountry" class="form-control" value="Sri Lanka"
-                    style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
-            </div>
-
-            <div class="form-group" style="margin-bottom: 15px;">
                 <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px;">Phone Number 01
                     <span style="color:red">*</span></label>
                 <input type="tel" id="ordPhone1" class="form-control" required
@@ -519,8 +505,6 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
         if (localStorage.getItem('cus_address')) document.getElementById('ordAddress').value = localStorage.getItem('cus_address');
         if (localStorage.getItem('cus_city')) document.getElementById('ordCity').value = localStorage.getItem('cus_city');
         if (localStorage.getItem('cus_district')) document.getElementById('ordDistrict').value = localStorage.getItem('cus_district');
-        if (localStorage.getItem('cus_postal')) document.getElementById('ordPostal').value = localStorage.getItem('cus_postal');
-        if (localStorage.getItem('cus_country')) document.getElementById('ordCountry').value = localStorage.getItem('cus_country');
         if (localStorage.getItem('cus_phone1')) document.getElementById('ordPhone1').value = localStorage.getItem('cus_phone1');
         if (localStorage.getItem('cus_phone2')) document.getElementById('ordPhone2').value = localStorage.getItem('cus_phone2');
 
@@ -559,14 +543,12 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
         const address = document.getElementById('ordAddress').value.trim();
         const city = document.getElementById('ordCity').value.trim();
         const district = document.getElementById('ordDistrict').value.trim();
-        const postal = document.getElementById('ordPostal').value.trim();
-        const country = document.getElementById('ordCountry').value.trim();
         const phone1 = document.getElementById('ordPhone1').value.trim();
         const phone2 = document.getElementById('ordPhone2').value.trim();
         const note = document.getElementById('ordNote').value.trim();
 
         // Validation
-        if (!name || !email || !address || !city || !country || !phone1) {
+        if (!name || !email || !address || !city || !phone1) {
             alert("Please fill in all required fields.");
             return;
         }
@@ -576,8 +558,6 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
         localStorage.setItem('cus_address', address);
         localStorage.setItem('cus_city', city);
         localStorage.setItem('cus_district', district);
-        localStorage.setItem('cus_postal', postal);
-        localStorage.setItem('cus_country', country);
         localStorage.setItem('cus_phone1', phone1);
         localStorage.setItem('cus_phone2', phone2);
 
@@ -588,8 +568,6 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
                 address,
                 city,
                 district,
-                postal,
-                country,
                 phone1,
                 phone2,
                 note
@@ -628,8 +606,6 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
         msg += "Address: " + address + "\n";
         msg += "City: " + city + "\n";
         msg += "District: " + district + "\n";
-        msg += "Postal: " + postal + "\n";
-        msg += "Country: " + country + "\n";
         msg += "Phone 01: " + phone1 + "\n";
         msg += "Phone 02: " + phone2 + "\n";
         if (note) msg += "Note: " + note + "\n";
@@ -666,8 +642,6 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
             address: data.address,
             city: data.city,
             district: data.district,
-            postal_code: data.postal,
-            country: data.country,
             phone: data.phone1,
             phone_alt: data.phone2,
             note: data.note

@@ -107,9 +107,9 @@ class OrderController extends BaseController
         $phone = trim($_POST['phone'] ?? '');
         $address = trim($_POST['address'] ?? '');
         $city = trim($_POST['city'] ?? '');
-        $country = trim($_POST['country'] ?? 'Sri Lanka');
+        $country = 'Sri Lanka';
 
-        if ($customerName === '' || $email === '' || $phone === '' || $address === '' || $city === '' || $country === '') {
+        if ($customerName === '' || $email === '' || $phone === '' || $address === '' || $city === '') {
             $_SESSION['order_error'] = 'Please fill in all required payment fields.';
             $this->redirect('cart');
         }
@@ -126,7 +126,7 @@ class OrderController extends BaseController
             'address' => $address,
             'city' => $city,
             'district' => trim($_POST['district'] ?? ''),
-            'postal_code' => trim($_POST['postal_code'] ?? ''),
+            'postal_code' => '',
             'country' => $country,
             'note' => trim($_POST['note'] ?? '')
         ];
@@ -204,9 +204,9 @@ class OrderController extends BaseController
         $phone = trim($_POST['phone'] ?? '');
         $address = trim($_POST['address'] ?? '');
         $city = trim($_POST['city'] ?? '');
-        $country = trim($_POST['country'] ?? 'Sri Lanka');
+        $country = 'Sri Lanka';
 
-        if ($customerName === '' || $email === '' || $phone === '' || $address === '' || $city === '' || $country === '') {
+        if ($customerName === '' || $email === '' || $phone === '' || $address === '' || $city === '') {
             $_SESSION['order_error'] = 'Please fill in all required payment fields.';
             $this->redirect('shop/product/' . $productId);
         }
@@ -223,7 +223,7 @@ class OrderController extends BaseController
             'address' => $address,
             'city' => $city,
             'district' => trim($_POST['district'] ?? ''),
-            'postal_code' => trim($_POST['postal_code'] ?? ''),
+            'postal_code' => '',
             'country' => $country,
             'note' => trim($_POST['note'] ?? '')
         ];
