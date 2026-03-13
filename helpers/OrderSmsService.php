@@ -76,6 +76,29 @@ class OrderSmsService
         }
     }
 
+    public function sendDirectForEvent(array $order, $eventKey)
+    {
+        if (empty($order['id'])) {
+            return;
+        }
+
+        $settings = $this->settingModel->getAllPairs();
+        if ($this->isCustomerEnabled($settings)) {
+            $this->sendToRecipient($order, $settings, $eventKey, 'customer');
+        } else {
+            $this->writeLog([
+                'time' => date('c'),
+                'event' => $eventKey,
+                'status' => 'customer_skipped_not_configured',
+                'order_id' => (int) $order['id']
+            ]);
+        }
+
+        if ($eventKey === 'order_placed' && $this->isOwnerEnabled($settings)) {
+            $this->sendToRecipient($order, $settings, 'owner_order_received', 'owner');
+        }
+    }
+
     public function processQueue($limit = 10)
     {
         $settings = $this->settingModel->getAllPairs();
@@ -161,6 +184,41 @@ class OrderSmsService
         }
 
         return $this->normalizePhone((string) ($order['phone'] ?? ''));
+    }
+
+    private function sendToRecipient(array $order, array $settings, $eventKey, $recipientType)
+    {
+        $recipientPhone = $this->resolveRecipientPhone($order, $settings, $recipientType);
+        if ($recipientPhone === '') {
+            $this->logFailure($eventKey, $recipientPhone, 'Recipient phone missing or invalid.');
+            return;
+        }
+
+        if ($this->notificationModel->wasSent((int) $order['id'], (string) $eventKey, $recipientPhone)) {
+            $this->writeLog([
+                'time' => date('c'),
+                'event' => $eventKey,
+                'recipient' => $recipientPhone,
+                'status' => 'already_sent',
+                'recipient_type' => $recipientType,
+                'order_id' => (int) $order['id']
+            ]);
+            return;
+        }
+
+        $message = $this->buildMessage($order, $settings, (string) $eventKey, $recipientType);
+        if ($message === '') {
+            $this->logFailure($eventKey, $recipientPhone, 'SMS template resolved to empty message.');
+            return;
+        }
+
+        try {
+            $response = $this->client->send($settings, $recipientPhone, $message);
+            $this->notificationModel->markSent((int) $order['id'], (string) $eventKey, $recipientPhone);
+            $this->logSuccess((string) $eventKey, $recipientPhone, $response['body'] ?? '');
+        } catch (Exception $e) {
+            $this->logFailure((string) $eventKey, $recipientPhone, $e->getMessage());
+        }
     }
 
     private function buildMessage(array $order, array $settings, $eventKey, $recipientType = 'customer')

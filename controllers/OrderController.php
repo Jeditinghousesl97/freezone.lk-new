@@ -31,8 +31,6 @@ class OrderController extends BaseController
 
     private function dispatchSmsQueueAsync()
     {
-        $workerUrl = SeoHelper::absoluteUrl(BASE_URL . 'order/processSmsQueue?token=' . urlencode($this->smsQueueToken()));
-
         register_shutdown_function(function () {
             if (function_exists('session_write_close')) {
                 @session_write_close();
@@ -49,7 +47,57 @@ class OrderController extends BaseController
             }
 
             try {
-                $this->orderSmsService->processQueue(8);
+                $this->logSmsWorkerEvent('shutdown_worker_finished_noop');
+            } catch (Throwable $e) {
+                $this->logSmsWorkerEvent('shutdown_worker_failed', [
+                    'message' => $e->getMessage()
+                ]);
+            }
+        });
+    }
+
+    private function dispatchSmsSendAsync(array $order, $eventKey)
+    {
+        register_shutdown_function(function () use ($order, $eventKey) {
+            if (function_exists('session_write_close')) {
+                @session_write_close();
+            }
+
+            ignore_user_abort(true);
+            $this->logSmsWorkerEvent('direct_sms_started', [
+                'event' => $eventKey,
+                'order_id' => $order['id'] ?? null
+            ]);
+
+            if (function_exists('fastcgi_finish_request')) {
+                @fastcgi_finish_request();
+            } else {
+                @ob_end_flush();
+                @flush();
+            }
+
+            try {
+                $this->orderSmsService->sendDirectForEvent($order, $eventKey);
+                $this->logSmsWorkerEvent('direct_sms_finished', [
+                    'event' => $eventKey,
+                    'order_id' => $order['id'] ?? null
+                ]);
+            } catch (Throwable $e) {
+                $this->logSmsWorkerEvent('direct_sms_failed', [
+                    'event' => $eventKey,
+                    'order_id' => $order['id'] ?? null,
+                    'message' => $e->getMessage()
+                ]);
+            }
+        });
+    }
+
+    private function dispatchSmsQueueAsyncLegacy()
+    {
+        $workerUrl = SeoHelper::absoluteUrl(BASE_URL . 'order/processSmsQueue?token=' . urlencode($this->smsQueueToken()));
+        register_shutdown_function(function () use ($workerUrl) {
+            try {
+                $this->fireAndForgetUrl($workerUrl);
                 $this->logSmsWorkerEvent('shutdown_worker_finished');
             } catch (Throwable $e) {
                 $this->logSmsWorkerEvent('shutdown_worker_failed', [
@@ -57,8 +105,6 @@ class OrderController extends BaseController
                 ]);
             }
         });
-
-        $this->fireAndForgetUrl($workerUrl);
     }
 
     private function fireAndForgetUrl($url)
@@ -96,8 +142,7 @@ class OrderController extends BaseController
     private function notifyCustomerOrderEvent(array $order, $eventKey)
     {
         $this->orderEmailService->sendForEvent($order, $eventKey);
-        $this->orderSmsService->queueForEvent($order, $eventKey);
-        $this->dispatchSmsQueueAsync();
+        $this->dispatchSmsSendAsync($order, $eventKey);
     }
 
     public function processSmsQueue()
