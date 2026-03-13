@@ -196,22 +196,18 @@
 
         <?php endif; ?>
 
-        <?php if (!empty($settings['btn_payhere_bg'])): ?>
-            .btn-action.btn-payhere,
-            .btn-payhere-standalone,
-            .btn-payhere-submit {
+        <?php if (!empty($settings['btn_ordernow_bg'])): ?>
+            .btn-action.btn-order-now {
                 background-color:
-                    <?= $settings['btn_payhere_bg'] ?>
+                    <?= $settings['btn_ordernow_bg'] ?>
                     !important;
             }
 
         <?php endif; ?>
-        <?php if (!empty($settings['btn_payhere_text'])): ?>
-            .btn-action.btn-payhere,
-            .btn-payhere-standalone,
-            .btn-payhere-submit {
+        <?php if (!empty($settings['btn_ordernow_text'])): ?>
+            .btn-action.btn-order-now {
                 color:
-                    <?= $settings['btn_payhere_text'] ?>
+                    <?= $settings['btn_ordernow_text'] ?>
                     !important;
             }
 

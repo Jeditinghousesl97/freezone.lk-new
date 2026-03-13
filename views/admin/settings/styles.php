@@ -296,26 +296,26 @@
                         </div>
                     </div>
 
-                    <!-- 7. PayHere -->
+                    <!-- 7. Order Now -->
                     <div style="flex:1; min-width:200px;">
-                        <h4 style="font-size:12px; color:#555; margin-bottom:5px;">PayHere Button</h4>
+                        <h4 style="font-size:12px; color:#555; margin-bottom:5px;">Order Now Button</h4>
                         <div class="control-group">
                             <div class="color-picker-row">
                                 <span style="font-size:10px; width:30px;">BG:</span>
-                                <input type="color" name="btn_payhere_bg" class="color-input" value="<?= $styles['btn_payhere_bg'] ?? '#111111' ?>">
+                                <input type="color" name="btn_ordernow_bg" class="color-input" value="<?= $styles['btn_ordernow_bg'] ?? '#111111' ?>">
                             </div>
                         </div>
                         <div class="control-group">
                             <div class="color-picker-row">
                                 <span style="font-size:10px; width:30px;">Txt:</span>
-                                <input type="color" name="btn_payhere_text" class="color-input" value="<?= $styles['btn_payhere_text'] ?? '#ffffff' ?>">
+                                <input type="color" name="btn_ordernow_text" class="color-input" value="<?= $styles['btn_ordernow_text'] ?? '#ffffff' ?>">
                             </div>
                         </div>
                     </div>
 
                 </div>
                 <div style="margin-top:15px; font-size:11px; color:#777; font-style:italic;">
-                    * WhatsApp "Order Now" buttons are brand-locked and cannot be edited.
+                    * WhatsApp and payment-method cards keep their own branded colors.
                 </div>
             </div>
 <!-- Floating Elements -->
