@@ -349,6 +349,72 @@
                     value="">
             </div>
 
+            <div style="margin-top:20px; padding:20px; border-radius:16px; background:#ffffff; border:1px solid #e9e9e9;">
+                <h3 style="margin:0 0 14px;">Customer SMS Settings</h3>
+                <p style="font-size:12px; color:#777; margin:0 0 16px;">Uses SMSLenz to send order updates only to the customer. API format based on <code>https://smslenz.lk/api/send-sms</code>.</p>
+
+                <label style="display:flex; align-items:center; gap:8px; margin-bottom:18px; font-size:14px; color:#333;">
+                    <input type="checkbox" name="sms_enabled" value="1" <?= !empty($settings['sms_enabled']) ? 'checked' : '' ?>>
+                    Enable customer SMS notifications
+                </label>
+
+                <label class="label">SMS API Base URL</label>
+                <input type="text" name="sms_base_url" class="input-box" placeholder="https://smslenz.lk/api"
+                    value="<?= htmlspecialchars($settings['sms_base_url'] ?? 'https://smslenz.lk/api') ?>">
+
+                <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px;">
+                    <div>
+                        <label class="label">SMS User ID</label>
+                        <input type="text" name="sms_user_id" class="input-box" placeholder="1459"
+                            value="<?= htmlspecialchars($settings['sms_user_id'] ?? '') ?>">
+                    </div>
+                    <div>
+                        <label class="label">Sender ID</label>
+                        <input type="text" name="sms_sender_id" class="input-box" placeholder="Approved Sender ID"
+                            value="<?= htmlspecialchars($settings['sms_sender_id'] ?? '') ?>">
+                    </div>
+                </div>
+
+                <label class="label">SMS API Key</label>
+                <input type="password" name="sms_api_key" class="input-box" autocomplete="new-password"
+                    placeholder="Leave blank to keep current SMS API Key" value="">
+
+                <div style="font-size:12px; color:#777; margin:-8px 0 14px;">
+                    Available placeholders:
+                    <code>{shop_name}</code>,
+                    <code>{customer_name}</code>,
+                    <code>{order_number}</code>,
+                    <code>{currency}</code>,
+                    <code>{total_amount}</code>,
+                    <code>{payment_status}</code>,
+                    <code>{order_status}</code>,
+                    <code>{payment_method}</code>,
+                    <code>{shop_whatsapp}</code>,
+                    <code>{website_url}</code>
+                </div>
+
+                <label class="label">Order Placed SMS</label>
+                <textarea name="sms_template_order_placed" class="input-box" rows="3" placeholder="Hi {customer_name}, your order {order_number} at {shop_name} has been placed. Total: {currency} {total_amount}."><?= htmlspecialchars($settings['sms_template_order_placed'] ?? '') ?></textarea>
+
+                <label class="label">Payment Completed SMS</label>
+                <textarea name="sms_template_payment_completed" class="input-box" rows="3" placeholder="Good news {customer_name}. Payment completed for order {order_number} at {shop_name}."><?= htmlspecialchars($settings['sms_template_payment_completed'] ?? '') ?></textarea>
+
+                <label class="label">Payment Cancelled SMS</label>
+                <textarea name="sms_template_payment_cancelled" class="input-box" rows="3" placeholder="Your payment was cancelled for order {order_number} at {shop_name}."><?= htmlspecialchars($settings['sms_template_payment_cancelled'] ?? '') ?></textarea>
+
+                <label class="label">Payment Failed SMS</label>
+                <textarea name="sms_template_payment_failed" class="input-box" rows="3" placeholder="We could not confirm payment for order {order_number} at {shop_name}. Please try again or contact us."><?= htmlspecialchars($settings['sms_template_payment_failed'] ?? '') ?></textarea>
+
+                <label class="label">COD Payment Received SMS</label>
+                <textarea name="sms_template_payment_received" class="input-box" rows="3" placeholder="Payment received for your order {order_number} at {shop_name}. Thank you."><?= htmlspecialchars($settings['sms_template_payment_received'] ?? '') ?></textarea>
+
+                <label class="label">Order Completed SMS</label>
+                <textarea name="sms_template_order_completed" class="input-box" rows="3" placeholder="Your order {order_number} from {shop_name} is completed. Thank you for shopping with us."><?= htmlspecialchars($settings['sms_template_order_completed'] ?? '') ?></textarea>
+
+                <label class="label">Order Cancelled SMS</label>
+                <textarea name="sms_template_order_cancelled" class="input-box" rows="3" placeholder="Your order {order_number} from {shop_name} has been cancelled."><?= htmlspecialchars($settings['sms_template_order_cancelled'] ?? '') ?></textarea>
+            </div>
+
             <!-- User Management -->
             <div class="user-mgmt-box">
                 <!-- Hidden ID if exists -->

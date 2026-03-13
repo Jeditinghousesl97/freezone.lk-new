@@ -9,7 +9,8 @@ class Setting extends BaseModel
 {
     private $sensitiveKeys = [
         'payhere_merchant_secret',
-        'smtp_password'
+        'smtp_password',
+        'sms_api_key'
     ];
 
     // Get value by key

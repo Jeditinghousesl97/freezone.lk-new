@@ -79,7 +79,19 @@ class SettingsController extends BaseController
             'payhere_enabled',
             'payhere_sandbox',
             'payhere_merchant_id',
-            'payhere_merchant_secret'
+            'payhere_merchant_secret',
+            'sms_enabled',
+            'sms_base_url',
+            'sms_user_id',
+            'sms_api_key',
+            'sms_sender_id',
+            'sms_template_order_placed',
+            'sms_template_payment_completed',
+            'sms_template_payment_cancelled',
+            'sms_template_payment_failed',
+            'sms_template_payment_received',
+            'sms_template_order_completed',
+            'sms_template_order_cancelled'
         ];
         $settings = $this->settingModel->getMultiple($keys);
 
@@ -167,7 +179,17 @@ class SettingsController extends BaseController
                 'smtp_username',
                 'smtp_from_email',
                 'smtp_from_name',
-                'payhere_merchant_id'
+                'payhere_merchant_id',
+                'sms_base_url',
+                'sms_user_id',
+                'sms_sender_id',
+                'sms_template_order_placed',
+                'sms_template_payment_completed',
+                'sms_template_payment_cancelled',
+                'sms_template_payment_failed',
+                'sms_template_payment_received',
+                'sms_template_order_completed',
+                'sms_template_order_cancelled'
             ];
             foreach ($textFields as $field) {
                 if (isset($_POST[$field])) {
@@ -183,8 +205,13 @@ class SettingsController extends BaseController
                 $this->settingModel->set('payhere_merchant_secret', trim((string) $_POST['payhere_merchant_secret']));
             }
 
+            if (isset($_POST['sms_api_key']) && trim((string) $_POST['sms_api_key']) !== '') {
+                $this->settingModel->set('sms_api_key', trim((string) $_POST['sms_api_key']));
+            }
+
             $this->settingModel->set('payhere_enabled', !empty($_POST['payhere_enabled']) ? '1' : '0');
             $this->settingModel->set('payhere_sandbox', !empty($_POST['payhere_sandbox']) ? '1' : '0');
+            $this->settingModel->set('sms_enabled', !empty($_POST['sms_enabled']) ? '1' : '0');
 
             // Owner Credentials Update / Create
             $ownerId = $_POST['owner_id'] ?? '';

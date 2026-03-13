@@ -4,6 +4,7 @@ require_once 'models/Setting.php';
 require_once 'models/Product.php';
 require_once 'helpers/SeoHelper.php';
 require_once 'helpers/OrderEmailService.php';
+require_once 'helpers/OrderSmsService.php';
 
 class OrderController extends BaseController
 {
@@ -11,6 +12,7 @@ class OrderController extends BaseController
     private $settingModel;
     private $productModel;
     private $orderEmailService;
+    private $orderSmsService;
 
     public function __construct()
     {
@@ -18,6 +20,13 @@ class OrderController extends BaseController
         $this->settingModel = new Setting();
         $this->productModel = new Product();
         $this->orderEmailService = new OrderEmailService();
+        $this->orderSmsService = new OrderSmsService();
+    }
+
+    private function notifyCustomerOrderEvent(array $order, $eventKey)
+    {
+        $this->orderEmailService->sendForEvent($order, $eventKey);
+        $this->orderSmsService->sendForEvent($order, $eventKey);
     }
 
     private function logPayhereEvent($event, array $context = [])
@@ -249,7 +258,7 @@ class OrderController extends BaseController
             $this->orderModel->updateOrderStatus($orderNumber, 'completed');
             $updatedOrder = $this->orderModel->getByOrderNumberWithItems($orderNumber);
             if ($updatedOrder) {
-                $this->orderEmailService->sendForEvent($updatedOrder, 'order_completed');
+                $this->notifyCustomerOrderEvent($updatedOrder, 'order_completed');
             }
         }
 
@@ -284,7 +293,7 @@ class OrderController extends BaseController
 
             $updatedOrder = $this->orderModel->getByOrderNumberWithItems($orderNumber);
             if ($updatedOrder) {
-                $this->orderEmailService->sendForEvent($updatedOrder, 'payment_received');
+                $this->notifyCustomerOrderEvent($updatedOrder, 'payment_received');
             }
         }
 
@@ -304,7 +313,7 @@ class OrderController extends BaseController
             $this->orderModel->updateOrderStatus($orderNumber, 'cancelled');
             $updatedOrder = $this->orderModel->getByOrderNumberWithItems($orderNumber);
             if ($updatedOrder) {
-                $this->orderEmailService->sendForEvent($updatedOrder, 'order_cancelled');
+                $this->notifyCustomerOrderEvent($updatedOrder, 'order_cancelled');
             }
         }
 
@@ -361,7 +370,7 @@ class OrderController extends BaseController
         $_SESSION['pending_order_number'] = $order['order_number'];
         $fullOrder = $this->orderModel->getByOrderNumberWithItems($order['order_number']);
         if ($fullOrder) {
-            $this->orderEmailService->sendForEvent($fullOrder, 'order_placed');
+            $this->notifyCustomerOrderEvent($fullOrder, 'order_placed');
         }
 
         $merchantId = trim($settings['payhere_merchant_id']);
@@ -493,7 +502,7 @@ class OrderController extends BaseController
         $_SESSION['cart'] = [];
         $fullOrder = $this->orderModel->getByOrderNumberWithItems($order['order_number']);
         if ($fullOrder) {
-            $this->orderEmailService->sendForEvent($fullOrder, 'order_placed');
+            $this->notifyCustomerOrderEvent($fullOrder, 'order_placed');
         }
         $this->redirect('order/codSuccess?order=' . urlencode($order['order_number']));
     }
@@ -557,7 +566,7 @@ class OrderController extends BaseController
         $_SESSION['pending_order_number'] = $order['order_number'];
         $fullOrder = $this->orderModel->getByOrderNumberWithItems($order['order_number']);
         if ($fullOrder) {
-            $this->orderEmailService->sendForEvent($fullOrder, 'order_placed');
+            $this->notifyCustomerOrderEvent($fullOrder, 'order_placed');
         }
 
         $merchantId = trim($settings['payhere_merchant_id']);
@@ -668,7 +677,7 @@ class OrderController extends BaseController
         $_SESSION['cod_order_number'] = $order['order_number'];
         $fullOrder = $this->orderModel->getByOrderNumberWithItems($order['order_number']);
         if ($fullOrder) {
-            $this->orderEmailService->sendForEvent($fullOrder, 'order_placed');
+            $this->notifyCustomerOrderEvent($fullOrder, 'order_placed');
         }
         $this->redirect('order/codSuccess?order=' . urlencode($order['order_number']));
     }
@@ -782,11 +791,11 @@ class OrderController extends BaseController
         $updatedOrder = $this->orderModel->getByOrderNumberWithItems($orderNumber);
         if ($updatedOrder) {
             if ($status === 'paid') {
-                $this->orderEmailService->sendForEvent($updatedOrder, 'payment_completed');
+                $this->notifyCustomerOrderEvent($updatedOrder, 'payment_completed');
             } elseif ($status === 'cancelled') {
-                $this->orderEmailService->sendForEvent($updatedOrder, 'payment_cancelled');
+                $this->notifyCustomerOrderEvent($updatedOrder, 'payment_cancelled');
             } elseif ($status === 'failed' || $status === 'verification_failed' || $status === 'chargedback') {
-                $this->orderEmailService->sendForEvent($updatedOrder, 'payment_failed');
+                $this->notifyCustomerOrderEvent($updatedOrder, 'payment_failed');
             }
         }
 
@@ -848,7 +857,7 @@ class OrderController extends BaseController
             $this->orderModel->updatePaymentStatus($orderNumber, 'cancelled', $order['gateway_payment_id'] ?? null, $order['gateway_status_code'] ?? null, 'Payment cancelled before completion.');
             $updatedOrder = $this->orderModel->getByOrderNumberWithItems($orderNumber);
             if ($updatedOrder) {
-                $this->orderEmailService->sendForEvent($updatedOrder, 'payment_cancelled');
+                $this->notifyCustomerOrderEvent($updatedOrder, 'payment_cancelled');
                 $order = $updatedOrder;
             } else {
                 $order = $this->orderModel->getByOrderNumber($orderNumber);
