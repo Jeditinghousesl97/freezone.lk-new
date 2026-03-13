@@ -1,0 +1,20 @@
+# .htaccess Configuration
+# This file tells the Apache server how to handle URLs.
+# We want all requests (like /login, /products) to go to index.php
+
+RewriteEngine On
+
+# SEO endpoints
+RewriteRule ^robots\.txt$ index.php?url=seo/robots [QSA,L]
+RewriteRule ^sitemap\.xml$ index.php?url=seo/sitemap [QSA,L]
+
+# 1. Block access to protected directories
+RewriteRule ^(config|models|views|controllers)/ - [F,L]
+
+# 2. Allow existing files and folders to be accessed directly
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# 3. Redirect everything else to index.php
+# Using relative path for index.php so it works in /test/ OR /Ecom-CMS/
+RewriteRule ^(.*)$ index.php?url=$1 [QSA,L]
