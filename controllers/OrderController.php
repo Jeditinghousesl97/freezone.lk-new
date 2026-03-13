@@ -30,30 +30,21 @@ class OrderController extends BaseController
 
     private function dispatchSmsQueueAsync()
     {
-        $url = SeoHelper::absoluteUrl(BASE_URL . 'order/processSmsQueue?token=' . urlencode($this->smsQueueToken()));
-
-        register_shutdown_function(function () use ($url) {
-            $parts = parse_url($url);
-            if (empty($parts['host'])) {
-                return;
+        register_shutdown_function(function () {
+            if (function_exists('session_write_close')) {
+                @session_write_close();
             }
 
-            $scheme = $parts['scheme'] ?? 'https';
-            $host = $parts['host'];
-            $port = isset($parts['port']) ? (int) $parts['port'] : ($scheme === 'https' ? 443 : 80);
-            $path = ($parts['path'] ?? '/') . (isset($parts['query']) ? '?' . $parts['query'] : '');
-            $target = ($scheme === 'https' ? 'ssl://' : '') . $host;
+            ignore_user_abort(true);
 
-            $fp = @fsockopen($target, $port, $errno, $errstr, 0.25);
-            if (!$fp) {
-                return;
+            if (function_exists('fastcgi_finish_request')) {
+                @fastcgi_finish_request();
+            } else {
+                @ob_end_flush();
+                @flush();
             }
 
-            stream_set_timeout($fp, 0, 200000);
-            fwrite($fp, "GET {$path} HTTP/1.1\r\n");
-            fwrite($fp, "Host: {$host}\r\n");
-            fwrite($fp, "Connection: Close\r\n\r\n");
-            fclose($fp);
+            $this->orderSmsService->processQueue(8);
         });
     }
 
@@ -309,6 +300,9 @@ class OrderController extends BaseController
 
         $order = $this->orderModel->getByOrderNumber($orderNumber);
         if ($order) {
+            $courierService = trim((string) ($_POST['courier_service'] ?? ''));
+            $trackingNumber = trim((string) ($_POST['tracking_number'] ?? ''));
+            $this->orderModel->updateCompletionDetails($orderNumber, $courierService, $trackingNumber);
             $this->orderModel->updateOrderStatus($orderNumber, 'completed');
             $updatedOrder = $this->orderModel->getByOrderNumberWithItems($orderNumber);
             if ($updatedOrder) {

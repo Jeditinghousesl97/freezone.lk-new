@@ -75,6 +75,14 @@ require_once 'views/layouts/customer_header.php';
                     <div style="font-size:12px; color:#777; margin-bottom:6px;">Total Amount</div>
                     <div style="font-size:15px; font-weight:800; color:#111;"><?= htmlspecialchars($order['currency']) ?> <?= number_format((float) ($order['total_amount'] ?? 0), 2) ?></div>
                 </div>
+                <div style="background:#fafafa; border-radius:16px; padding:14px;">
+                    <div style="font-size:12px; color:#777; margin-bottom:6px;">Courier Service</div>
+                    <div style="font-size:15px; font-weight:800; color:#111;"><?= htmlspecialchars($order['courier_service'] ?: '-') ?></div>
+                </div>
+                <div style="background:#fafafa; border-radius:16px; padding:14px;">
+                    <div style="font-size:12px; color:#777; margin-bottom:6px;">Tracking Number</div>
+                    <div style="font-size:15px; font-weight:800; color:#111;"><?= htmlspecialchars($order['tracking_number'] ?: '-') ?></div>
+                </div>
             </div>
 
             <div style="display:grid; gap:12px;">

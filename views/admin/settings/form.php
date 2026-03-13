@@ -398,6 +398,8 @@
                     <code>{payment_status}</code>,
                     <code>{order_status}</code>,
                     <code>{payment_method}</code>,
+                    <code>{courier_service}</code>,
+                    <code>{tracking_number}</code>,
                     <code>{shop_whatsapp}</code>,
                     <code>{website_url}</code>
                 </div>
@@ -418,13 +420,69 @@
                 <textarea name="sms_template_payment_received" class="input-box" rows="3" placeholder="Payment received for your order {order_number} at {shop_name}. Thank you."><?= htmlspecialchars($settings['sms_template_payment_received'] ?? '') ?></textarea>
 
                 <label class="label">Order Completed SMS</label>
-                <textarea name="sms_template_order_completed" class="input-box" rows="3" placeholder="Your order {order_number} from {shop_name} is completed. Thank you for shopping with us."><?= htmlspecialchars($settings['sms_template_order_completed'] ?? '') ?></textarea>
+                <textarea name="sms_template_order_completed" class="input-box" rows="3" placeholder="Your order {order_number} from {shop_name} is completed. Courier: {courier_service}. Tracking: {tracking_number}."><?= htmlspecialchars($settings['sms_template_order_completed'] ?? '') ?></textarea>
 
                 <label class="label">Order Cancelled SMS</label>
                 <textarea name="sms_template_order_cancelled" class="input-box" rows="3" placeholder="Your order {order_number} from {shop_name} has been cancelled."><?= htmlspecialchars($settings['sms_template_order_cancelled'] ?? '') ?></textarea>
 
                 <label class="label">Shop Owner Order Received SMS</label>
                 <textarea name="sms_template_owner_order_received" class="input-box" rows="3" placeholder="New order {order_number} received at {shop_name} from {customer_name}. Total: {currency} {total_amount}."><?= htmlspecialchars($settings['sms_template_owner_order_received'] ?? '') ?></textarea>
+            </div>
+
+            <div style="margin-top:20px; padding:20px; border-radius:16px; background:#ffffff; border:1px solid #e9e9e9;">
+                <h3 style="margin:0 0 14px;">Order Email Content</h3>
+                <p style="font-size:12px; color:#777; margin:0 0 16px;">Customize the email body text shown inside the email template. Leave any field blank to use the default message.</p>
+
+                <div style="font-size:12px; color:#777; margin:0 0 16px;">
+                    Available placeholders:
+                    <code>{shop_name}</code>,
+                    <code>{customer_name}</code>,
+                    <code>{order_number}</code>,
+                    <code>{currency}</code>,
+                    <code>{total_amount}</code>,
+                    <code>{payment_status}</code>,
+                    <code>{order_status}</code>,
+                    <code>{payment_method}</code>,
+                    <code>{courier_service}</code>,
+                    <code>{tracking_number}</code>,
+                    <code>{shop_whatsapp}</code>,
+                    <code>{website_url}</code>,
+                    <code>{customer_email}</code>,
+                    <code>{customer_phone}</code>,
+                    <code>{customer_address}</code>
+                </div>
+
+                <h4 style="margin:0 0 12px;">Customer Email Bodies</h4>
+                <label class="label">Order Placed</label>
+                <textarea name="email_customer_template_order_placed" class="input-box" rows="3" placeholder="Your order has been created successfully and is now in our system."><?= htmlspecialchars($settings['email_customer_template_order_placed'] ?? '') ?></textarea>
+                <label class="label">Payment Completed</label>
+                <textarea name="email_customer_template_payment_completed" class="input-box" rows="3" placeholder="Your payment was completed successfully. We can now process your order."><?= htmlspecialchars($settings['email_customer_template_payment_completed'] ?? '') ?></textarea>
+                <label class="label">Payment Cancelled</label>
+                <textarea name="email_customer_template_payment_cancelled" class="input-box" rows="3" placeholder="The payment for your order was cancelled."><?= htmlspecialchars($settings['email_customer_template_payment_cancelled'] ?? '') ?></textarea>
+                <label class="label">Payment Failed</label>
+                <textarea name="email_customer_template_payment_failed" class="input-box" rows="3" placeholder="We could not confirm payment for your order."><?= htmlspecialchars($settings['email_customer_template_payment_failed'] ?? '') ?></textarea>
+                <label class="label">COD Payment Received</label>
+                <textarea name="email_customer_template_payment_received" class="input-box" rows="3" placeholder="We have marked your order payment as received."><?= htmlspecialchars($settings['email_customer_template_payment_received'] ?? '') ?></textarea>
+                <label class="label">Order Completed</label>
+                <textarea name="email_customer_template_order_completed" class="input-box" rows="3" placeholder="Your order has been marked as completed. Courier: {courier_service}. Tracking Number: {tracking_number}."><?= htmlspecialchars($settings['email_customer_template_order_completed'] ?? '') ?></textarea>
+                <label class="label">Order Cancelled</label>
+                <textarea name="email_customer_template_order_cancelled" class="input-box" rows="3" placeholder="Your order has been cancelled."><?= htmlspecialchars($settings['email_customer_template_order_cancelled'] ?? '') ?></textarea>
+
+                <h4 style="margin:24px 0 12px;">Shop Owner Email Bodies</h4>
+                <label class="label">Order Placed</label>
+                <textarea name="email_owner_template_order_placed" class="input-box" rows="3" placeholder="A new order has just been placed in your shop."><?= htmlspecialchars($settings['email_owner_template_order_placed'] ?? '') ?></textarea>
+                <label class="label">Payment Completed</label>
+                <textarea name="email_owner_template_payment_completed" class="input-box" rows="3" placeholder="A payment has been completed for an order in your shop."><?= htmlspecialchars($settings['email_owner_template_payment_completed'] ?? '') ?></textarea>
+                <label class="label">Payment Cancelled</label>
+                <textarea name="email_owner_template_payment_cancelled" class="input-box" rows="3" placeholder="A customer payment was cancelled."><?= htmlspecialchars($settings['email_owner_template_payment_cancelled'] ?? '') ?></textarea>
+                <label class="label">Payment Failed</label>
+                <textarea name="email_owner_template_payment_failed" class="input-box" rows="3" placeholder="A customer payment failed and needs attention."><?= htmlspecialchars($settings['email_owner_template_payment_failed'] ?? '') ?></textarea>
+                <label class="label">COD Payment Received</label>
+                <textarea name="email_owner_template_payment_received" class="input-box" rows="3" placeholder="Cash on delivery payment has been marked as received."><?= htmlspecialchars($settings['email_owner_template_payment_received'] ?? '') ?></textarea>
+                <label class="label">Order Completed</label>
+                <textarea name="email_owner_template_order_completed" class="input-box" rows="3" placeholder="An order has been marked as completed. Courier: {courier_service}. Tracking Number: {tracking_number}."><?= htmlspecialchars($settings['email_owner_template_order_completed'] ?? '') ?></textarea>
+                <label class="label">Order Cancelled</label>
+                <textarea name="email_owner_template_order_cancelled" class="input-box" rows="3" placeholder="An order has been cancelled."><?= htmlspecialchars($settings['email_owner_template_order_cancelled'] ?? '') ?></textarea>
             </div>
 
             <!-- User Management -->

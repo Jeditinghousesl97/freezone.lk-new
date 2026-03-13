@@ -8,6 +8,24 @@ class OrderEmailService
 {
     private $settingModel;
     private $notificationModel;
+    private $customerBodyDefaults = [
+        'order_placed' => 'Your order has been created successfully and is now in our system.',
+        'payment_completed' => 'Your payment was completed successfully. We can now process your order.',
+        'payment_cancelled' => 'The payment for your order was cancelled.',
+        'payment_failed' => 'We could not confirm payment for your order.',
+        'payment_received' => 'We have marked your order payment as received.',
+        'order_completed' => 'Your order has been marked as completed. Courier: {courier_service}. Tracking Number: {tracking_number}.',
+        'order_cancelled' => 'Your order has been cancelled.',
+    ];
+    private $ownerBodyDefaults = [
+        'order_placed' => 'A new order has just been placed in your shop.',
+        'payment_completed' => 'A payment has been completed for an order in your shop.',
+        'payment_cancelled' => 'A customer payment was cancelled.',
+        'payment_failed' => 'A customer payment failed and needs attention.',
+        'payment_received' => 'Cash on delivery payment has been marked as received.',
+        'order_completed' => 'An order has been marked as completed. Courier: {courier_service}. Tracking Number: {tracking_number}.',
+        'order_cancelled' => 'An order has been cancelled.',
+    ];
 
     public function __construct()
     {
@@ -83,67 +101,53 @@ class OrderEmailService
 
         $customerSubject = $shopName . ' Order Update';
         $customerHeading = 'Order Update';
-        $customerIntro = 'We have an update for your order.';
+        $customerIntro = $this->buildBodyContent($settings, $order, $eventKey, 'customer');
         $ownerSubject = 'New order activity - ' . ($order['order_number'] ?? '');
         $ownerHeading = 'Order Notification';
-        $ownerIntro = 'There is an update on a customer order.';
+        $ownerIntro = $this->buildBodyContent($settings, $order, $eventKey, 'owner');
 
         switch ($eventKey) {
             case 'order_placed':
                 $customerSubject = $shopName . ' order received - ' . $order['order_number'];
                 $customerHeading = 'We Received Your Order';
-                $customerIntro = 'Your order has been created successfully and is now in our system.';
                 $ownerSubject = 'New order received - ' . $order['order_number'];
                 $ownerHeading = 'New Order Received';
-                $ownerIntro = 'A new order has just been placed in your shop.';
                 break;
             case 'payment_completed':
                 $customerSubject = $shopName . ' payment completed - ' . $order['order_number'];
                 $customerHeading = 'Payment Completed';
-                $customerIntro = 'Your payment was completed successfully. We can now process your order.';
                 $ownerSubject = 'Payment completed - ' . $order['order_number'];
                 $ownerHeading = 'Payment Completed';
-                $ownerIntro = 'A payment has been completed for an order in your shop.';
                 break;
             case 'payment_cancelled':
                 $customerSubject = $shopName . ' payment cancelled - ' . $order['order_number'];
                 $customerHeading = 'Payment Cancelled';
-                $customerIntro = 'The payment for your order was cancelled.';
                 $ownerSubject = 'Payment cancelled - ' . $order['order_number'];
                 $ownerHeading = 'Payment Cancelled';
-                $ownerIntro = 'A customer payment was cancelled.';
                 break;
             case 'payment_failed':
                 $customerSubject = $shopName . ' payment failed - ' . $order['order_number'];
                 $customerHeading = 'Payment Failed';
-                $customerIntro = 'We could not confirm payment for your order.';
                 $ownerSubject = 'Payment failed - ' . $order['order_number'];
                 $ownerHeading = 'Payment Failed';
-                $ownerIntro = 'A customer payment failed and needs attention.';
                 break;
             case 'payment_received':
                 $customerSubject = $shopName . ' payment received - ' . $order['order_number'];
                 $customerHeading = 'Payment Received';
-                $customerIntro = 'We have marked your order payment as received.';
                 $ownerSubject = 'COD payment received - ' . $order['order_number'];
                 $ownerHeading = 'COD Payment Received';
-                $ownerIntro = 'Cash on delivery payment has been marked as received.';
                 break;
             case 'order_completed':
                 $customerSubject = $shopName . ' order completed - ' . $order['order_number'];
                 $customerHeading = 'Order Completed';
-                $customerIntro = 'Your order has been marked as completed.';
                 $ownerSubject = 'Order completed - ' . $order['order_number'];
                 $ownerHeading = 'Order Completed';
-                $ownerIntro = 'An order has been marked as completed.';
                 break;
             case 'order_cancelled':
                 $customerSubject = $shopName . ' order cancelled - ' . $order['order_number'];
                 $customerHeading = 'Order Cancelled';
-                $customerIntro = 'Your order has been cancelled.';
                 $ownerSubject = 'Order cancelled - ' . $order['order_number'];
                 $ownerHeading = 'Order Cancelled';
-                $ownerIntro = 'An order has been cancelled.';
                 break;
         }
 
@@ -205,12 +209,14 @@ class OrderEmailService
                         <div style="font-size:14px; opacity:0.88;">' . htmlspecialchars($heading) . '</div>
                     </div>
                     <div style="padding:28px;">
-                        <p style="margin:0 0 18px; font-size:15px; line-height:1.7; color:#444;">' . htmlspecialchars($intro) . '</p>
+                        <p style="margin:0 0 18px; font-size:15px; line-height:1.7; color:#444;">' . nl2br(htmlspecialchars($intro)) . '</p>
                         <div style="display:grid; gap:10px; background:#fafafa; border-radius:18px; padding:18px; margin-bottom:20px;">
                             <div><strong>Order Number:</strong> ' . htmlspecialchars($order['order_number'] ?? '-') . '</div>
                             <div><strong>Order Type:</strong> ' . htmlspecialchars($methodLabel) . '</div>
                             <div><strong>Payment Status:</strong> ' . htmlspecialchars($paymentLabel) . '</div>
                             <div><strong>Order Status:</strong> ' . htmlspecialchars($statusLabel) . '</div>
+                            <div><strong>Courier Service:</strong> ' . htmlspecialchars($order['courier_service'] ?? '-') . '</div>
+                            <div><strong>Tracking Number:</strong> ' . htmlspecialchars($order['tracking_number'] ?? '-') . '</div>
                             <div><strong>Total:</strong> ' . htmlspecialchars($currency) . ' ' . number_format((float) ($order['total_amount'] ?? 0), 2) . '</div>
                         </div>
                         <div style="font-size:15px; font-weight:700; margin-bottom:10px;">Order Items</div>
@@ -247,6 +253,8 @@ class OrderEmailService
             'Order Type: ' . $methodLabel,
             'Payment Status: ' . $paymentLabel,
             'Order Status: ' . $statusLabel,
+            'Courier Service: ' . ($order['courier_service'] ?? '-'),
+            'Tracking Number: ' . ($order['tracking_number'] ?? '-'),
             'Total: ' . $currency . ' ' . number_format((float) ($order['total_amount'] ?? 0), 2),
             ''
         ];
@@ -256,6 +264,42 @@ class OrderEmailService
         }
 
         return implode("\n", $lines);
+    }
+
+    private function buildBodyContent(array $settings, array $order, $eventKey, $recipientType)
+    {
+        $settingKey = 'email_' . $recipientType . '_template_' . $eventKey;
+        $template = trim((string) ($settings[$settingKey] ?? ''));
+        if ($template === '') {
+            $template = $recipientType === 'owner'
+                ? ($this->ownerBodyDefaults[$eventKey] ?? 'There is an update on a customer order.')
+                : ($this->customerBodyDefaults[$eventKey] ?? 'We have an update for your order.');
+        }
+
+        return $this->replacePlaceholders($template, $settings, $order);
+    }
+
+    private function replacePlaceholders($text, array $settings, array $order)
+    {
+        $placeholders = [
+            '{shop_name}' => SeoHelper::shopName($settings),
+            '{customer_name}' => (string) ($order['customer_name'] ?? 'Customer'),
+            '{order_number}' => (string) ($order['order_number'] ?? ''),
+            '{currency}' => (string) ($order['currency'] ?? ($settings['currency_symbol'] ?? 'LKR')),
+            '{total_amount}' => number_format((float) ($order['total_amount'] ?? 0), 2),
+            '{payment_status}' => ucfirst(str_replace('_', ' ', (string) ($order['payment_status'] ?? 'pending'))),
+            '{order_status}' => ucfirst(str_replace('_', ' ', (string) ($order['order_status'] ?? 'pending'))),
+            '{payment_method}' => strtoupper((string) ($order['payment_method'] ?? $order['payment_gateway'] ?? 'ORDER')),
+            '{courier_service}' => (string) ($order['courier_service'] ?? ''),
+            '{tracking_number}' => (string) ($order['tracking_number'] ?? ''),
+            '{shop_whatsapp}' => (string) ($settings['shop_whatsapp'] ?? ''),
+            '{website_url}' => SeoHelper::absoluteUrl(BASE_URL),
+            '{customer_email}' => (string) ($order['email'] ?? ''),
+            '{customer_phone}' => (string) ($order['phone'] ?? ''),
+            '{customer_address}' => trim(((string) ($order['address'] ?? '')) . ', ' . ((string) ($order['city'] ?? '')))
+        ];
+
+        return strtr($text, $placeholders);
     }
 
     private function logFailure($eventKey, $recipientEmail, $message)

@@ -33,6 +33,8 @@ class Order extends BaseModel
                 payment_gateway VARCHAR(50) NOT NULL DEFAULT 'payhere',
                 payment_status VARCHAR(40) NOT NULL DEFAULT 'pending',
                 order_status VARCHAR(40) NOT NULL DEFAULT 'pending',
+                courier_service VARCHAR(150) DEFAULT NULL,
+                tracking_number VARCHAR(150) DEFAULT NULL,
                 admin_seen_at TIMESTAMP NULL DEFAULT NULL,
                 gateway_payment_id VARCHAR(120) DEFAULT NULL,
                 gateway_status_code VARCHAR(20) DEFAULT NULL,
@@ -43,7 +45,9 @@ class Order extends BaseModel
         ");
 
         $this->ensureColumnExists('orders', 'order_status', "ALTER TABLE orders ADD COLUMN order_status VARCHAR(40) NOT NULL DEFAULT 'pending' AFTER payment_status");
-        $this->ensureColumnExists('orders', 'admin_seen_at', "ALTER TABLE orders ADD COLUMN admin_seen_at TIMESTAMP NULL DEFAULT NULL AFTER order_status");
+        $this->ensureColumnExists('orders', 'courier_service', "ALTER TABLE orders ADD COLUMN courier_service VARCHAR(150) DEFAULT NULL AFTER order_status");
+        $this->ensureColumnExists('orders', 'tracking_number', "ALTER TABLE orders ADD COLUMN tracking_number VARCHAR(150) DEFAULT NULL AFTER courier_service");
+        $this->ensureColumnExists('orders', 'admin_seen_at', "ALTER TABLE orders ADD COLUMN admin_seen_at TIMESTAMP NULL DEFAULT NULL AFTER tracking_number");
 
         $this->conn->exec("
             CREATE TABLE IF NOT EXISTS order_items (
@@ -493,6 +497,22 @@ class Order extends BaseModel
 
         return $stmt->execute([
             ':order_status' => $status,
+            ':order_number' => $orderNumber
+        ]);
+    }
+
+    public function updateCompletionDetails($orderNumber, $courierService = '', $trackingNumber = '')
+    {
+        $stmt = $this->conn->prepare("
+            UPDATE orders
+            SET courier_service = :courier_service,
+                tracking_number = :tracking_number
+            WHERE order_number = :order_number
+        ");
+
+        return $stmt->execute([
+            ':courier_service' => trim((string) $courierService) !== '' ? trim((string) $courierService) : null,
+            ':tracking_number' => trim((string) $trackingNumber) !== '' ? trim((string) $trackingNumber) : null,
             ':order_number' => $orderNumber
         ]);
     }

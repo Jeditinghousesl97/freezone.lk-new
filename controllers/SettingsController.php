@@ -93,7 +93,21 @@ class SettingsController extends BaseController
             'sms_template_payment_received',
             'sms_template_order_completed',
             'sms_template_order_cancelled',
-            'sms_template_owner_order_received'
+            'sms_template_owner_order_received',
+            'email_customer_template_order_placed',
+            'email_customer_template_payment_completed',
+            'email_customer_template_payment_cancelled',
+            'email_customer_template_payment_failed',
+            'email_customer_template_payment_received',
+            'email_customer_template_order_completed',
+            'email_customer_template_order_cancelled',
+            'email_owner_template_order_placed',
+            'email_owner_template_payment_completed',
+            'email_owner_template_payment_cancelled',
+            'email_owner_template_payment_failed',
+            'email_owner_template_payment_received',
+            'email_owner_template_order_completed',
+            'email_owner_template_order_cancelled'
         ];
         $settings = $this->settingModel->getMultiple($keys);
 
@@ -192,7 +206,21 @@ class SettingsController extends BaseController
                 'sms_template_payment_failed',
                 'sms_template_payment_received',
                 'sms_template_order_completed',
-                'sms_template_order_cancelled'
+                'sms_template_order_cancelled',
+                'email_customer_template_order_placed',
+                'email_customer_template_payment_completed',
+                'email_customer_template_payment_cancelled',
+                'email_customer_template_payment_failed',
+                'email_customer_template_payment_received',
+                'email_customer_template_order_completed',
+                'email_customer_template_order_cancelled',
+                'email_owner_template_order_placed',
+                'email_owner_template_payment_completed',
+                'email_owner_template_payment_cancelled',
+                'email_owner_template_payment_failed',
+                'email_owner_template_payment_received',
+                'email_owner_template_order_completed',
+                'email_owner_template_order_cancelled'
             ];
             foreach ($textFields as $field) {
                 if (isset($_POST[$field])) {

@@ -18,7 +18,7 @@ class OrderSmsService
         'payment_cancelled' => 'Your payment was cancelled for order {order_number} at {shop_name}.',
         'payment_failed' => 'We could not confirm payment for order {order_number} at {shop_name}. Please try again or contact us.',
         'payment_received' => 'Payment received for your order {order_number} at {shop_name}. Thank you.',
-        'order_completed' => 'Your order {order_number} from {shop_name} is completed. Thank you for shopping with us.',
+        'order_completed' => 'Your order {order_number} from {shop_name} is completed. Courier: {courier_service}. Tracking: {tracking_number}.',
         'order_cancelled' => 'Your order {order_number} from {shop_name} has been cancelled.',
         'owner_order_received' => 'New order {order_number} received at {shop_name} from {customer_name}. Total: {currency} {total_amount}.',
     ];
@@ -157,6 +157,8 @@ class OrderSmsService
             '{payment_status}' => ucfirst(str_replace('_', ' ', (string) ($order['payment_status'] ?? 'pending'))),
             '{order_status}' => ucfirst(str_replace('_', ' ', (string) ($order['order_status'] ?? 'pending'))),
             '{payment_method}' => strtoupper((string) ($order['payment_method'] ?? $order['payment_gateway'] ?? 'ORDER')),
+            '{courier_service}' => (string) ($order['courier_service'] ?? ''),
+            '{tracking_number}' => (string) ($order['tracking_number'] ?? ''),
             '{shop_whatsapp}' => (string) ($settings['shop_whatsapp'] ?? ''),
             '{website_url}' => SeoHelper::absoluteUrl(BASE_URL)
         ];
