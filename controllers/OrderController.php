@@ -31,6 +31,8 @@ class OrderController extends BaseController
 
     private function dispatchSmsQueueAsync()
     {
+        $workerUrl = SeoHelper::absoluteUrl(BASE_URL . 'order/processSmsQueue?token=' . urlencode($this->smsQueueToken()));
+
         register_shutdown_function(function () {
             if (function_exists('session_write_close')) {
                 @session_write_close();
@@ -55,6 +57,40 @@ class OrderController extends BaseController
                 ]);
             }
         });
+
+        $this->fireAndForgetUrl($workerUrl);
+    }
+
+    private function fireAndForgetUrl($url)
+    {
+        $parts = parse_url($url);
+        if (empty($parts['host'])) {
+            return;
+        }
+
+        $scheme = $parts['scheme'] ?? 'https';
+        $host = $parts['host'];
+        $port = isset($parts['port']) ? (int) $parts['port'] : ($scheme === 'https' ? 443 : 80);
+        $path = ($parts['path'] ?? '/') . (isset($parts['query']) ? '?' . $parts['query'] : '');
+        $transport = ($scheme === 'https' ? 'ssl://' : '') . $host;
+
+        $fp = @fsockopen($transport, $port, $errno, $errstr, 1.0);
+        if (!$fp) {
+            $this->logSmsWorkerEvent('socket_worker_skipped', [
+                'message' => $errstr,
+                'code' => $errno
+            ]);
+            return;
+        }
+
+        stream_set_timeout($fp, 0, 300000);
+        fwrite($fp, "GET {$path} HTTP/1.1\r\n");
+        fwrite($fp, "Host: {$host}\r\n");
+        fwrite($fp, "Connection: Close\r\n\r\n");
+        fclose($fp);
+        $this->logSmsWorkerEvent('socket_worker_dispatched', [
+            'url' => $url
+        ]);
     }
 
     private function notifyCustomerOrderEvent(array $order, $eventKey)
