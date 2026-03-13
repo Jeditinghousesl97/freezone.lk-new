@@ -358,6 +358,15 @@
                     Enable customer SMS notifications
                 </label>
 
+                <label style="display:flex; align-items:center; gap:8px; margin-bottom:18px; font-size:14px; color:#333;">
+                    <input type="checkbox" name="sms_owner_enabled" value="1" <?= !empty($settings['sms_owner_enabled']) ? 'checked' : '' ?>>
+                    Send order received SMS to shop owner
+                </label>
+
+                <div style="font-size:12px; color:#777; margin:-8px 0 14px;">
+                    Shop owner SMS uses the existing <strong>Shop Owner's Whatsapp Number</strong> as the destination phone number.
+                </div>
+
                 <label class="label">SMS API Base URL</label>
                 <input type="text" name="sms_base_url" class="input-box" placeholder="https://smslenz.lk/api"
                     value="<?= htmlspecialchars($settings['sms_base_url'] ?? 'https://smslenz.lk/api') ?>">
@@ -413,6 +422,9 @@
 
                 <label class="label">Order Cancelled SMS</label>
                 <textarea name="sms_template_order_cancelled" class="input-box" rows="3" placeholder="Your order {order_number} from {shop_name} has been cancelled."><?= htmlspecialchars($settings['sms_template_order_cancelled'] ?? '') ?></textarea>
+
+                <label class="label">Shop Owner Order Received SMS</label>
+                <textarea name="sms_template_owner_order_received" class="input-box" rows="3" placeholder="New order {order_number} received at {shop_name} from {customer_name}. Total: {currency} {total_amount}."><?= htmlspecialchars($settings['sms_template_owner_order_received'] ?? '') ?></textarea>
             </div>
 
             <!-- User Management -->

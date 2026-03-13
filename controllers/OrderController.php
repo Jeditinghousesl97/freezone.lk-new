@@ -23,10 +23,64 @@ class OrderController extends BaseController
         $this->orderSmsService = new OrderSmsService();
     }
 
+    private function smsQueueToken()
+    {
+        return hash('sha256', DB_NAME . '|' . DB_USER . '|' . DB_PASS . '|' . ROOT_PATH);
+    }
+
+    private function dispatchSmsQueueAsync()
+    {
+        $url = SeoHelper::absoluteUrl(BASE_URL . 'order/processSmsQueue?token=' . urlencode($this->smsQueueToken()));
+
+        register_shutdown_function(function () use ($url) {
+            $parts = parse_url($url);
+            if (empty($parts['host'])) {
+                return;
+            }
+
+            $scheme = $parts['scheme'] ?? 'https';
+            $host = $parts['host'];
+            $port = isset($parts['port']) ? (int) $parts['port'] : ($scheme === 'https' ? 443 : 80);
+            $path = ($parts['path'] ?? '/') . (isset($parts['query']) ? '?' . $parts['query'] : '');
+            $target = ($scheme === 'https' ? 'ssl://' : '') . $host;
+
+            $fp = @fsockopen($target, $port, $errno, $errstr, 0.25);
+            if (!$fp) {
+                return;
+            }
+
+            stream_set_timeout($fp, 0, 200000);
+            fwrite($fp, "GET {$path} HTTP/1.1\r\n");
+            fwrite($fp, "Host: {$host}\r\n");
+            fwrite($fp, "Connection: Close\r\n\r\n");
+            fclose($fp);
+        });
+    }
+
     private function notifyCustomerOrderEvent(array $order, $eventKey)
     {
         $this->orderEmailService->sendForEvent($order, $eventKey);
-        $this->orderSmsService->sendForEvent($order, $eventKey);
+        $this->orderSmsService->queueForEvent($order, $eventKey);
+        $this->dispatchSmsQueueAsync();
+    }
+
+    public function processSmsQueue()
+    {
+        $token = (string) ($_GET['token'] ?? '');
+        if (!hash_equals($this->smsQueueToken(), $token)) {
+            http_response_code(403);
+            echo 'FORBIDDEN';
+            exit;
+        }
+
+        if (function_exists('session_write_close')) {
+            @session_write_close();
+        }
+
+        ignore_user_abort(true);
+        $this->orderSmsService->processQueue(8);
+        echo 'OK';
+        exit;
     }
 
     private function logPayhereEvent($event, array $context = [])

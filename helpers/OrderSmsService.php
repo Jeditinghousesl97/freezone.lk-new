@@ -1,6 +1,7 @@
 <?php
 require_once 'models/Setting.php';
 require_once 'models/SmsNotification.php';
+require_once 'models/SmsQueue.php';
 require_once 'helpers/SeoHelper.php';
 require_once 'helpers/SmsLenzClient.php';
 
@@ -8,6 +9,7 @@ class OrderSmsService
 {
     private $settingModel;
     private $notificationModel;
+    private $queueModel;
     private $client;
 
     private $defaultTemplates = [
@@ -18,12 +20,14 @@ class OrderSmsService
         'payment_received' => 'Payment received for your order {order_number} at {shop_name}. Thank you.',
         'order_completed' => 'Your order {order_number} from {shop_name} is completed. Thank you for shopping with us.',
         'order_cancelled' => 'Your order {order_number} from {shop_name} has been cancelled.',
+        'owner_order_received' => 'New order {order_number} received at {shop_name} from {customer_name}. Total: {currency} {total_amount}.',
     ];
 
     public function __construct()
     {
         $this->settingModel = new Setting();
         $this->notificationModel = new SmsNotification();
+        $this->queueModel = new SmsQueue();
         $this->client = new SmsLenzClient();
     }
 
@@ -32,42 +36,70 @@ class OrderSmsService
         return $this->defaultTemplates[$eventKey] ?? '';
     }
 
-    public function sendForEvent(array $order, $eventKey)
+    public function queueForEvent(array $order, $eventKey)
     {
         if (empty($order['id'])) {
             return;
         }
 
         $settings = $this->settingModel->getAllPairs();
-        if (!$this->isReady($settings)) {
+        if (!$this->isCustomerEnabled($settings) && !$this->isOwnerEnabled($settings)) {
             return;
         }
 
-        $phone = $this->normalizePhone((string) ($order['phone'] ?? ''));
-        if ($phone === '') {
-            $this->logFailure($eventKey, (string) ($order['phone'] ?? ''), 'Invalid customer phone number.');
-            return;
+        if ($this->isCustomerEnabled($settings)) {
+            $this->queueModel->enqueue((int) $order['id'], $eventKey, 'customer');
         }
 
-        if ($this->notificationModel->wasSent((int) $order['id'], $eventKey, $phone)) {
-            return;
-        }
-
-        $message = $this->buildMessage($order, $settings, $eventKey);
-        if ($message === '') {
-            return;
-        }
-
-        try {
-            $response = $this->client->send($settings, $phone, $message);
-            $this->notificationModel->markSent((int) $order['id'], $eventKey, $phone);
-            $this->logSuccess($eventKey, $phone, $response['body'] ?? '');
-        } catch (Exception $e) {
-            $this->logFailure($eventKey, $phone, $e->getMessage());
+        if ($eventKey === 'order_placed' && $this->isOwnerEnabled($settings)) {
+            $this->queueModel->enqueue((int) $order['id'], 'owner_order_received', 'owner');
         }
     }
 
-    private function isReady(array $settings)
+    public function processQueue($limit = 10)
+    {
+        $settings = $this->settingModel->getAllPairs();
+        $jobs = $this->queueModel->claimNextBatch($limit);
+
+        foreach ($jobs as $job) {
+            $order = $this->loadOrder((int) ($job['order_id'] ?? 0));
+            if (!$order) {
+                $this->queueModel->markFailed((int) $job['id'], 'Order not found.');
+                continue;
+            }
+
+            $recipientType = (string) ($job['recipient_type'] ?? 'customer');
+            $recipientPhone = $this->resolveRecipientPhone($order, $settings, $recipientType);
+            if ($recipientPhone === '') {
+                $this->queueModel->markFailed((int) $job['id'], 'Recipient phone missing or invalid.');
+                $this->logFailure((string) $job['event_key'], $recipientPhone, 'Recipient phone missing or invalid.');
+                continue;
+            }
+
+            if ($this->notificationModel->wasSent((int) $order['id'], (string) $job['event_key'], $recipientPhone)) {
+                $this->queueModel->markSent((int) $job['id']);
+                continue;
+            }
+
+            $message = $this->buildMessage($order, $settings, (string) $job['event_key'], $recipientType);
+            if ($message === '') {
+                $this->queueModel->markFailed((int) $job['id'], 'SMS template resolved to empty message.');
+                continue;
+            }
+
+            try {
+                $response = $this->client->send($settings, $recipientPhone, $message);
+                $this->notificationModel->markSent((int) $order['id'], (string) $job['event_key'], $recipientPhone);
+                $this->queueModel->markSent((int) $job['id']);
+                $this->logSuccess((string) $job['event_key'], $recipientPhone, $response['body'] ?? '');
+            } catch (Exception $e) {
+                $this->queueModel->markFailed((int) $job['id'], $e->getMessage());
+                $this->logFailure((string) $job['event_key'], $recipientPhone, $e->getMessage());
+            }
+        }
+    }
+
+    private function isCustomerEnabled(array $settings)
     {
         return !empty($settings['sms_enabled'])
             && !empty($settings['sms_user_id'])
@@ -75,7 +107,36 @@ class OrderSmsService
             && !empty($settings['sms_sender_id']);
     }
 
-    private function buildMessage(array $order, array $settings, $eventKey)
+    private function isOwnerEnabled(array $settings)
+    {
+        return !empty($settings['sms_owner_enabled'])
+            && !empty($settings['shop_whatsapp'])
+            && !empty($settings['sms_user_id'])
+            && !empty($settings['sms_api_key'])
+            && !empty($settings['sms_sender_id']);
+    }
+
+    private function loadOrder($orderId)
+    {
+        if ($orderId <= 0) {
+            return null;
+        }
+
+        require_once 'models/Order.php';
+        $orderModel = new Order();
+        return $orderModel->getById($orderId);
+    }
+
+    private function resolveRecipientPhone(array $order, array $settings, $recipientType)
+    {
+        if ($recipientType === 'owner') {
+            return $this->normalizePhone((string) ($settings['shop_whatsapp'] ?? ''));
+        }
+
+        return $this->normalizePhone((string) ($order['phone'] ?? ''));
+    }
+
+    private function buildMessage(array $order, array $settings, $eventKey, $recipientType = 'customer')
     {
         $templateKey = 'sms_template_' . $eventKey;
         $template = trim((string) ($settings[$templateKey] ?? ''));
@@ -99,6 +160,10 @@ class OrderSmsService
             '{shop_whatsapp}' => (string) ($settings['shop_whatsapp'] ?? ''),
             '{website_url}' => SeoHelper::absoluteUrl(BASE_URL)
         ];
+
+        if ($recipientType === 'owner') {
+            $placeholders['{customer_name}'] = (string) ($order['customer_name'] ?? 'Customer');
+        }
 
         $message = strtr($template, $placeholders);
         $message = preg_replace('/\s+/', ' ', trim((string) $message));
