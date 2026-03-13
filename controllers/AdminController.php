@@ -31,6 +31,8 @@ class AdminController extends BaseController
             'size_guides' => $db->query("SELECT COUNT(*) FROM size_guides")->fetchColumn(),
             'orders' => $orderModel->countAll()
         ];
+        $finance = $orderModel->getFinanceSummary([]);
+        $chartRows = array_reverse($orderModel->getReportRows([], 7));
 
         // 2. Get Recent Products (Limit 5)
         // LEFT JOIN to get category name
@@ -49,6 +51,8 @@ class AdminController extends BaseController
         $this->view('admin/dashboard', [
             'title' => 'Dashboard - EcomCMS',
             'stats' => $stats,
+            'finance' => $finance,
+            'chart_rows' => $chartRows,
             'latest_products' => $products,
             'settings' => $settings
         ]);

@@ -102,13 +102,38 @@ class OrderController extends BaseController
         ];
         $orders = $this->orderModel->getFiltered($filters, 150);
         $summary = $this->orderModel->getSummaryCounts($filters);
-        $finance = $this->orderModel->getFinanceSummary($filters);
-        $reportRows = $this->orderModel->getReportRows($filters, 14);
 
         $this->view('admin/orders/index', [
             'title' => 'Orders',
             'settings' => $settings,
             'orders' => $orders,
+            'filters' => $filters,
+            'summary' => $summary
+        ]);
+    }
+
+    public function reports()
+    {
+        $this->requireAdminSession();
+
+        $settings = $this->settingModel->getAllPairs();
+        $filters = [
+            'search' => trim($_GET['search'] ?? ''),
+            'payment_status' => trim($_GET['payment_status'] ?? ''),
+            'payment_method' => trim($_GET['payment_method'] ?? ''),
+            'order_status' => trim($_GET['order_status'] ?? ''),
+            'date_from' => trim($_GET['date_from'] ?? ''),
+            'date_to' => trim($_GET['date_to'] ?? ''),
+            'only_new' => ''
+        ];
+
+        $summary = $this->orderModel->getSummaryCounts($filters);
+        $finance = $this->orderModel->getFinanceSummary($filters);
+        $reportRows = $this->orderModel->getReportRows($filters, 30);
+
+        $this->view('admin/orders/reports', [
+            'title' => 'Accounting & Reporting',
+            'settings' => $settings,
             'filters' => $filters,
             'summary' => $summary,
             'finance' => $finance,

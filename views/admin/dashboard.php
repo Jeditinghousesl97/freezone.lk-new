@@ -37,6 +37,13 @@
             font-size: 16px;
         }
 
+        .dash-card {
+            background: #fff;
+            border-radius: 18px;
+            padding: 18px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+        }
+
     </style>
 </head>
 
@@ -68,6 +75,68 @@
                 <a href="<?= BASE_URL ?>auth/logout"
                     style="background-color: #ff3b30; color: white; padding: 8px 12px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: bold;">Logout</a>
             </div>
+        </div>
+
+        <?php
+        $chartRows = $chart_rows ?? [];
+        $maxRevenue = 0;
+        $maxOrders = 0;
+        foreach ($chartRows as $chartRow) {
+            $maxRevenue = max($maxRevenue, (float) ($chartRow['gross_total'] ?? 0));
+            $maxOrders = max($maxOrders, (int) ($chartRow['orders_count'] ?? 0));
+        }
+        ?>
+
+        <div class="dash-card" style="margin-bottom:18px;">
+            <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:flex-start; margin-bottom:14px;">
+                <div>
+                    <h3 style="margin:0;">Sales Snapshot</h3>
+                    <p style="margin:4px 0 0; font-size:12px; color:#888;">Last 7 days gross sales and order count.</p>
+                </div>
+                <a href="<?= BASE_URL ?>order/reports" style="text-decoration:none; background:#111; color:#fff; padding:10px 14px; border-radius:999px; font-size:13px; font-weight:700;">Accounting & Reporting</a>
+            </div>
+
+            <?php if (empty($chartRows)): ?>
+                <div style="padding:14px; border-radius:14px; background:#fafafa; color:#777;">No order data available yet.</div>
+            <?php else: ?>
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:12px; margin-bottom:16px;">
+                    <div style="background:#eef5ff; border-radius:16px; padding:14px;">
+                        <div style="font-size:11px; color:#2463d0; margin-bottom:6px;">Gross Revenue</div>
+                        <div style="font-size:20px; font-weight:800; color:#111;"><?= htmlspecialchars($settings['currency_symbol'] ?? 'LKR') ?> <?= number_format((float) ($finance['gross_total'] ?? 0), 2) ?></div>
+                    </div>
+                    <div style="background:#e8fff0; border-radius:16px; padding:14px;">
+                        <div style="font-size:11px; color:#1a9b57; margin-bottom:6px;">Paid Revenue</div>
+                        <div style="font-size:20px; font-weight:800; color:#111;"><?= htmlspecialchars($settings['currency_symbol'] ?? 'LKR') ?> <?= number_format((float) ($finance['paid_total'] ?? 0), 2) ?></div>
+                    </div>
+                    <div style="background:#fff8ee; border-radius:16px; padding:14px;">
+                        <div style="font-size:11px; color:#9b5d00; margin-bottom:6px;">COD Outstanding</div>
+                        <div style="font-size:20px; font-weight:800; color:#111;"><?= htmlspecialchars($settings['currency_symbol'] ?? 'LKR') ?> <?= number_format((float) ($finance['cod_outstanding_total'] ?? 0), 2) ?></div>
+                    </div>
+                </div>
+
+                <div style="display:grid; gap:12px;">
+                    <?php foreach ($chartRows as $row): ?>
+                        <?php
+                        $revenueWidth = $maxRevenue > 0 ? max(6, ((float) ($row['gross_total'] ?? 0) / $maxRevenue) * 100) : 0;
+                        $orderWidth = $maxOrders > 0 ? max(6, ((int) ($row['orders_count'] ?? 0) / $maxOrders) * 100) : 0;
+                        ?>
+                        <div style="display:grid; gap:6px;">
+                            <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; font-size:12px;">
+                                <strong style="color:#111;"><?= htmlspecialchars(date('M d', strtotime((string) $row['report_date']))) ?></strong>
+                                <span style="color:#666;"><?= htmlspecialchars($settings['currency_symbol'] ?? 'LKR') ?> <?= number_format((float) ($row['gross_total'] ?? 0), 2) ?> | <?= (int) ($row['orders_count'] ?? 0) ?> orders</span>
+                            </div>
+                            <div style="display:grid; gap:6px;">
+                                <div style="height:10px; background:#f1f1f1; border-radius:999px; overflow:hidden;">
+                                    <div style="width:<?= $revenueWidth ?>%; height:100%; background:linear-gradient(90deg, #111, #007aff); border-radius:999px;"></div>
+                                </div>
+                                <div style="height:8px; background:#f7f2e8; border-radius:999px; overflow:hidden;">
+                                    <div style="width:<?= $orderWidth ?>%; height:100%; background:linear-gradient(90deg, #ffb300, #ff7a00); border-radius:999px;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
         </div>
 
         <!-- Stats Grid -->
@@ -103,6 +172,10 @@
             <a href="<?= BASE_URL ?>order/manage" class="stat-card stat-card-link">
                 <h2 class="stat-number"><?= $stats['orders'] ?? 0 ?></h2>
                 <p class="stat-label">Orders</p>
+            </a>
+            <a href="<?= BASE_URL ?>order/reports" class="stat-card stat-card-link">
+                <h2 class="stat-number"><?= (int) ($stats['orders'] ?? 0) ?></h2>
+                <p class="stat-label">Accounting</p>
             </a>
         </div>
 

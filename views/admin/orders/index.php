@@ -48,26 +48,6 @@
             </div>
         </div>
 
-        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:12px; margin-bottom:18px;">
-            <div style="background:#fff; border-radius:16px; padding:16px; box-shadow:0 4px 18px rgba(0,0,0,0.04);">
-                <div style="font-size:11px; color:#888; margin-bottom:6px;">Gross Order Value</div>
-                <div style="font-size:22px; font-weight:800; color:#111;"><?= htmlspecialchars($settings['currency_symbol'] ?? 'LKR') ?> <?= number_format((float) ($finance['gross_total'] ?? 0), 2) ?></div>
-            </div>
-            <div style="background:#e8fff0; border-radius:16px; padding:16px; box-shadow:0 4px 18px rgba(0,0,0,0.04);">
-                <div style="font-size:11px; color:#1a9b57; margin-bottom:6px;">Paid Revenue</div>
-                <div style="font-size:22px; font-weight:800; color:#111;"><?= htmlspecialchars($settings['currency_symbol'] ?? 'LKR') ?> <?= number_format((float) ($finance['paid_total'] ?? 0), 2) ?></div>
-            </div>
-            <div style="background:#fff8ee; border-radius:16px; padding:16px; box-shadow:0 4px 18px rgba(0,0,0,0.04);">
-                <div style="font-size:11px; color:#9b5d00; margin-bottom:6px;">COD Outstanding</div>
-                <div style="font-size:22px; font-weight:800; color:#111;"><?= htmlspecialchars($settings['currency_symbol'] ?? 'LKR') ?> <?= number_format((float) ($finance['cod_outstanding_total'] ?? 0), 2) ?></div>
-                <div style="font-size:11px; color:#777; margin-top:4px;"><?= (int) ($finance['cod_outstanding_count'] ?? 0) ?> pending COD orders</div>
-            </div>
-            <div style="background:#eef5ff; border-radius:16px; padding:16px; box-shadow:0 4px 18px rgba(0,0,0,0.04);">
-                <div style="font-size:11px; color:#2463d0; margin-bottom:6px;">Average Order</div>
-                <div style="font-size:22px; font-weight:800; color:#111;"><?= htmlspecialchars($settings['currency_symbol'] ?? 'LKR') ?> <?= number_format((float) ($finance['avg_order_value'] ?? 0), 2) ?></div>
-            </div>
-        </div>
-
         <form method="GET" action="<?= BASE_URL ?>order/manage" style="background:#fff; border-radius:18px; padding:18px; box-shadow:0 4px 20px rgba(0,0,0,0.04); margin-bottom:18px;">
             <div style="display:grid; gap:12px;">
                 <input type="text" name="search" value="<?= htmlspecialchars($filters['search'] ?? '') ?>" placeholder="Search by order no, customer, email, or phone" style="width:100%; padding:12px 14px; border:1px solid #ddd; border-radius:10px; box-sizing:border-box;">
@@ -161,45 +141,6 @@
             </div>
         <?php endif; ?>
 
-        <div style="background:#fff; border-radius:18px; padding:18px; box-shadow:0 4px 20px rgba(0,0,0,0.04); margin-top:18px;">
-            <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:14px;">
-                <div>
-                    <h3 style="margin:0;">Finance & Reporting</h3>
-                    <p style="margin:4px 0 0; font-size:12px; color:#888;">Daily order totals based on your current filters.</p>
-                </div>
-            </div>
-
-            <?php if (empty($reportRows)): ?>
-                <div style="padding:14px; border-radius:14px; background:#fafafa; color:#777;">No reporting data found for the selected filters.</div>
-            <?php else: ?>
-                <div style="overflow:auto;">
-                    <table style="width:100%; border-collapse:collapse; min-width:680px;">
-                        <thead>
-                            <tr style="text-align:left; border-bottom:1px solid #eee;">
-                                <th style="padding:10px 8px; font-size:12px; color:#777;">Date</th>
-                                <th style="padding:10px 8px; font-size:12px; color:#777;">Orders</th>
-                                <th style="padding:10px 8px; font-size:12px; color:#777;">Gross</th>
-                                <th style="padding:10px 8px; font-size:12px; color:#777;">Paid</th>
-                                <th style="padding:10px 8px; font-size:12px; color:#777;">COD</th>
-                                <th style="padding:10px 8px; font-size:12px; color:#777;">PayHere</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($reportRows as $row): ?>
-                                <tr style="border-bottom:1px solid #f3f3f3;">
-                                    <td style="padding:12px 8px; font-size:13px; color:#111; font-weight:700;"><?= htmlspecialchars($row['report_date']) ?></td>
-                                    <td style="padding:12px 8px; font-size:13px; color:#222;"><?= (int) ($row['orders_count'] ?? 0) ?></td>
-                                    <td style="padding:12px 8px; font-size:13px; color:#222;"><?= htmlspecialchars($settings['currency_symbol'] ?? 'LKR') ?> <?= number_format((float) ($row['gross_total'] ?? 0), 2) ?></td>
-                                    <td style="padding:12px 8px; font-size:13px; color:#1a9b57; font-weight:700;"><?= htmlspecialchars($settings['currency_symbol'] ?? 'LKR') ?> <?= number_format((float) ($row['paid_total'] ?? 0), 2) ?></td>
-                                    <td style="padding:12px 8px; font-size:13px; color:#9b5d00; font-weight:700;"><?= htmlspecialchars($settings['currency_symbol'] ?? 'LKR') ?> <?= number_format((float) ($row['cod_total'] ?? 0), 2) ?></td>
-                                    <td style="padding:12px 8px; font-size:13px; color:#5b33d6; font-weight:700;"><?= htmlspecialchars($settings['currency_symbol'] ?? 'LKR') ?> <?= number_format((float) ($row['payhere_total'] ?? 0), 2) ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            <?php endif; ?>
-        </div>
     </div>
 
     <?php $current_page = 'orders';
