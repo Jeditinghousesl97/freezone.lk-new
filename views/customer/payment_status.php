@@ -2,6 +2,7 @@
 $hide_mobile_welcome = true;
 require_once 'views/layouts/customer_header.php';
 
+$gatewayName = strtoupper((string) ($gateway_name ?? (($order['payment_gateway'] ?? '') === 'koko' ? 'KOKO' : 'PayHere')));
 $paymentStatus = $order['payment_status'] ?? 'unknown';
 $isSuccess = $paymentStatus === 'paid';
 $isCancelled = $paymentStatus === 'cancelled';
@@ -12,8 +13,8 @@ $message = $isSuccess
     : ($isCancelled
         ? 'Your payment was cancelled. You can return to the cart and try again anytime.'
         : ($isAwaitingConfirmation
-            ? 'Your payment was submitted successfully. We are waiting for final confirmation from PayHere. This page will refresh automatically.'
-            : 'We are still waiting for final confirmation from PayHere. This page will refresh automatically.'));
+            ? 'Your payment was submitted successfully. We are waiting for final confirmation from ' . $gatewayName . '. This page will refresh automatically.'
+            : 'We are still waiting for final confirmation from ' . $gatewayName . '. This page will refresh automatically.'));
 
 $displayStatus = $isSuccess
     ? 'Payment Completed'
@@ -36,8 +37,9 @@ $displayStatus = $isSuccess
                 <div><strong>Customer:</strong> <?= htmlspecialchars($order['customer_name']) ?></div>
                 <div><strong>Amount:</strong> <?= htmlspecialchars($order['currency']) ?> <?= number_format((float) ($order['total_amount'] ?? 0), 2) ?></div>
                 <div><strong>Payment Status:</strong> <?= htmlspecialchars($displayStatus) ?></div>
+                <div><strong>Gateway:</strong> <?= htmlspecialchars($gatewayName) ?></div>
                 <?php if (!empty($order['gateway_payment_id'])): ?>
-                    <div><strong>PayHere Payment ID:</strong> <?= htmlspecialchars($order['gateway_payment_id']) ?></div>
+                    <div><strong><?= htmlspecialchars($gatewayName) ?> Payment ID:</strong> <?= htmlspecialchars($order['gateway_payment_id']) ?></div>
                 <?php endif; ?>
                 <?php if (!empty($order['gateway_message'])): ?>
                     <div><strong>Message:</strong> <?= htmlspecialchars($order['gateway_message']) ?></div>

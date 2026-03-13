@@ -190,6 +190,11 @@ require_once 'views/layouts/customer_header.php';
                             <i class="fas fa-credit-card"></i> Pay Now
                         </button>
                     <?php endif; ?>
+                    <?php if (!empty($settings['koko_enabled'])): ?>
+                        <button class="btn-action" onclick="openOrderModal('koko')" style="background:#fff3dc; color:#111; border:1px solid #f1d28a;">
+                            <i class="fas fa-wallet"></i> KOKO Pay in 3
+                        </button>
+                    <?php endif; ?>
                 </div>
 
             </div>
@@ -513,6 +518,10 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
         if (orderMode === 'payhere') {
             submitButton.textContent = 'Continue to PayHere';
             submitButton.classList.add('btn-payhere-submit');
+        } else if (orderMode === 'koko') {
+            submitButton.textContent = 'Continue to KOKO';
+            submitButton.classList.remove('btn-payhere-submit');
+            submitButton.style.background = '#c48b11';
         } else {
             submitButton.textContent = 'Place COD Order';
             submitButton.classList.remove('btn-payhere-submit');
@@ -562,6 +571,20 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
 
         if (orderMode === 'payhere') {
             submitOrderToPayHere({
+                name,
+                email,
+                address,
+                city,
+                district,
+                phone1,
+                phone2,
+                note
+            });
+            return;
+        }
+
+        if (orderMode === 'koko') {
+            submitOrderToKoko({
                 name,
                 email,
                 address,
@@ -629,6 +652,42 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = '<?= BASE_URL ?>order/startCodSingle';
+        form.style.display = 'none';
+
+        const fields = {
+            product_id: '<?= (int) $product['id'] ?>',
+            quantity: qty,
+            variants: variantStr,
+            customer_name: data.name,
+            email: data.email,
+            address: data.address,
+            city: data.city,
+            district: data.district,
+            phone: data.phone1,
+            phone_alt: data.phone2,
+            note: data.note
+        };
+
+        Object.keys(fields).forEach(function (key) {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = key;
+            input.value = fields[key] || '';
+            form.appendChild(input);
+        });
+
+        document.body.appendChild(form);
+        if (typeof showGlobalLoader === 'function') showGlobalLoader();
+        form.submit();
+    }
+
+    function submitOrderToKoko(data) {
+        const qty = parseInt(document.getElementById('qtyInput').value) || 1;
+        const variantStr = getVariantText();
+
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '<?= BASE_URL ?>order/startKokoSingle';
         form.style.display = 'none';
 
         const fields = {

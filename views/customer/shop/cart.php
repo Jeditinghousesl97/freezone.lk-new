@@ -106,6 +106,13 @@ require_once 'views/layouts/customer_header.php';
                                 Pay Online with PayHere
                             </button>
                         <?php endif; ?>
+
+                        <?php if (!empty($settings['koko_enabled'])): ?>
+                            <button onclick="openOrderModal('koko')" style="width: 100%; background: #fff3dc; color: #111; border: 1px solid #f1d28a; padding: 15px; border-radius: 30px; font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer;">
+                                <i class="fas fa-wallet" style="font-size: 18px;"></i>
+                                Pay in 3 with KOKO
+                            </button>
+                        <?php endif; ?>
                     </div>
                 </div>
             <?php endif; ?>
@@ -246,6 +253,10 @@ require_once 'views/layouts/customer_header.php';
         if (orderMode === 'payhere') {
             submitButton.textContent = 'Continue to PayHere';
             submitButton.classList.add('btn-payhere-submit');
+        } else if (orderMode === 'koko') {
+            submitButton.textContent = 'Continue to KOKO';
+            submitButton.classList.remove('btn-payhere-submit');
+            submitButton.style.background = '#c48b11';
         } else {
             submitButton.textContent = 'Place COD Order';
             submitButton.classList.remove('btn-payhere-submit');
@@ -293,6 +304,11 @@ require_once 'views/layouts/customer_header.php';
             return;
         }
 
+        if (orderMode === 'koko') {
+            submitOrderToKoko(data);
+            return;
+        }
+
         submitOrderToCod(data);
     }
 
@@ -330,6 +346,36 @@ require_once 'views/layouts/customer_header.php';
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = '<?= BASE_URL ?>order/startCod';
+        form.style.display = 'none';
+
+        const fields = {
+            customer_name: data.name,
+            email: data.email,
+            address: data.address,
+            city: data.city,
+            district: data.district,
+            phone: data.phone1,
+            phone_alt: data.phone2,
+            note: data.note
+        };
+
+        Object.keys(fields).forEach(function (key) {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = key;
+            input.value = fields[key] || '';
+            form.appendChild(input);
+        });
+
+        document.body.appendChild(form);
+        if (typeof showGlobalLoader === 'function') showGlobalLoader();
+        form.submit();
+    }
+
+    function submitOrderToKoko(data) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '<?= BASE_URL ?>order/startKoko';
         form.style.display = 'none';
 
         const fields = {

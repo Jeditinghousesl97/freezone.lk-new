@@ -350,6 +350,46 @@
             </div>
 
             <div style="margin-top:20px; padding:20px; border-radius:16px; background:#ffffff; border:1px solid #e9e9e9;">
+                <h3 style="margin:0 0 14px;">KOKO Settings</h3>
+                <p style="font-size:12px; color:#777; margin:0 0 16px;">Configure KOKO Buy Now Pay Later. Leave secret fields blank if you want to keep the current saved values.</p>
+
+                <label style="display:flex; align-items:center; gap:8px; margin-bottom:14px; font-size:14px; color:#333;">
+                    <input type="checkbox" name="koko_enabled" value="1" <?= !empty($settings['koko_enabled']) ? 'checked' : '' ?>>
+                    Enable KOKO checkout
+                </label>
+
+                <label style="display:flex; align-items:center; gap:8px; margin-bottom:18px; font-size:14px; color:#333;">
+                    <input type="checkbox" name="koko_sandbox" value="1" <?= !empty($settings['koko_sandbox']) ? 'checked' : '' ?>>
+                    Use KOKO sandbox mode
+                </label>
+
+                <label class="label">Gateway Title</label>
+                <input type="text" name="koko_title" class="input-box" placeholder="Koko: Buy Now Pay Later"
+                    value="<?= htmlspecialchars($settings['koko_title'] ?? 'Koko: Buy Now Pay Later') ?>">
+
+                <label class="label">Gateway Description</label>
+                <textarea name="koko_description" class="input-box" rows="3" placeholder="Pay in 3 interest free installments with Koko."><?= htmlspecialchars($settings['koko_description'] ?? 'Pay in 3 interest free installments with Koko.') ?></textarea>
+
+                <label class="label">KOKO Merchant ID</label>
+                <input type="text" name="koko_merchant_id" class="input-box" placeholder="Merchant ID"
+                    value="<?= htmlspecialchars($settings['koko_merchant_id'] ?? '') ?>">
+
+                <label class="label">KOKO API Key</label>
+                <input type="password" name="koko_api_key" class="input-box" autocomplete="new-password"
+                    placeholder="Leave blank to keep current KOKO API Key" value="">
+
+                <label class="label">KOKO Public Key</label>
+                <textarea name="koko_public_key" class="input-box" rows="7" placeholder="-----BEGIN PUBLIC KEY-----"><?= htmlspecialchars($settings['koko_public_key'] ?? '') ?></textarea>
+
+                <label class="label">KOKO Private Key</label>
+                <textarea name="koko_private_key" class="input-box" rows="8" placeholder="Leave blank to keep current KOKO Private Key"></textarea>
+
+                <label class="label">KOKO Callback Secret</label>
+                <input type="password" name="koko_callback_secret" class="input-box" autocomplete="new-password"
+                    placeholder="Optional shared secret for callback validation" value="">
+            </div>
+
+            <div style="margin-top:20px; padding:20px; border-radius:16px; background:#ffffff; border:1px solid #e9e9e9;">
                 <h3 style="margin:0 0 14px;">Customer SMS Settings</h3>
                 <p style="font-size:12px; color:#777; margin:0 0 16px;">Uses SMSLenz to send order updates only to the customer. API format based on <code>https://smslenz.lk/api/send-sms</code>.</p>
 

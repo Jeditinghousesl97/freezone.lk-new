@@ -5,6 +5,7 @@ require_once 'models/Product.php';
 require_once 'helpers/SeoHelper.php';
 require_once 'helpers/OrderEmailService.php';
 require_once 'helpers/OrderSmsService.php';
+require_once 'helpers/KokoGateway.php';
 
 class OrderController extends BaseController
 {
@@ -141,6 +142,56 @@ class OrderController extends BaseController
         if (!isset($_SESSION['user_id'])) {
             $this->redirect('auth/login');
         }
+    }
+
+    private function appendOptionalSecret($url, $secret)
+    {
+        $secret = trim((string) $secret);
+        if ($secret === '') {
+            return $url;
+        }
+
+        $separator = strpos($url, '?') === false ? '?' : '&';
+        return $url . $separator . 'secret=' . urlencode($secret);
+    }
+
+    private function buildSingleProductItems($productId, $qty, $variantText)
+    {
+        $product = $this->productModel->getById($productId);
+        if (!$product) {
+            return [null, null];
+        }
+
+        $unitPrice = (!empty($product['sale_price']) && (float) $product['sale_price'] < (float) $product['price'])
+            ? (float) $product['sale_price']
+            : (float) $product['price'];
+
+        $imageUrl = '';
+        if (!empty($product['main_image'])) {
+            $imagePath = 'assets/uploads/' . $product['main_image'];
+            if (file_exists(ROOT_PATH . $imagePath)) {
+                $imageUrl = BASE_URL . $imagePath;
+            }
+        }
+
+        return [$product, [[
+            'id' => (int) $product['id'],
+            'title' => $product['title'] ?? 'Product',
+            'price' => $unitPrice,
+            'qty' => $qty,
+            'img' => $imageUrl,
+            'variants' => $variantText
+        ]]];
+    }
+
+    private function renderKokoRedirect(array $order, array $settings, $description)
+    {
+        $callbackUrl = SeoHelper::absoluteUrl(BASE_URL . 'order/kokoCallback');
+        $callbackUrl = $this->appendOptionalSecret($callbackUrl, $settings['koko_callback_secret'] ?? '');
+        $kokoPayload = KokoGateway::buildPayload($order, $settings, $description, $callbackUrl, 'customphp', '1.0.0');
+        $kokoEndpoint = KokoGateway::checkoutUrl($settings);
+
+        require 'views/customer/koko_redirect.php';
     }
 
     public function manage()
@@ -458,6 +509,65 @@ class OrderController extends BaseController
         require 'views/customer/payhere_redirect.php';
     }
 
+    public function startKoko()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('cart');
+        }
+
+        $settings = $this->settingModel->getAllPairs();
+        $cart = $_SESSION['cart'] ?? [];
+
+        if (empty($cart)) {
+            $_SESSION['order_error'] = 'Your cart is empty.';
+            $this->redirect('cart');
+        }
+
+        if (!KokoGateway::isConfigured($settings)) {
+            $_SESSION['order_error'] = 'KOKO is not configured for this shop yet.';
+            $this->redirect('cart');
+        }
+
+        $customer = $this->buildCustomerFromRequest();
+        if (!$customer) {
+            $_SESSION['order_error'] = 'Please fill in all required payment fields.';
+            $this->redirect('cart');
+        }
+
+        $order = $this->orderModel->createFromCart($customer, $cart, $settings, [
+            'payment_method' => 'koko',
+            'payment_gateway' => 'koko',
+            'payment_status' => 'pending',
+            'order_status' => 'pending',
+            'transaction_type' => 'koko_order_created',
+            'transaction_status_code' => 'PENDING',
+            'transaction_payload' => [
+                'customer' => $customer,
+                'items_count' => count($cart),
+                'source' => 'cart_koko'
+            ]
+        ]);
+
+        if (!$order) {
+            $_SESSION['order_error'] = 'Unable to create your order right now.';
+            $this->redirect('cart');
+        }
+
+        $_SESSION['pending_order_number'] = $order['order_number'];
+        $fullOrder = $this->orderModel->getByOrderNumberWithItems($order['order_number']);
+        if ($fullOrder) {
+            $this->notifyCustomerOrderEvent($fullOrder, 'order_placed');
+            $order = $fullOrder;
+        }
+
+        try {
+            $this->renderKokoRedirect($order, $settings, SeoHelper::shopName($settings) . ' Order');
+        } catch (Exception $e) {
+            $_SESSION['order_error'] = 'KOKO checkout is not ready right now. Please contact the shop owner.';
+            $this->redirect('cart');
+        }
+    }
+
     public function myOrders()
     {
         $settings = $this->settingModel->getAllPairs();
@@ -652,6 +762,69 @@ class OrderController extends BaseController
         ];
 
         require 'views/customer/payhere_redirect.php';
+    }
+
+    public function startKokoSingle()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('cart');
+        }
+
+        $settings = $this->settingModel->getAllPairs();
+
+        if (!KokoGateway::isConfigured($settings)) {
+            $_SESSION['order_error'] = 'KOKO is not configured for this shop yet.';
+            $this->redirect('cart');
+        }
+
+        $productId = (int) ($_POST['product_id'] ?? 0);
+        $qty = max(1, (int) ($_POST['quantity'] ?? 1));
+        $variantText = trim((string) ($_POST['variants'] ?? ''));
+
+        [$product, $items] = $this->buildSingleProductItems($productId, $qty, $variantText);
+        if (!$product || !$items) {
+            $_SESSION['order_error'] = 'The selected product could not be found.';
+            $this->redirect('cart');
+        }
+
+        $customer = $this->buildCustomerFromRequest();
+        if (!$customer) {
+            $_SESSION['order_error'] = 'Please fill in all required payment fields.';
+            $this->redirect('shop/product/' . $productId);
+        }
+
+        $order = $this->orderModel->createFromItems($customer, $items, $settings, [
+            'payment_method' => 'koko',
+            'payment_gateway' => 'koko',
+            'payment_status' => 'pending',
+            'order_status' => 'pending',
+            'transaction_type' => 'koko_order_created',
+            'transaction_status_code' => 'PENDING',
+            'transaction_payload' => [
+                'customer' => $customer,
+                'items_count' => count($items),
+                'source' => 'single_koko'
+            ]
+        ]);
+
+        if (!$order) {
+            $_SESSION['order_error'] = 'Unable to create your order right now.';
+            $this->redirect('shop/product/' . $productId);
+        }
+
+        $_SESSION['pending_order_number'] = $order['order_number'];
+        $fullOrder = $this->orderModel->getByOrderNumberWithItems($order['order_number']);
+        if ($fullOrder) {
+            $this->notifyCustomerOrderEvent($fullOrder, 'order_placed');
+            $order = $fullOrder;
+        }
+
+        try {
+            $this->renderKokoRedirect($order, $settings, $product['title'] ?? (SeoHelper::shopName($settings) . ' Order'));
+        } catch (Exception $e) {
+            $_SESSION['order_error'] = 'KOKO checkout is not ready right now. Please contact the shop owner.';
+            $this->redirect('shop/product/' . $productId);
+        }
     }
 
     public function startCodSingle()
@@ -926,6 +1099,115 @@ class OrderController extends BaseController
             'settings' => $settings,
             'order' => $order,
             'status_type' => 'cancel',
+            'seo_title' => $seo['seo_title'],
+            'seo_description' => $seo['seo_description'],
+            'seo_canonical' => $seo['seo_canonical'],
+            'seo_image' => $seo['seo_image'],
+            'seo_type' => $seo['seo_type'],
+            'seo_robots' => $seo['seo_robots'],
+            'seo_json_ld' => $seo['seo_json_ld']
+        ]);
+    }
+
+    public function kokoCallback()
+    {
+        $settings = $this->settingModel->getAllPairs();
+
+        if (!empty($settings['koko_callback_secret'])) {
+            $providedSecret = '';
+            if (isset($_SERVER['HTTP_X_DARAZBNPL_SECRET'])) {
+                $providedSecret = (string) $_SERVER['HTTP_X_DARAZBNPL_SECRET'];
+            } elseif (isset($_REQUEST['secret'])) {
+                $providedSecret = (string) $_REQUEST['secret'];
+            }
+
+            if (!hash_equals((string) $settings['koko_callback_secret'], $providedSecret)) {
+                http_response_code(403);
+                echo 'FORBIDDEN';
+                exit;
+            }
+        }
+
+        $orderIdRaw = isset($_REQUEST['orderId']) ? (string) $_REQUEST['orderId'] : '';
+        $trnIdRaw = isset($_REQUEST['trnId']) ? (string) $_REQUEST['trnId'] : '';
+        $statusRaw = isset($_REQUEST['status']) ? (string) $_REQUEST['status'] : '';
+        $descRaw = isset($_REQUEST['desc']) ? (string) $_REQUEST['desc'] : '';
+        $signatureParam = isset($_REQUEST['signature']) ? (string) $_REQUEST['signature'] : '';
+
+        $orderId = (int) trim($orderIdRaw);
+        $order = $orderId > 0 ? $this->orderModel->getById($orderId) : null;
+        if (!$order) {
+            $this->redirect('cart');
+        }
+
+        $paymentStatus = 'pending';
+        $message = trim($descRaw) !== '' ? trim($descRaw) : 'KOKO payment pending.';
+        $signatureValid = false;
+
+        if ($signatureParam !== '' && !empty($settings['koko_public_key'])) {
+            $signatureValid = KokoGateway::verifyCallback($orderIdRaw, $trnIdRaw, $statusRaw, $descRaw, $signatureParam, (string) $settings['koko_public_key']);
+        }
+
+        $this->orderModel->recordTransaction(
+            (int) $order['id'],
+            'koko',
+            'callback',
+            trim($trnIdRaw) !== '' ? trim($trnIdRaw) : null,
+            trim($statusRaw) !== '' ? trim($statusRaw) : null,
+            (float) ($order['total_amount'] ?? 0),
+            $order['currency'] ?? 'LKR',
+            $_REQUEST
+        );
+
+        if (!$signatureValid) {
+            $paymentStatus = 'verification_failed';
+            $message = 'KOKO signature verification failed.';
+        } else {
+            $paymentStatus = KokoGateway::normalizeStatus($statusRaw);
+            if ($paymentStatus === 'paid') {
+                $message = trim($descRaw) !== '' ? trim($descRaw) : 'KOKO payment completed successfully.';
+            } elseif ($paymentStatus === 'cancelled') {
+                $message = trim($descRaw) !== '' ? trim($descRaw) : 'KOKO payment was cancelled.';
+            } elseif ($paymentStatus === 'failed') {
+                $message = trim($descRaw) !== '' ? trim($descRaw) : 'KOKO payment failed.';
+            }
+        }
+
+        $this->orderModel->updatePaymentStatus($order['order_number'], $paymentStatus, trim($trnIdRaw) ?: null, trim($statusRaw) ?: null, $message);
+        if ($paymentStatus === 'paid' && (($order['order_status'] ?? 'pending') === 'pending')) {
+            $this->orderModel->updateOrderStatus($order['order_number'], 'processing');
+        }
+
+        $updatedOrder = $this->orderModel->getByOrderNumberWithItems($order['order_number']);
+        if ($updatedOrder) {
+            if ($paymentStatus === 'paid') {
+                $this->notifyCustomerOrderEvent($updatedOrder, 'payment_completed');
+            } elseif ($paymentStatus === 'cancelled') {
+                $this->notifyCustomerOrderEvent($updatedOrder, 'payment_cancelled');
+            } elseif ($paymentStatus === 'failed' || $paymentStatus === 'verification_failed') {
+                $this->notifyCustomerOrderEvent($updatedOrder, 'payment_failed');
+            }
+            $order = $updatedOrder;
+        }
+
+        if ($paymentStatus === 'paid' && !empty($_SESSION['cart'])) {
+            $_SESSION['cart'] = [];
+        }
+        unset($_SESSION['pending_order_number']);
+
+        $seo = SeoHelper::defaultSeo($settings, [
+            'seo_title' => 'Payment Status | ' . SeoHelper::shopName($settings),
+            'seo_description' => 'Check the latest status of your payment order.',
+            'seo_canonical' => SeoHelper::absoluteUrl(BASE_URL . 'order/kokoCallback?orderId=' . urlencode((string) $orderId)),
+            'seo_robots' => 'noindex,nofollow'
+        ]);
+
+        $this->view('customer/payment_status', [
+            'title' => 'Payment Status',
+            'settings' => $settings,
+            'order' => $order,
+            'status_type' => 'return',
+            'gateway_name' => 'KOKO',
             'seo_title' => $seo['seo_title'],
             'seo_description' => $seo['seo_description'],
             'seo_canonical' => $seo['seo_canonical'],

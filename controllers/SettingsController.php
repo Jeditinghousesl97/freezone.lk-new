@@ -80,6 +80,15 @@ class SettingsController extends BaseController
             'payhere_sandbox',
             'payhere_merchant_id',
             'payhere_merchant_secret',
+            'koko_enabled',
+            'koko_sandbox',
+            'koko_title',
+            'koko_description',
+            'koko_merchant_id',
+            'koko_api_key',
+            'koko_public_key',
+            'koko_private_key',
+            'koko_callback_secret',
             'sms_enabled',
             'sms_base_url',
             'sms_user_id',
@@ -196,6 +205,10 @@ class SettingsController extends BaseController
                 'smtp_from_email',
                 'smtp_from_name',
                 'payhere_merchant_id',
+                'koko_title',
+                'koko_description',
+                'koko_merchant_id',
+                'koko_public_key',
                 'sms_base_url',
                 'sms_user_id',
                 'sms_sender_id',
@@ -236,12 +249,26 @@ class SettingsController extends BaseController
                 $this->settingModel->set('payhere_merchant_secret', trim((string) $_POST['payhere_merchant_secret']));
             }
 
+            if (isset($_POST['koko_api_key']) && trim((string) $_POST['koko_api_key']) !== '') {
+                $this->settingModel->set('koko_api_key', trim((string) $_POST['koko_api_key']));
+            }
+
+            if (isset($_POST['koko_private_key']) && trim((string) $_POST['koko_private_key']) !== '') {
+                $this->settingModel->set('koko_private_key', trim((string) $_POST['koko_private_key']));
+            }
+
+            if (isset($_POST['koko_callback_secret']) && trim((string) $_POST['koko_callback_secret']) !== '') {
+                $this->settingModel->set('koko_callback_secret', trim((string) $_POST['koko_callback_secret']));
+            }
+
             if (isset($_POST['sms_api_key']) && trim((string) $_POST['sms_api_key']) !== '') {
                 $this->settingModel->set('sms_api_key', trim((string) $_POST['sms_api_key']));
             }
 
             $this->settingModel->set('payhere_enabled', !empty($_POST['payhere_enabled']) ? '1' : '0');
             $this->settingModel->set('payhere_sandbox', !empty($_POST['payhere_sandbox']) ? '1' : '0');
+            $this->settingModel->set('koko_enabled', !empty($_POST['koko_enabled']) ? '1' : '0');
+            $this->settingModel->set('koko_sandbox', !empty($_POST['koko_sandbox']) ? '1' : '0');
             $this->settingModel->set('sms_enabled', !empty($_POST['sms_enabled']) ? '1' : '0');
             $this->settingModel->set('sms_owner_enabled', !empty($_POST['sms_owner_enabled']) ? '1' : '0');
 

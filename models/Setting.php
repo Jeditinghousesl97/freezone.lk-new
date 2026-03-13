@@ -10,7 +10,10 @@ class Setting extends BaseModel
     private $sensitiveKeys = [
         'payhere_merchant_secret',
         'smtp_password',
-        'sms_api_key'
+        'sms_api_key',
+        'koko_api_key',
+        'koko_private_key',
+        'koko_callback_secret'
     ];
 
     // Get value by key
