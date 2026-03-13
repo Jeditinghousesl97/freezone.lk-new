@@ -17,37 +17,6 @@
             <a href="<?= BASE_URL ?>admin/dashboard" style="text-decoration:none; color:#007aff; font-weight:700;">Back to Dashboard</a>
         </div>
 
-        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:12px; margin-bottom:18px;">
-            <div style="background:#fff; border-radius:16px; padding:16px; box-shadow:0 4px 18px rgba(0,0,0,0.04);">
-                <div style="font-size:11px; color:#888; margin-bottom:6px;">Total Orders</div>
-                <div style="font-size:24px; font-weight:800; color:#111;"><?= (int) ($summary['total_orders'] ?? 0) ?></div>
-            </div>
-            <div style="background:#fff4cf; border-radius:16px; padding:16px; box-shadow:0 4px 18px rgba(0,0,0,0.04);">
-                <div style="font-size:11px; color:#8a6b00; margin-bottom:6px;">New Orders</div>
-                <div style="font-size:24px; font-weight:800; color:#111;"><?= (int) ($summary['new_orders'] ?? 0) ?></div>
-            </div>
-            <div style="background:#e8fff0; border-radius:16px; padding:16px; box-shadow:0 4px 18px rgba(0,0,0,0.04);">
-                <div style="font-size:11px; color:#1a9b57; margin-bottom:6px;">Paid</div>
-                <div style="font-size:24px; font-weight:800; color:#111;"><?= (int) ($summary['paid_orders'] ?? 0) ?></div>
-            </div>
-            <div style="background:#eef5ff; border-radius:16px; padding:16px; box-shadow:0 4px 18px rgba(0,0,0,0.04);">
-                <div style="font-size:11px; color:#2463d0; margin-bottom:6px;">Processing</div>
-                <div style="font-size:24px; font-weight:800; color:#111;"><?= (int) ($summary['processing_orders'] ?? 0) ?></div>
-            </div>
-            <div style="background:#f5f5f5; border-radius:16px; padding:16px; box-shadow:0 4px 18px rgba(0,0,0,0.04);">
-                <div style="font-size:11px; color:#666; margin-bottom:6px;">Completed</div>
-                <div style="font-size:24px; font-weight:800; color:#111;"><?= (int) ($summary['completed_orders'] ?? 0) ?></div>
-            </div>
-            <div style="background:#fff8ee; border-radius:16px; padding:16px; box-shadow:0 4px 18px rgba(0,0,0,0.04);">
-                <div style="font-size:11px; color:#9b5d00; margin-bottom:6px;">COD Orders</div>
-                <div style="font-size:24px; font-weight:800; color:#111;"><?= (int) ($summary['cod_orders'] ?? 0) ?></div>
-            </div>
-            <div style="background:#f3f0ff; border-radius:16px; padding:16px; box-shadow:0 4px 18px rgba(0,0,0,0.04);">
-                <div style="font-size:11px; color:#5b33d6; margin-bottom:6px;">PayHere Orders</div>
-                <div style="font-size:24px; font-weight:800; color:#111;"><?= (int) ($summary['payhere_orders'] ?? 0) ?></div>
-            </div>
-        </div>
-
         <form method="GET" action="<?= BASE_URL ?>order/manage" style="background:#fff; border-radius:18px; padding:18px; box-shadow:0 4px 20px rgba(0,0,0,0.04); margin-bottom:18px;">
             <div style="display:grid; gap:12px;">
                 <input type="text" name="search" value="<?= htmlspecialchars($filters['search'] ?? '') ?>" placeholder="Search by order no, customer, email, or phone" style="width:100%; padding:12px 14px; border:1px solid #ddd; border-radius:10px; box-sizing:border-box;">
