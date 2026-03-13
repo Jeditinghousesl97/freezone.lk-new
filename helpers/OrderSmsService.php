@@ -44,15 +44,35 @@ class OrderSmsService
 
         $settings = $this->settingModel->getAllPairs();
         if (!$this->isCustomerEnabled($settings) && !$this->isOwnerEnabled($settings)) {
+            $this->writeLog([
+                'time' => date('c'),
+                'event' => $eventKey,
+                'status' => 'skipped_not_configured',
+                'order_id' => (int) $order['id']
+            ]);
             return;
         }
 
         if ($this->isCustomerEnabled($settings)) {
             $this->queueModel->enqueue((int) $order['id'], $eventKey, 'customer');
+            $this->writeLog([
+                'time' => date('c'),
+                'event' => $eventKey,
+                'status' => 'queued',
+                'recipient_type' => 'customer',
+                'order_id' => (int) $order['id']
+            ]);
         }
 
         if ($eventKey === 'order_placed' && $this->isOwnerEnabled($settings)) {
             $this->queueModel->enqueue((int) $order['id'], 'owner_order_received', 'owner');
+            $this->writeLog([
+                'time' => date('c'),
+                'event' => 'owner_order_received',
+                'status' => 'queued',
+                'recipient_type' => 'owner',
+                'order_id' => (int) $order['id']
+            ]);
         }
     }
 
@@ -60,6 +80,13 @@ class OrderSmsService
     {
         $settings = $this->settingModel->getAllPairs();
         $jobs = $this->queueModel->claimNextBatch($limit);
+        if (empty($jobs)) {
+            $this->writeLog([
+                'time' => date('c'),
+                'event' => 'queue_worker',
+                'status' => 'no_jobs'
+            ]);
+        }
 
         foreach ($jobs as $job) {
             $order = $this->loadOrder((int) ($job['order_id'] ?? 0));

@@ -37,6 +37,7 @@ class OrderController extends BaseController
             }
 
             ignore_user_abort(true);
+            $this->logSmsWorkerEvent('shutdown_worker_started');
 
             if (function_exists('fastcgi_finish_request')) {
                 @fastcgi_finish_request();
@@ -45,7 +46,14 @@ class OrderController extends BaseController
                 @flush();
             }
 
-            $this->orderSmsService->processQueue(8);
+            try {
+                $this->orderSmsService->processQueue(8);
+                $this->logSmsWorkerEvent('shutdown_worker_finished');
+            } catch (Throwable $e) {
+                $this->logSmsWorkerEvent('shutdown_worker_failed', [
+                    'message' => $e->getMessage()
+                ]);
+            }
         });
     }
 
@@ -70,7 +78,9 @@ class OrderController extends BaseController
         }
 
         ignore_user_abort(true);
+        $this->logSmsWorkerEvent('manual_worker_started');
         $this->orderSmsService->processQueue(8);
+        $this->logSmsWorkerEvent('manual_worker_finished');
         echo 'OK';
         exit;
     }
@@ -92,6 +102,24 @@ class OrderController extends BaseController
         file_put_contents(
             $logDir . 'payhere.log',
             json_encode($entry, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . PHP_EOL,
+            FILE_APPEND | LOCK_EX
+        );
+    }
+
+    private function logSmsWorkerEvent($event, array $context = [])
+    {
+        $logDir = ROOT_PATH . 'storage/logs/';
+        if (!is_dir($logDir)) {
+            mkdir($logDir, 0775, true);
+        }
+
+        file_put_contents(
+            $logDir . 'sms_worker.log',
+            json_encode([
+                'time' => date('c'),
+                'event' => $event,
+                'context' => $context
+            ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . PHP_EOL,
             FILE_APPEND | LOCK_EX
         );
     }
