@@ -188,7 +188,7 @@ class OrderController extends BaseController
     {
         $callbackUrl = SeoHelper::absoluteUrl(BASE_URL . 'order/kokoCallback');
         $callbackUrl = $this->appendOptionalSecret($callbackUrl, $settings['koko_callback_secret'] ?? '');
-        $kokoPayload = KokoGateway::buildPayload($order, $settings, $description, $callbackUrl, 'customphp', '1.0.0');
+        $kokoPayload = KokoGateway::buildPayload($order, $settings, $description, $callbackUrl, 'woocommerce', '2.0.11');
         $kokoEndpoint = KokoGateway::checkoutUrl($settings);
 
         require 'views/customer/koko_redirect.php';

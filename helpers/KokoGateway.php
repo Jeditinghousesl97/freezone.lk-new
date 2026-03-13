@@ -18,7 +18,7 @@ class KokoGateway
             : 'https://prodapi.paykoko.com/api/merchants/orderCreate';
     }
 
-    public static function buildPayload(array $order, array $settings, $description, $callbackUrl, $pluginName = 'customphp', $pluginVersion = '1.0.0')
+    public static function buildPayload(array $order, array $settings, $description, $callbackUrl, $pluginName = 'woocommerce', $pluginVersion = '2.0.11')
     {
         $merchantId = trim((string) $settings['koko_merchant_id']);
         $apiKey = trim((string) $settings['koko_api_key']);
