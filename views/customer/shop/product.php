@@ -174,14 +174,21 @@ require_once 'views/layouts/customer_header.php';
                 <!-- Bottom Actions -->
                 <div class="pd-bottom-actions">
                     <!-- Order Now Button (Triggers Modal) -->
-                    <button class="btn-action btn-whatsapp" onclick="openOrderModal()">
-                        <i class="fab fa-whatsapp"></i> Order Now
-                    </button>
+                    <?php if (!isset($settings['whatsapp_ordering_enabled']) || !empty($settings['whatsapp_ordering_enabled'])): ?>
+                        <button class="btn-action btn-whatsapp" onclick="openOrderModal('whatsapp')">
+                            <i class="fab fa-whatsapp"></i> Order Now
+                        </button>
+                    <?php endif; ?>
 
                     <!-- Add to Cart -->
                     <button class="btn-action btn-cart" onclick="addToCartFromProductPage()">
                         <i class="fas fa-cart-plus"></i> Add to cart
                     </button>
+                    <?php if (!empty($settings['payhere_enabled'])): ?>
+                        <button class="btn-action btn-cart" onclick="openOrderModal('payhere')" style="background:#111; color:#fff;">
+                            <i class="fas fa-credit-card"></i> PayHere
+                        </button>
+                    <?php endif; ?>
                 </div>
 
             </div>
@@ -396,11 +403,18 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
         <h3 style="margin-top: 0; font-size: 20px; font-weight: 800; text-align: center; margin-bottom: 20px;">Complete
             Your Order</h3>
 
-        <form onsubmit="event.preventDefault(); submitOrderToWhatsApp();">
+        <form onsubmit="event.preventDefault(); submitOrder();">
             <div class="form-group" style="margin-bottom: 15px;">
                 <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px;">Full Name <span
                         style="color:red">*</span></label>
                 <input type="text" id="ordName" class="form-control" required
+                    style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px;">Email Address <span
+                        style="color:red">*</span></label>
+                <input type="email" id="ordEmail" class="form-control" required
                     style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
             </div>
 
@@ -434,6 +448,13 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
             </div>
 
             <div class="form-group" style="margin-bottom: 15px;">
+                <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px;">Country <span
+                        style="color:red">*</span></label>
+                <input type="text" id="ordCountry" class="form-control" value="Sri Lanka"
+                    style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 15px;">
                 <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px;">Phone Number 01
                     <span style="color:red">*</span></label>
                 <input type="tel" id="ordPhone1" class="form-control" required
@@ -457,7 +478,7 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
             <div style="display: flex; gap: 10px;">
                 <button type="button" onclick="closeOrderModal()"
                     style="flex: 1; padding: 12px; border: 1px solid #ddd; background: #f5f5f5; border-radius: 8px; font-weight: 600; cursor: pointer;">Cancel</button>
-                <button type="submit"
+                <button type="submit" id="orderSubmitButton"
                     style="flex: 2; padding: 12px; border: none; background: #6AD07F; color: white; border-radius: 8px; font-weight: 600; cursor: pointer;">Send
                     via WhatsApp</button>
             </div>
@@ -477,6 +498,7 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
 
     // Variation Selection Logic
     let selectedVariations = {}; // Store selected variations: { 'Color': 'Red', 'Size': 'M' }
+    let orderMode = 'whatsapp';
 
     function selectVariation(el, name, value) {
         // Toggle active class in this group
@@ -489,15 +511,27 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
         console.log("Selected:", selectedVariations);
     }
 
-    function openOrderModal() {
+    function openOrderModal(mode = 'whatsapp') {
+        orderMode = mode;
         // Load Saved Data
         if (localStorage.getItem('cus_name')) document.getElementById('ordName').value = localStorage.getItem('cus_name');
+        if (localStorage.getItem('cus_email')) document.getElementById('ordEmail').value = localStorage.getItem('cus_email');
         if (localStorage.getItem('cus_address')) document.getElementById('ordAddress').value = localStorage.getItem('cus_address');
         if (localStorage.getItem('cus_city')) document.getElementById('ordCity').value = localStorage.getItem('cus_city');
         if (localStorage.getItem('cus_district')) document.getElementById('ordDistrict').value = localStorage.getItem('cus_district');
         if (localStorage.getItem('cus_postal')) document.getElementById('ordPostal').value = localStorage.getItem('cus_postal');
+        if (localStorage.getItem('cus_country')) document.getElementById('ordCountry').value = localStorage.getItem('cus_country');
         if (localStorage.getItem('cus_phone1')) document.getElementById('ordPhone1').value = localStorage.getItem('cus_phone1');
         if (localStorage.getItem('cus_phone2')) document.getElementById('ordPhone2').value = localStorage.getItem('cus_phone2');
+
+        const submitButton = document.getElementById('orderSubmitButton');
+        if (orderMode === 'payhere') {
+            submitButton.textContent = 'Continue to PayHere';
+            submitButton.style.background = '#111';
+        } else {
+            submitButton.textContent = 'Send via WhatsApp';
+            submitButton.style.background = '#6AD07F';
+        }
 
         document.getElementById('orderModal').style.display = 'flex';
     }
@@ -506,20 +540,59 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
         document.getElementById('orderModal').style.display = 'none';
     }
 
-    function submitOrderToWhatsApp() {
+    function getVariantText() {
+        let variantStr = "";
+        if (Object.keys(selectedVariations).length > 0) {
+            for (const [key, val] of Object.entries(selectedVariations)) {
+                variantStr += key + ": " + val + ", ";
+            }
+            variantStr = variantStr.slice(0, -2);
+        }
+        return variantStr;
+    }
+
+    function submitOrder() {
         // Get Form Values
         const name = document.getElementById('ordName').value.trim();
+        const email = document.getElementById('ordEmail').value.trim();
         const address = document.getElementById('ordAddress').value.trim();
         const city = document.getElementById('ordCity').value.trim();
         const district = document.getElementById('ordDistrict').value.trim();
         const postal = document.getElementById('ordPostal').value.trim();
+        const country = document.getElementById('ordCountry').value.trim();
         const phone1 = document.getElementById('ordPhone1').value.trim();
         const phone2 = document.getElementById('ordPhone2').value.trim();
         const note = document.getElementById('ordNote').value.trim();
 
         // Validation
-        if (!name || !address || !city || !phone1) {
-            alert("Please fill in all required fields (Name, Address, City, Phone 01)");
+        if (!name || !email || !address || !city || !country || !phone1) {
+            alert("Please fill in all required fields.");
+            return;
+        }
+
+        localStorage.setItem('cus_name', name);
+        localStorage.setItem('cus_email', email);
+        localStorage.setItem('cus_address', address);
+        localStorage.setItem('cus_city', city);
+        localStorage.setItem('cus_district', district);
+        localStorage.setItem('cus_postal', postal);
+        localStorage.setItem('cus_country', country);
+        localStorage.setItem('cus_phone1', phone1);
+        localStorage.setItem('cus_phone2', phone2);
+
+        if (orderMode === 'payhere') {
+            submitOrderToPayHere({
+                name,
+                email,
+                address,
+                city,
+                district,
+                postal,
+                country,
+                phone1,
+                phone2,
+                note
+            });
             return;
         }
 
@@ -543,34 +616,22 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
         msg += "Link: " + window.location.href + "\n";
 
         // Add Selected Variations
-        if (Object.keys(selectedVariations).length > 0) {
-            msg += "Variations: ";
-            for (const [key, val] of Object.entries(selectedVariations)) {
-                // We use the text value stored in current logic
-                msg += key + ": " + val + ", ";
-            }
-            msg = msg.slice(0, -2);
-            msg += "\n";
+        const variantStr = getVariantText();
+        if (variantStr) {
+            msg += "Variations: " + variantStr + "\n";
         }
 
         msg += "\n*Customer Details:*\n";
         msg += "Name: " + name + "\n";
+        msg += "Email: " + email + "\n";
         msg += "Address: " + address + "\n";
         msg += "City: " + city + "\n";
         msg += "District: " + district + "\n";
         msg += "Postal: " + postal + "\n";
+        msg += "Country: " + country + "\n";
         msg += "Phone 01: " + phone1 + "\n";
         msg += "Phone 02: " + phone2 + "\n";
         if (note) msg += "Note: " + note + "\n";
-
-        // --- Save Data for Next Time ---
-        localStorage.setItem('cus_name', name);
-        localStorage.setItem('cus_address', address);
-        localStorage.setItem('cus_city', city);
-        localStorage.setItem('cus_district', district);
-        localStorage.setItem('cus_postal', postal);
-        localStorage.setItem('cus_phone1', phone1);
-        localStorage.setItem('cus_phone2', phone2);
 
         // Redirect
         const shopPhone = "<?= str_replace(['+', ' '], '', $settings['shop_whatsapp'] ?? '') ?>";
@@ -584,6 +645,44 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
             if (typeof hideGlobalLoader === 'function') hideGlobalLoader();
             closeOrderModal();
         }, 1000); // 1s delay to prevent double-clicks
+    }
+
+    function submitOrderToPayHere(data) {
+        const qty = parseInt(document.getElementById('qtyInput').value) || 1;
+        const variantStr = getVariantText();
+
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '<?= BASE_URL ?>order/startPayhereSingle';
+        form.style.display = 'none';
+
+        const fields = {
+            product_id: '<?= (int) $product['id'] ?>',
+            quantity: qty,
+            variants: variantStr,
+            customer_name: data.name,
+            email: data.email,
+            address: data.address,
+            city: data.city,
+            district: data.district,
+            postal_code: data.postal,
+            country: data.country,
+            phone: data.phone1,
+            phone_alt: data.phone2,
+            note: data.note
+        };
+
+        Object.keys(fields).forEach(function (key) {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = key;
+            input.value = fields[key] || '';
+            form.appendChild(input);
+        });
+
+        document.body.appendChild(form);
+        if (typeof showGlobalLoader === 'function') showGlobalLoader();
+        form.submit();
     }
 
 
@@ -609,13 +708,7 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
         const img = "<?= $imgUrl ?>";
 
         // Format Variations String
-        let variantStr = "";
-        if (Object.keys(selectedVariations).length > 0) {
-            for (const [key, val] of Object.entries(selectedVariations)) {
-                variantStr += key + ": " + val + ", ";
-            }
-            variantStr = variantStr.slice(0, -2);
-        }
+        let variantStr = getVariantText();
 
         //  Prepare Data
         const payload = {

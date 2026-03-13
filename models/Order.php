@@ -88,7 +88,12 @@ class Order extends BaseModel
 
     public function createFromCart(array $customer, array $cart, array $settings)
     {
-        if (empty($cart)) {
+        return $this->createFromItems($customer, $cart, $settings);
+    }
+
+    public function createFromItems(array $customer, array $items, array $settings)
+    {
+        if (empty($items)) {
             return false;
         }
 
@@ -99,7 +104,7 @@ class Order extends BaseModel
             $currency = trim($settings['currency_symbol'] ?? 'LKR');
             $totalAmount = 0;
 
-            foreach ($cart as $item) {
+            foreach ($items as $item) {
                 $qty = max(1, (int) ($item['qty'] ?? 1));
                 $price = (float) ($item['price'] ?? 0);
                 $totalAmount += ($price * $qty);
@@ -149,7 +154,7 @@ class Order extends BaseModel
                 )
             ");
 
-            foreach ($cart as $item) {
+            foreach ($items as $item) {
                 $qty = max(1, (int) ($item['qty'] ?? 1));
                 $price = (float) ($item['price'] ?? 0);
                 $itemStmt->execute([
@@ -166,7 +171,7 @@ class Order extends BaseModel
 
             $this->recordTransaction($orderId, 'payhere', 'initiated', null, 'PENDING', $totalAmount, $currency, [
                 'customer' => $customer,
-                'items_count' => count($cart)
+                'items_count' => count($items)
             ]);
 
             $this->conn->commit();

@@ -369,8 +369,13 @@
 
                 <label class="section-title" style="margin-top:24px;">PayHere Payment Settings</label>
                 <p style="margin:0 0 14px; font-size:12px; color:#666;">
-                    Enable PayHere and enter your merchant credentials for this shop. Use sandbox mode for testing.
+                    Turn checkout methods on or off for this shop. Use sandbox mode for testing PayHere.
                 </p>
+
+                <label class="slider-remove-row" style="margin:0 0 12px;">
+                    <input type="checkbox" name="whatsapp_ordering_enabled" value="1" <?= !isset($settings['whatsapp_ordering_enabled']) || !empty($settings['whatsapp_ordering_enabled']) ? 'checked' : '' ?>>
+                    Enable WhatsApp ordering
+                </label>
 
                 <label class="slider-remove-row" style="margin:0 0 12px;">
                     <input type="checkbox" name="payhere_enabled" value="1" <?= !empty($settings['payhere_enabled']) ? 'checked' : '' ?>>

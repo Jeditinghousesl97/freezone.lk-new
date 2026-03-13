@@ -1,17 +1,20 @@
 <?php
 require_once 'models/Order.php';
 require_once 'models/Setting.php';
+require_once 'models/Product.php';
 require_once 'helpers/SeoHelper.php';
 
 class OrderController extends BaseController
 {
     private $orderModel;
     private $settingModel;
+    private $productModel;
 
     public function __construct()
     {
         $this->orderModel = new Order();
         $this->settingModel = new Setting();
+        $this->productModel = new Product();
     }
 
     private function splitName($fullName)
@@ -168,6 +171,124 @@ class OrderController extends BaseController
             'hash' => $hash,
             'custom_1' => (string) $order['id'],
             'custom_2' => 'cart_checkout'
+        ];
+
+        require 'views/customer/payhere_redirect.php';
+    }
+
+    public function startPayhereSingle()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('cart');
+        }
+
+        $settings = $this->settingModel->getAllPairs();
+
+        if (empty($settings['payhere_enabled']) || empty($settings['payhere_merchant_id']) || empty($settings['payhere_merchant_secret'])) {
+            $_SESSION['order_error'] = 'PayHere is not configured for this shop yet.';
+            $this->redirect('cart');
+        }
+
+        $productId = (int) ($_POST['product_id'] ?? 0);
+        $qty = max(1, (int) ($_POST['quantity'] ?? 1));
+        $variantText = trim((string) ($_POST['variants'] ?? ''));
+
+        $product = $this->productModel->getById($productId);
+        if (!$product) {
+            $_SESSION['order_error'] = 'The selected product could not be found.';
+            $this->redirect('cart');
+        }
+
+        $customerName = trim($_POST['customer_name'] ?? '');
+        $email = trim($_POST['email'] ?? '');
+        $phone = trim($_POST['phone'] ?? '');
+        $address = trim($_POST['address'] ?? '');
+        $city = trim($_POST['city'] ?? '');
+        $country = trim($_POST['country'] ?? 'Sri Lanka');
+
+        if ($customerName === '' || $email === '' || $phone === '' || $address === '' || $city === '' || $country === '') {
+            $_SESSION['order_error'] = 'Please fill in all required payment fields.';
+            $this->redirect('shop/product/' . $productId);
+        }
+
+        [$firstName, $lastName] = $this->splitName($customerName);
+
+        $customer = [
+            'customer_name' => $customerName,
+            'first_name' => $firstName,
+            'last_name' => $lastName,
+            'email' => $email,
+            'phone' => $phone,
+            'phone_alt' => trim($_POST['phone_alt'] ?? ''),
+            'address' => $address,
+            'city' => $city,
+            'district' => trim($_POST['district'] ?? ''),
+            'postal_code' => trim($_POST['postal_code'] ?? ''),
+            'country' => $country,
+            'note' => trim($_POST['note'] ?? '')
+        ];
+
+        $unitPrice = (!empty($product['sale_price']) && (float) $product['sale_price'] < (float) $product['price'])
+            ? (float) $product['sale_price']
+            : (float) $product['price'];
+
+        $imageUrl = '';
+        if (!empty($product['main_image'])) {
+            $imagePath = 'assets/uploads/' . $product['main_image'];
+            if (file_exists(ROOT_PATH . $imagePath)) {
+                $imageUrl = BASE_URL . $imagePath;
+            }
+        }
+
+        $items = [[
+            'id' => (int) $product['id'],
+            'title' => $product['title'] ?? 'Product',
+            'price' => $unitPrice,
+            'qty' => $qty,
+            'img' => $imageUrl,
+            'variants' => $variantText
+        ]];
+
+        $order = $this->orderModel->createFromItems($customer, $items, $settings);
+        if (!$order) {
+            $_SESSION['order_error'] = 'Unable to create your order right now.';
+            $this->redirect('shop/product/' . $productId);
+        }
+
+        $_SESSION['pending_order_number'] = $order['order_number'];
+
+        $merchantId = trim($settings['payhere_merchant_id']);
+        $merchantSecret = trim($settings['payhere_merchant_secret']);
+        $currency = trim($order['currency'] ?: 'LKR');
+        $amount = number_format((float) $order['total_amount'], 2, '.', '');
+        $hash = strtoupper(md5($merchantId . $order['order_number'] . $amount . $currency . strtoupper(md5($merchantSecret))));
+        $endpoint = !empty($settings['payhere_sandbox'])
+            ? 'https://sandbox.payhere.lk/pay/checkout'
+            : 'https://www.payhere.lk/pay/checkout';
+
+        $returnUrl = SeoHelper::absoluteUrl(BASE_URL . 'order/payhereReturn?order=' . urlencode($order['order_number']));
+        $cancelUrl = SeoHelper::absoluteUrl(BASE_URL . 'order/payhereCancel?order=' . urlencode($order['order_number']));
+        $notifyUrl = SeoHelper::absoluteUrl(BASE_URL . 'order/payhereNotify');
+
+        $payherePayload = [
+            'merchant_id' => $merchantId,
+            'return_url' => $returnUrl,
+            'cancel_url' => $cancelUrl,
+            'notify_url' => $notifyUrl,
+            'first_name' => $order['first_name'],
+            'last_name' => $order['last_name'],
+            'email' => $order['email'],
+            'phone' => $order['phone'],
+            'address' => $order['address'],
+            'city' => $order['city'],
+            'country' => $order['country'],
+            'order_id' => $order['order_number'],
+            'items' => $product['title'] ?? (SeoHelper::shopName($settings) . ' Order'),
+            'currency' => $currency,
+            'amount' => $amount,
+            'hash' => $hash,
+            'custom_1' => (string) $order['id'],
+            'custom_2' => 'single_product_checkout'
         ];
 
         require 'views/customer/payhere_redirect.php';

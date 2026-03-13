@@ -84,10 +84,12 @@ require_once 'views/layouts/customer_header.php';
                     </div>
 
                     <div style="display:grid; gap:12px;">
-                        <button onclick="openOrderModal('whatsapp')" style="width: 100%; background: #25d366; color: white; border: none; padding: 15px; border-radius: 30px; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; box-shadow: 0 4px 10px rgba(37, 211, 102, 0.3);">
-                            <i class="fab fa-whatsapp" style="font-size: 18px;"></i>
-                            Order Now via WhatsApp
-                        </button>
+                        <?php if (!isset($settings['whatsapp_ordering_enabled']) || !empty($settings['whatsapp_ordering_enabled'])): ?>
+                            <button onclick="openOrderModal('whatsapp')" style="width: 100%; background: #25d366; color: white; border: none; padding: 15px; border-radius: 30px; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; box-shadow: 0 4px 10px rgba(37, 211, 102, 0.3);">
+                                <i class="fab fa-whatsapp" style="font-size: 18px;"></i>
+                                Order Now via WhatsApp
+                            </button>
+                        <?php endif; ?>
 
                         <?php if (!empty($settings['payhere_enabled'])): ?>
                             <button onclick="openOrderModal('payhere')" style="width: 100%; background: #111; color: white; border: none; padding: 15px; border-radius: 30px; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.14);">
