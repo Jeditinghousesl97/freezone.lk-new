@@ -216,6 +216,8 @@ class SettingsController extends BaseController
             'btn_review_text',
             'btn_sizeguide_bg',
             'btn_sizeguide_text',
+            'btn_payhere_bg',
+            'btn_payhere_text',
             // Layout
             'bp_mobile',
             'bp_tablet',

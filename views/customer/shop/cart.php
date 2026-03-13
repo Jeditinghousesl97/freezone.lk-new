@@ -92,7 +92,7 @@ require_once 'views/layouts/customer_header.php';
                         <?php endif; ?>
 
                         <?php if (!empty($settings['payhere_enabled'])): ?>
-                            <button onclick="openOrderModal('payhere')" style="width: 100%; background: #111; color: white; border: none; padding: 15px; border-radius: 30px; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.14);">
+                            <button onclick="openOrderModal('payhere')" class="btn-payhere-standalone" style="width: 100%; padding: 15px;">
                                 <i class="fas fa-credit-card" style="font-size: 18px;"></i>
                                 Pay Online with PayHere
                             </button>
@@ -225,9 +225,10 @@ require_once 'views/layouts/customer_header.php';
         const submitButton = document.getElementById('orderSubmitButton');
         if (orderMode === 'payhere') {
             submitButton.textContent = 'Continue to PayHere';
-            submitButton.style.background = '#111';
+            submitButton.classList.add('btn-payhere-submit');
         } else {
             submitButton.textContent = 'Send via WhatsApp';
+            submitButton.classList.remove('btn-payhere-submit');
             submitButton.style.background = '#25d366';
         }
 

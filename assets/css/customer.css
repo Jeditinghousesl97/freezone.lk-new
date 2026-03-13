@@ -756,6 +756,31 @@ p {
     color: white;
 }
 
+.btn-payhere {
+    background: #111;
+    color: #fff;
+}
+
+.btn-payhere-standalone {
+    background: #111;
+    color: #fff;
+    border: none;
+    border-radius: 30px;
+    font-size: 15px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.14);
+}
+
+.btn-payhere-submit {
+    background: #111 !important;
+    color: #fff !important;
+}
+
 /* Desktop override for bottom actions */
 @media (min-width: 1024px) {
     .pd-bottom-actions {

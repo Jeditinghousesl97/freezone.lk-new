@@ -185,7 +185,7 @@ require_once 'views/layouts/customer_header.php';
                         <i class="fas fa-cart-plus"></i> Add to cart
                     </button>
                     <?php if (!empty($settings['payhere_enabled'])): ?>
-                        <button class="btn-action btn-cart" onclick="openOrderModal('payhere')" style="background:#111; color:#fff;">
+                        <button class="btn-action btn-payhere" onclick="openOrderModal('payhere')">
                             <i class="fas fa-credit-card"></i> PayHere
                         </button>
                     <?php endif; ?>
@@ -527,9 +527,10 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
         const submitButton = document.getElementById('orderSubmitButton');
         if (orderMode === 'payhere') {
             submitButton.textContent = 'Continue to PayHere';
-            submitButton.style.background = '#111';
+            submitButton.classList.add('btn-payhere-submit');
         } else {
             submitButton.textContent = 'Send via WhatsApp';
+            submitButton.classList.remove('btn-payhere-submit');
             submitButton.style.background = '#6AD07F';
         }
 

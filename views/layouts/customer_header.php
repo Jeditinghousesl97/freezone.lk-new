@@ -196,6 +196,27 @@
 
         <?php endif; ?>
 
+        <?php if (!empty($settings['btn_payhere_bg'])): ?>
+            .btn-action.btn-payhere,
+            .btn-payhere-standalone,
+            .btn-payhere-submit {
+                background-color:
+                    <?= $settings['btn_payhere_bg'] ?>
+                    !important;
+            }
+
+        <?php endif; ?>
+        <?php if (!empty($settings['btn_payhere_text'])): ?>
+            .btn-action.btn-payhere,
+            .btn-payhere-standalone,
+            .btn-payhere-submit {
+                color:
+                    <?= $settings['btn_payhere_text'] ?>
+                    !important;
+            }
+
+        <?php endif; ?>
+
         /* 2. Apply Filter */
         <?php if (!empty($settings['btn_apply_bg'])): ?>
             .btn-apply-filter {
