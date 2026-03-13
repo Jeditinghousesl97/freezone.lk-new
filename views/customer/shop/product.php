@@ -173,7 +173,14 @@ require_once 'views/layouts/customer_header.php';
 
                 <!-- Bottom Actions -->
                 <div class="pd-bottom-actions">
-                    <?php $codEnabled = !isset($settings['cod_enabled']) ? (!isset($settings['whatsapp_ordering_enabled']) || !empty($settings['whatsapp_ordering_enabled'])) : !empty($settings['cod_enabled']); ?>
+                    <?php
+                    $codEnabled = !empty($settings['cod_enabled']);
+                    $shopWhatsappTarget = preg_replace('/[^0-9]/', '', (string) ($settings['shop_whatsapp'] ?? ''));
+                    if ($shopWhatsappTarget === '') {
+                        $shopWhatsappTarget = preg_replace('/[^0-9]/', '', (string) ($settings['social_whatsapp'] ?? ''));
+                    }
+                    $whatsappEnabled = !empty($settings['whatsapp_ordering_enabled']) && $shopWhatsappTarget !== '';
+                    ?>
                     <button class="btn-action btn-order-now" onclick="openPaymentMethodSheet()">
                         <i class="fas fa-bag-shopping"></i>
                         <span class="btn-action-label">Order Now</span>
@@ -403,6 +410,17 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
         </div>
 
         <div class="payment-sheet-options">
+            <?php if ($whatsappEnabled): ?>
+                <button type="button" class="payment-method-card method-whatsapp" onclick="choosePaymentMethod('whatsapp')">
+                    <span class="payment-method-icon"><i class="fab fa-whatsapp"></i></span>
+                    <span class="payment-method-copy">
+                        <strong>WhatsApp Order</strong>
+                        <small>Send your order details directly to the shop on WhatsApp.</small>
+                    </span>
+                    <span class="payment-method-arrow"><i class="fas fa-chevron-right"></i></span>
+                </button>
+            <?php endif; ?>
+
             <?php if ($codEnabled): ?>
                 <button type="button" class="payment-method-card method-cod" onclick="choosePaymentMethod('cod')">
                     <span class="payment-method-icon"><i class="fas fa-box"></i></span>
@@ -529,6 +547,7 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
     // Variation Selection Logic
     let selectedVariations = {}; // Store selected variations: { 'Color': 'Red', 'Size': 'M' }
     let orderMode = 'cod';
+    const shopWhatsappNumber = '<?= htmlspecialchars($shopWhatsappTarget, ENT_QUOTES) ?>';
 
     function selectVariation(el, name, value) {
         // Toggle active class in this group
@@ -569,6 +588,10 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
         if (orderMode === 'payhere') {
             submitButton.textContent = 'Continue to PayHere';
             submitButton.classList.add('btn-payhere-submit');
+        } else if (orderMode === 'whatsapp') {
+            submitButton.textContent = 'Continue to WhatsApp';
+            submitButton.classList.remove('btn-payhere-submit');
+            submitButton.style.background = '#25D366';
         } else if (orderMode === 'koko') {
             submitButton.textContent = 'Continue to KOKO';
             submitButton.classList.remove('btn-payhere-submit');
@@ -636,6 +659,20 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
 
         if (orderMode === 'koko') {
             submitOrderToKoko({
+                name,
+                email,
+                address,
+                city,
+                district,
+                phone1,
+                phone2,
+                note
+            });
+            return;
+        }
+
+        if (orderMode === 'whatsapp') {
+            submitOrderToWhatsApp({
                 name,
                 email,
                 address,
@@ -766,6 +803,52 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
         document.body.appendChild(form);
         if (typeof showGlobalLoader === 'function') showGlobalLoader();
         form.submit();
+    }
+
+    function submitOrderToWhatsApp(data) {
+        if (!shopWhatsappNumber) {
+            alert('WhatsApp ordering is not configured for this shop.');
+            return;
+        }
+
+        const qty = parseInt(document.getElementById('qtyInput').value) || 1;
+        const variantStr = getVariantText();
+        const lines = [
+            '*New WhatsApp Order Request*',
+            '',
+            '*Product:* <?= addslashes($product['title']) ?>',
+            '*Quantity:* ' + qty
+        ];
+
+        if (variantStr) {
+            lines.push('*Variants:* ' + variantStr);
+        }
+
+        lines.push(
+            '*Customer:* ' + data.name,
+            '*Email:* ' + data.email,
+            '*Phone:* ' + data.phone1
+        );
+
+        if (data.phone2) {
+            lines.push('*Alt Phone:* ' + data.phone2);
+        }
+
+        lines.push(
+            '*Address:* ' + data.address,
+            '*City:* ' + data.city
+        );
+
+        if (data.district) {
+            lines.push('*District:* ' + data.district);
+        }
+
+        if (data.note) {
+            lines.push('*Note:* ' + data.note);
+        }
+
+        if (typeof showGlobalLoader === 'function') showGlobalLoader();
+        window.location.href = 'https://wa.me/' + shopWhatsappNumber + '?text=' + encodeURIComponent(lines.join("\n"));
     }
 
 

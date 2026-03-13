@@ -905,6 +905,15 @@ p {
     color: #fff;
 }
 
+.method-whatsapp {
+    background: linear-gradient(180deg, #effbf3 0%, #d7f5e1 100%);
+}
+
+.method-whatsapp .payment-method-icon {
+    background: #25d366;
+    color: #fff;
+}
+
 .method-payhere {
     background: linear-gradient(180deg, #edf6ff 0%, #ddeeff 100%);
 }

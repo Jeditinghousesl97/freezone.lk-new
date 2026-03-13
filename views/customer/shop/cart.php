@@ -92,7 +92,20 @@ require_once 'views/layouts/customer_header.php';
                     </div>
 
                     <div style="display:grid; gap:12px;">
-                        <?php $codEnabled = !isset($settings['cod_enabled']) ? (!isset($settings['whatsapp_ordering_enabled']) || !empty($settings['whatsapp_ordering_enabled'])) : !empty($settings['cod_enabled']); ?>
+                        <?php
+                        $codEnabled = !empty($settings['cod_enabled']);
+                        $shopWhatsappTarget = preg_replace('/[^0-9]/', '', (string) ($settings['shop_whatsapp'] ?? ''));
+                        if ($shopWhatsappTarget === '') {
+                            $shopWhatsappTarget = preg_replace('/[^0-9]/', '', (string) ($settings['social_whatsapp'] ?? ''));
+                        }
+                        $whatsappEnabled = !empty($settings['whatsapp_ordering_enabled']) && $shopWhatsappTarget !== '';
+                        ?>
+                        <?php if ($whatsappEnabled): ?>
+                            <button onclick="openOrderModal('whatsapp')" style="width: 100%; background: #25D366; color: white; border: none; padding: 15px; border-radius: 30px; font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; box-shadow: 0 4px 10px rgba(37, 211, 102, 0.22);">
+                                <i class="fab fa-whatsapp" style="font-size: 18px;"></i>
+                                Order via WhatsApp
+                            </button>
+                        <?php endif; ?>
                         <?php if ($codEnabled): ?>
                             <button onclick="openOrderModal('cod')" style="width: 100%; background: #111; color: white; border: none; padding: 15px; border-radius: 30px; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; box-shadow: 0 4px 10px rgba(17, 17, 17, 0.22);">
                                 <i class="fas fa-box" style="font-size: 18px;"></i>
@@ -178,6 +191,7 @@ require_once 'views/layouts/customer_header.php';
 <script>
     const cartData = <?= json_encode($cart ?? []) ?>;
     let orderMode = 'cod';
+    const shopWhatsappNumber = '<?= htmlspecialchars($shopWhatsappTarget ?? '', ENT_QUOTES) ?>';
 
     function removeFromCart(index) {
         fetch('<?= BASE_URL ?>cart/remove', {
@@ -253,6 +267,10 @@ require_once 'views/layouts/customer_header.php';
         if (orderMode === 'payhere') {
             submitButton.textContent = 'Continue to PayHere';
             submitButton.classList.add('btn-payhere-submit');
+        } else if (orderMode === 'whatsapp') {
+            submitButton.textContent = 'Continue to WhatsApp';
+            submitButton.classList.remove('btn-payhere-submit');
+            submitButton.style.background = '#25D366';
         } else if (orderMode === 'koko') {
             submitButton.textContent = 'Continue to KOKO';
             submitButton.classList.remove('btn-payhere-submit');
@@ -306,6 +324,11 @@ require_once 'views/layouts/customer_header.php';
 
         if (orderMode === 'koko') {
             submitOrderToKoko(data);
+            return;
+        }
+
+        if (orderMode === 'whatsapp') {
+            submitOrderToWhatsApp(data);
             return;
         }
 
@@ -400,6 +423,53 @@ require_once 'views/layouts/customer_header.php';
         document.body.appendChild(form);
         if (typeof showGlobalLoader === 'function') showGlobalLoader();
         form.submit();
+    }
+
+    function submitOrderToWhatsApp(data) {
+        if (!shopWhatsappNumber) {
+            alert('WhatsApp ordering is not configured for this shop.');
+            return;
+        }
+
+        const lines = [
+            '*New WhatsApp Order Request*',
+            ''
+        ];
+
+        cartData.forEach(function(item, index) {
+            lines.push((index + 1) + '. ' + item.title + ' x ' + item.qty);
+            if (item.variants) {
+                lines.push('   Variants: ' + item.variants);
+            }
+            lines.push('   Price: LKR ' + Number(item.price || 0).toLocaleString());
+        });
+
+        lines.push(
+            '',
+            '*Customer:* ' + data.name,
+            '*Email:* ' + data.email,
+            '*Phone:* ' + data.phone1
+        );
+
+        if (data.phone2) {
+            lines.push('*Alt Phone:* ' + data.phone2);
+        }
+
+        lines.push(
+            '*Address:* ' + data.address,
+            '*City:* ' + data.city
+        );
+
+        if (data.district) {
+            lines.push('*District:* ' + data.district);
+        }
+
+        if (data.note) {
+            lines.push('*Note:* ' + data.note);
+        }
+
+        if (typeof showGlobalLoader === 'function') showGlobalLoader();
+        window.location.href = 'https://wa.me/' + shopWhatsappNumber + '?text=' + encodeURIComponent(lines.join("\n"));
     }
 </script>
 

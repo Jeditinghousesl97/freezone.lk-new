@@ -379,13 +379,22 @@
 
                 <label class="section-title" style="margin-top:24px;">Checkout Settings</label>
                 <p style="margin:0 0 14px; font-size:12px; color:#666;">
-                    Turn Cash on Delivery on or off for this shop. PayHere settings are now managed from Settings.
+                    Turn checkout methods on or off for this shop. PayHere and KOKO settings are managed from Settings.
                 </p>
 
                 <label class="slider-remove-row" style="margin:0 0 12px;">
-                    <input type="checkbox" name="cod_enabled" value="1" <?= !isset($settings['cod_enabled']) ? (!isset($settings['whatsapp_ordering_enabled']) || !empty($settings['whatsapp_ordering_enabled']) ? 'checked' : '') : (!empty($settings['cod_enabled']) ? 'checked' : '') ?>>
+                    <input type="checkbox" name="cod_enabled" value="1" <?= !empty($settings['cod_enabled']) ? 'checked' : '' ?>>
                     Enable Cash on Delivery
                 </label>
+
+                <label class="slider-remove-row" style="margin:0 0 12px;">
+                    <input type="checkbox" name="whatsapp_ordering_enabled" value="1" <?= !empty($settings['whatsapp_ordering_enabled']) ? 'checked' : '' ?>>
+                    Enable WhatsApp Ordering
+                </label>
+
+                <p style="margin:0 0 8px; font-size:12px; color:#666;">
+                    WhatsApp orders are sent directly to the admin WhatsApp number and are not saved to orders, finance, or reports.
+                </p>
 
                 <button type="submit" class="publish-btn" style="margin-top:20px;" onclick="showGlobalLoader()">
                     💾 PUBLISH

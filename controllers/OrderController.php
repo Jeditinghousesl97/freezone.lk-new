@@ -508,6 +508,54 @@ class OrderController extends BaseController
         $this->redirect('order/details/' . urlencode($orderNumber));
     }
 
+    public function markGatewayPaymentRecorded($orderNumber = null)
+    {
+        $this->requireAdminSession();
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($orderNumber)) {
+            $this->redirect('order/manage');
+        }
+
+        $order = $this->orderModel->getByOrderNumber($orderNumber);
+        $paymentMethod = strtolower((string) ($order['payment_method'] ?? ''));
+        $paymentStatus = strtolower((string) ($order['payment_status'] ?? 'pending'));
+
+        if ($order && in_array($paymentMethod, ['payhere', 'koko'], true) && $paymentStatus !== 'paid') {
+            $gatewayLabel = strtoupper((string) ($order['payment_gateway'] ?: $paymentMethod));
+            $manualMessage = $gatewayLabel . ' payment recorded manually by shop owner.';
+
+            $this->orderModel->updatePaymentStatus(
+                $orderNumber,
+                'paid',
+                $order['gateway_payment_id'] ?? null,
+                'MANUAL_CONFIRMED',
+                $manualMessage
+            );
+
+            $this->orderModel->recordTransaction(
+                (int) $order['id'],
+                $paymentMethod,
+                'manual_payment_recorded',
+                $order['gateway_payment_id'] ?? null,
+                'MANUAL_CONFIRMED',
+                (float) ($order['total_amount'] ?? 0),
+                $order['currency'] ?? 'LKR',
+                ['marked_by' => 'shop_owner']
+            );
+
+            if (($order['order_status'] ?? 'pending') === 'pending') {
+                $this->orderModel->updateOrderStatus($orderNumber, 'processing');
+            }
+
+            $updatedOrder = $this->orderModel->getByOrderNumberWithItems($orderNumber);
+            if ($updatedOrder) {
+                $this->notifyCustomerOrderEvent($updatedOrder, 'payment_completed');
+            }
+        }
+
+        $this->redirect('order/details/' . urlencode($orderNumber));
+    }
+
     public function cancel($orderNumber = null)
     {
         $this->requireAdminSession();

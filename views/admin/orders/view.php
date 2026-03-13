@@ -77,6 +77,13 @@
                         </button>
                     </form>
                 <?php endif; ?>
+                <?php if (in_array(($order['payment_method'] ?? ''), ['payhere', 'koko'], true) && ($order['payment_status'] ?? 'pending') !== 'paid'): ?>
+                    <form action="<?= BASE_URL ?>order/markGatewayPaymentRecorded/<?= urlencode($order['order_number']) ?>" method="POST" onsubmit="return confirm('Record this payment as completed manually?');">
+                        <button type="submit" onclick="showGlobalLoader()" style="border:none; background:#0b6cd1; color:#fff; padding:12px 18px; border-radius:999px; font-weight:700; cursor:pointer;">
+                            Record Payment
+                        </button>
+                    </form>
+                <?php endif; ?>
                 <?php if (($order['order_status'] ?? 'pending') !== 'completed'): ?>
                     <button type="button" onclick="openCompleteOrderModal()" style="border:none; background:#111; color:#fff; padding:12px 18px; border-radius:999px; font-weight:700; cursor:pointer;">
                             Mark Order as Completed
