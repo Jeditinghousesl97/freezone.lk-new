@@ -35,7 +35,11 @@ class MyShopController extends BaseController
             'hero_slide_3_link',
             'refund_policy_content',
             'terms_conditions_content',
-            'privacy_policy_content'
+            'privacy_policy_content',
+            'payhere_enabled',
+            'payhere_merchant_id',
+            'payhere_merchant_secret',
+            'payhere_sandbox'
         ];
 
         $settings = $this->settingModel->getMultiple($keys);
@@ -62,7 +66,9 @@ class MyShopController extends BaseController
                 'hero_slide_3_link',
                 'refund_policy_content',
                 'terms_conditions_content',
-                'privacy_policy_content'
+                'privacy_policy_content',
+                'payhere_merchant_id',
+                'payhere_merchant_secret'
             ];
 
             foreach ($allowedKeys as $key) {
@@ -70,6 +76,9 @@ class MyShopController extends BaseController
                     $this->settingModel->set($key, $_POST[$key]);
                 }
             }
+
+            $this->settingModel->set('payhere_enabled', !empty($_POST['payhere_enabled']) ? '1' : '0');
+            $this->settingModel->set('payhere_sandbox', !empty($_POST['payhere_sandbox']) ? '1' : '0');
 
             $uploadDir = ROOT_PATH . 'assets/uploads/';
             if (!is_dir($uploadDir)) {

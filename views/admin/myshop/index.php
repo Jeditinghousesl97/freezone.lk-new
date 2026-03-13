@@ -367,6 +367,33 @@
                 <label class="section-title">Privacy Policy</label>
                 <textarea name="privacy_policy_content" class="input-white textarea-lg" placeholder="Enter privacy policy content here"><?= htmlspecialchars($settings['privacy_policy_content'] ?? '') ?></textarea>
 
+                <label class="section-title" style="margin-top:24px;">PayHere Payment Settings</label>
+                <p style="margin:0 0 14px; font-size:12px; color:#666;">
+                    Enable PayHere and enter your merchant credentials for this shop. Use sandbox mode for testing.
+                </p>
+
+                <label class="slider-remove-row" style="margin:0 0 12px;">
+                    <input type="checkbox" name="payhere_enabled" value="1" <?= !empty($settings['payhere_enabled']) ? 'checked' : '' ?>>
+                    Enable PayHere checkout
+                </label>
+
+                <label class="slider-remove-row" style="margin:0 0 12px;">
+                    <input type="checkbox" name="payhere_sandbox" value="1" <?= !empty($settings['payhere_sandbox']) ? 'checked' : '' ?>>
+                    Use PayHere sandbox mode
+                </label>
+
+                <input type="text"
+                    name="payhere_merchant_id"
+                    class="input-white"
+                    placeholder="PayHere Merchant ID"
+                    value="<?= htmlspecialchars($settings['payhere_merchant_id'] ?? '') ?>">
+
+                <input type="text"
+                    name="payhere_merchant_secret"
+                    class="input-white"
+                    placeholder="PayHere Merchant Secret"
+                    value="<?= htmlspecialchars($settings['payhere_merchant_secret'] ?? '') ?>">
+
                 <button type="submit" class="publish-btn" style="margin-top:20px;" onclick="showGlobalLoader()">
                     💾 PUBLISH
                 </button>

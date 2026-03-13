@@ -100,6 +100,10 @@
                 <h2 class="stat-number"><?= $stats['feedbacks'] ?? 0 ?></h2>
                 <p class="stat-label">Feedbacks</p>
             </a>
+            <a href="<?= BASE_URL ?>order/manage" class="stat-card stat-card-link">
+                <h2 class="stat-number"><?= $stats['orders'] ?? 0 ?></h2>
+                <p class="stat-label">Orders</p>
+            </a>
         </div>
 
         <!-- Products Section -->

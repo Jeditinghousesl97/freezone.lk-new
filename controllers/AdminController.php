@@ -20,13 +20,16 @@ class AdminController extends BaseController
 
         // Connect to DB to get stats
         $db = (new Database())->getConnection();
+        require_once 'models/Order.php';
+        $orderModel = new Order();
 
         // 1. Get Counts
         $stats = [
             'products' => $db->query("SELECT COUNT(*) FROM products")->fetchColumn(),
             'categories' => $db->query("SELECT COUNT(*) FROM categories")->fetchColumn(),
             'feedbacks' => $db->query("SELECT COUNT(*) FROM reviews")->fetchColumn(),
-            'size_guides' => $db->query("SELECT COUNT(*) FROM size_guides")->fetchColumn()
+            'size_guides' => $db->query("SELECT COUNT(*) FROM size_guides")->fetchColumn(),
+            'orders' => $orderModel->countAll()
         ];
 
         // 2. Get Recent Products (Limit 5)
