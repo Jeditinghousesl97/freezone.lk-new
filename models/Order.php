@@ -102,7 +102,7 @@ class Order extends BaseModel
         $this->conn->beginTransaction();
 
         try {
-            $orderNumber = 'ORD-' . date('YmdHis') . '-' . strtoupper(substr(md5(uniqid('', true)), 0, 6));
+            $orderNumber = $this->generateOrderNumber();
             $currency = trim($settings['currency_symbol'] ?? 'LKR');
             $totalAmount = 0;
 
@@ -184,6 +184,17 @@ class Order extends BaseModel
         }
     }
 
+    private function generateOrderNumber()
+    {
+        do {
+            $suffix = str_pad((string) random_int(0, 99999), 5, '0', STR_PAD_LEFT);
+            $orderNumber = 'ORD-' . date('YmdHis') . '-' . $suffix;
+            $exists = $this->getByOrderNumber($orderNumber);
+        } while ($exists);
+
+        return $orderNumber;
+    }
+
     public function getById($id)
     {
         $stmt = $this->conn->prepare("SELECT * FROM orders WHERE id = :id LIMIT 1");
@@ -214,6 +225,48 @@ class Order extends BaseModel
 
         $order['items'] = $this->getItems((int) $order['id']);
         return $order;
+    }
+
+    public function findCustomerOrders($email, $phone, $orderNumber = '')
+    {
+        $email = trim((string) $email);
+        $phone = preg_replace('/[^0-9]/', '', (string) $phone);
+        $orderNumber = trim((string) $orderNumber);
+
+        if ($email === '' || $phone === '') {
+            return [];
+        }
+
+        $sql = "
+            SELECT *
+            FROM orders
+            WHERE email = :email
+              AND (
+                REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', '') = :phone
+                OR REPLACE(REPLACE(REPLACE(COALESCE(phone_alt, ''), ' ', ''), '-', ''), '+', '') = :phone
+              )
+        ";
+        $params = [
+            ':email' => $email,
+            ':phone' => $phone
+        ];
+
+        if ($orderNumber !== '') {
+            $sql .= " AND order_number = :order_number";
+            $params[':order_number'] = $orderNumber;
+        }
+
+        $sql .= " ORDER BY created_at DESC LIMIT 50";
+
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute($params);
+        $orders = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        foreach ($orders as &$order) {
+            $order['items'] = $this->getItems((int) $order['id']);
+        }
+
+        return $orders;
     }
 
     public function countAll()

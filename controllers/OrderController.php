@@ -290,6 +290,50 @@ class OrderController extends BaseController
         require 'views/customer/payhere_redirect.php';
     }
 
+    public function myOrders()
+    {
+        $settings = $this->settingModel->getAllPairs();
+        $email = trim((string) ($_GET['email'] ?? ''));
+        $phone = trim((string) ($_GET['phone'] ?? ''));
+        $orderNumber = trim((string) ($_GET['order_number'] ?? ''));
+        $orders = [];
+        $lookupAttempted = ($email !== '' || $phone !== '' || $orderNumber !== '');
+        $lookupError = '';
+
+        if ($lookupAttempted) {
+            if ($email === '' || $phone === '') {
+                $lookupError = 'Please enter both your email address and phone number to view your orders.';
+            } else {
+                $orders = $this->orderModel->findCustomerOrders($email, $phone, $orderNumber);
+            }
+        }
+
+        $seo = SeoHelper::defaultSeo($settings, [
+            'seo_title' => 'My Orders | ' . SeoHelper::shopName($settings),
+            'seo_description' => 'Track your orders without creating an account.',
+            'seo_canonical' => SeoHelper::absoluteUrl(BASE_URL . 'order/myOrders'),
+            'seo_robots' => 'noindex,nofollow'
+        ]);
+
+        $this->view('customer/orders_lookup', [
+            'title' => 'My Orders',
+            'settings' => $settings,
+            'orders' => $orders,
+            'lookup_email' => $email,
+            'lookup_phone' => $phone,
+            'lookup_order_number' => $orderNumber,
+            'lookup_attempted' => $lookupAttempted,
+            'lookup_error' => $lookupError,
+            'seo_title' => $seo['seo_title'],
+            'seo_description' => $seo['seo_description'],
+            'seo_canonical' => $seo['seo_canonical'],
+            'seo_image' => $seo['seo_image'],
+            'seo_type' => $seo['seo_type'],
+            'seo_robots' => $seo['seo_robots'],
+            'seo_json_ld' => $seo['seo_json_ld']
+        ]);
+    }
+
     public function startPayhereSingle()
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {

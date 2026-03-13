@@ -3,6 +3,8 @@
 <!-- Mobile Footer Links -->
 <div class="mobile-policy-links d-lg-none" style="padding: 56px 20px 100px; font-size: 12px; color: #666;">
     <div style="display:flex; flex-wrap:wrap; gap:8px; justify-content:center; line-height:1.7; text-align:center;">
+        <a href="<?= BASE_URL ?>order/myOrders">My Orders</a>
+        <span>|</span>
         <a href="<?= BASE_URL ?>page/refundReturns">Refund &amp; Returns Policy</a>
         <span>|</span>
         <a href="<?= BASE_URL ?>page/termsConditions">Terms &amp; Conditions</a>
@@ -14,6 +16,8 @@
 <!-- Desktop Policy Links -->
 <div class="desktop-policy-links display-desktop-only" style="padding: 40px 20px 24px; font-size: 14px; color: #666;">
     <div class="desktop-policy-links-inner" style="display:flex; flex-wrap:wrap; gap:12px; justify-content:center; align-items:center; text-align:center;">
+        <a href="<?= BASE_URL ?>order/myOrders">My Orders</a>
+        <span>|</span>
         <a href="<?= BASE_URL ?>page/refundReturns">Refund &amp; Returns Policy</a>
         <span>|</span>
         <a href="<?= BASE_URL ?>page/termsConditions">Terms &amp; Conditions</a>

@@ -106,6 +106,30 @@ class CartController extends BaseController
         exit;
     }
 
+    // Update Item Quantity (AJAX)
+    public function updateQty()
+    {
+        $input = json_decode(file_get_contents('php://input'), true);
+        $index = $input['index'] ?? null;
+        $qty = isset($input['qty']) ? (int) $input['qty'] : 1;
+
+        if ($index === null || !isset($_SESSION['cart'][$index])) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Cart item not found.']);
+            exit;
+        }
+
+        $_SESSION['cart'][$index]['qty'] = max(1, $qty);
+
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => true,
+            'cart' => array_values($_SESSION['cart']),
+            'count' => array_sum(array_column($_SESSION['cart'], 'qty'))
+        ]);
+        exit;
+    }
+
     // Clear Cart (AJAX)
     public function clear()
     {

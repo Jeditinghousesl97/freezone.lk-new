@@ -61,8 +61,16 @@ require_once 'views/layouts/customer_header.php';
                                     LKR <?= number_format($item['price'], 0) ?>
                                 </div>
                                 <div style="font-size: 11px; color: #666; font-weight: 500;"><?= htmlspecialchars($item['variants']) ?></div>
-                                <div style="font-size: 11px; color: #444; font-weight: 600; margin-top: 2px;">
-                                    Qty: <?= (int) $item['qty'] ?>
+                                <div style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
+                                    <button type="button" onclick="updateCartQty(<?= $index ?>, -1)" style="width: 28px; height: 28px; border: 1px solid #ddd; border-radius: 50%; background: #fff; color: #222; font-size: 16px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                                        -
+                                    </button>
+                                    <div style="min-width: 34px; text-align: center; font-size: 13px; color: #444; font-weight: 700;">
+                                        <?= (int) $item['qty'] ?>
+                                    </div>
+                                    <button type="button" onclick="updateCartQty(<?= $index ?>, 1)" style="width: 28px; height: 28px; border: none; border-radius: 50%; background: #000; color: #fff; font-size: 16px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                                        +
+                                    </button>
                                 </div>
                             </div>
 
@@ -173,6 +181,29 @@ require_once 'views/layouts/customer_header.php';
         .then(data => {
             if (data.success) {
                 window.location.reload();
+            }
+        });
+    }
+
+    function updateCartQty(index, change) {
+        const item = cartData[index];
+        if (!item) {
+            return;
+        }
+
+        const nextQty = Math.max(1, (parseInt(item.qty || 1, 10) + change));
+
+        fetch('<?= BASE_URL ?>cart/updateQty', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ index: index, qty: nextQty })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                window.location.reload();
+            } else if (data.message) {
+                alert(data.message);
             }
         });
     }

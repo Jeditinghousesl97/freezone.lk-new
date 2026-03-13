@@ -700,6 +700,7 @@
             <a href="<?= BASE_URL ?>shop/new_arrivals">Recent Items</a>
             <a href="<?= BASE_URL ?>shop/featured">Featured Products</a>
             <a href="<?= BASE_URL ?>shop/sales">Discounts!</a>
+            <a href="<?= BASE_URL ?>order/myOrders">My Orders</a>
         </div>
     </header>
 

@@ -60,4 +60,17 @@ $displayStatus = $isSuccess
     </script>
 <?php endif; ?>
 
+<?php if (!empty($order)): ?>
+    <script>
+        (function () {
+            try {
+                localStorage.setItem('cus_email', '<?= htmlspecialchars($order['email'] ?? '', ENT_QUOTES) ?>');
+                localStorage.setItem('cus_phone1', '<?= htmlspecialchars($order['phone'] ?? '', ENT_QUOTES) ?>');
+            } catch (e) {
+                console.warn('Could not save customer order lookup details.');
+            }
+        })();
+    </script>
+<?php endif; ?>
+
 <?php require_once 'views/layouts/customer_footer.php'; ?>
