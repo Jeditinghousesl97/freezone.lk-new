@@ -378,6 +378,14 @@ class Order extends BaseModel
         ]);
     }
 
+    public function deleteByOrderNumber($orderNumber)
+    {
+        $stmt = $this->conn->prepare("DELETE FROM orders WHERE order_number = :order_number");
+        return $stmt->execute([
+            ':order_number' => $orderNumber
+        ]);
+    }
+
     public function recordTransaction($orderId, $gateway, $type, $paymentId = null, $statusCode = null, $amount = null, $currency = null, $payload = null)
     {
         $stmt = $this->conn->prepare("

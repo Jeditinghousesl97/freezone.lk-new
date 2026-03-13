@@ -56,7 +56,7 @@
 
                     <select name="order_status" style="width:100%; padding:12px 14px; border:1px solid #ddd; border-radius:10px; box-sizing:border-box;">
                         <option value="">All Order Statuses</option>
-                        <?php foreach (['pending', 'processing', 'completed'] as $status): ?>
+                        <?php foreach (['pending', 'processing', 'completed', 'cancelled'] as $status): ?>
                             <option value="<?= $status ?>" <?= (($filters['order_status'] ?? '') === $status) ? 'selected' : '' ?>>
                                 <?= htmlspecialchars(ucfirst($status)) ?>
                             </option>

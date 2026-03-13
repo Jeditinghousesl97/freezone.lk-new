@@ -165,6 +165,38 @@ class OrderController extends BaseController
         $this->redirect('order/details/' . urlencode($orderNumber));
     }
 
+    public function cancel($orderNumber = null)
+    {
+        $this->requireAdminSession();
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($orderNumber)) {
+            $this->redirect('order/manage');
+        }
+
+        $order = $this->orderModel->getByOrderNumber($orderNumber);
+        if ($order) {
+            $this->orderModel->updateOrderStatus($orderNumber, 'cancelled');
+        }
+
+        $this->redirect('order/details/' . urlencode($orderNumber));
+    }
+
+    public function delete($orderNumber = null)
+    {
+        $this->requireAdminSession();
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($orderNumber)) {
+            $this->redirect('order/manage');
+        }
+
+        $order = $this->orderModel->getByOrderNumber($orderNumber);
+        if ($order) {
+            $this->orderModel->deleteByOrderNumber($orderNumber);
+        }
+
+        $this->redirect('order/manage');
+    }
+
     public function startPayhere()
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
