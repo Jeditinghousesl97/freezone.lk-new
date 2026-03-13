@@ -1,59 +1,30 @@
 <?php
-/**
- * Database Configuration & Connection
- * 
- * This file handles the connection to the MySQL database.
- * We use the Singleton Pattern here. This means the system will only ever 
- * create ONE connection to the database and reuse it, rather than opening 
- * a new connection every time we need data. This makes the site faster.
- */
 
-// Load the main configuration file
-require_once dirname(__DIR__) . '/config/config.php';
+$is_local = ($_SERVER['SERVER_NAME'] === 'localhost' || $_SERVER['SERVER_NAME'] === '127.0.0.1');
 
-class Database
-{
-    // Configuration Settings (Now loaded from constants)
-    private $host = DB_HOST;
-    private $db_name = DB_NAME;
-    private $username = DB_USER;
-    private $password = DB_PASS;
-    private $port = DB_PORT;
+if ($is_local) {
+    // === LOCAL DEVELOPMENT SETTINGS ===
+    define('DB_HOST', 'localhost');
+    define('DB_PORT', '3306'); // XAMPP Default Port (Updated to yours)
+    define('DB_NAME', 'fff');
+    define('DB_USER', 'root');
+    define('DB_PASS', '');
 
-    // The connection variable
-    public $conn;
+    // Base URL for links (folder name on your laptop)
+    define('BASE_URL', '/fff/');
 
-    /**
-     * Get Database Connection
-     * 
-     * This function attempts to connect to the database.
-     * If successful, it returns the connection object.
-     * If it fails, it shows an error message.
-     */
-    public function getConnection()
-    {
-        $this->conn = null;
+} else {
+    // === PRODUCTION SETTINGS (domain) ===
+    define('DB_HOST', 'localhost');
+    define('DB_PORT', '3306'); // Standard MySQL Port for Hosting
+    define('DB_NAME', 'fff');
+    define('DB_USER', 'root');
+    define('DB_PASS', '');
 
-        try {
-
-            $dsn = "mysql:host=" . $this->host . ";port=" . $this->port . ";dbname=" . $this->db_name . ";charset=utf8mb4";
-
-            // Create the PDO connection
-            // PDO (PHP Data Objects) is a secure way to connect to databases
-            $this->conn = new PDO($dsn, $this->username, $this->password);
-
-            // Set error mode to exception
-            // This means if there is a SQL error, PHP will stop and tell us exactly what's wrong
-            // instead of silently failing.
-            $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-        } catch (PDOException $exception) {
-            // If connection fails, stop everything and show the error
-            // PRO TIP: On production, don't show specific errors to users!
-            echo "Connection error: " . $exception->getMessage();
-        }
-
-        return $this->conn;
-    }
+    // Base URL for links (deployment folder on server)
+    define('BASE_URL', '/fff/');
 }
+
+// Global helper for Base Path (Root Directory)
+define('ROOT_PATH', dirname(__DIR__) . '/');
 ?>
