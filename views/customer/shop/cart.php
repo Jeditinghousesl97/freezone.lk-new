@@ -92,10 +92,11 @@ require_once 'views/layouts/customer_header.php';
                     </div>
 
                     <div style="display:grid; gap:12px;">
-                        <?php if (!isset($settings['whatsapp_ordering_enabled']) || !empty($settings['whatsapp_ordering_enabled'])): ?>
-                            <button onclick="openOrderModal('whatsapp')" style="width: 100%; background: #25d366; color: white; border: none; padding: 15px; border-radius: 30px; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; box-shadow: 0 4px 10px rgba(37, 211, 102, 0.3);">
-                                <i class="fab fa-whatsapp" style="font-size: 18px;"></i>
-                                Order Now via WhatsApp
+                        <?php $codEnabled = !isset($settings['cod_enabled']) ? (!isset($settings['whatsapp_ordering_enabled']) || !empty($settings['whatsapp_ordering_enabled'])) : !empty($settings['cod_enabled']); ?>
+                        <?php if ($codEnabled): ?>
+                            <button onclick="openOrderModal('cod')" style="width: 100%; background: #111; color: white; border: none; padding: 15px; border-radius: 30px; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; box-shadow: 0 4px 10px rgba(17, 17, 17, 0.22);">
+                                <i class="fas fa-box" style="font-size: 18px;"></i>
+                                Order with Cash on Delivery
                             </button>
                         <?php endif; ?>
 
@@ -161,7 +162,7 @@ require_once 'views/layouts/customer_header.php';
 
             <div style="display: flex; gap: 10px;">
                 <button type="button" onclick="closeOrderModal()" style="flex: 1; padding: 12px; border: 1px solid #ddd; background: #f5f5f5; border-radius: 8px; font-weight: 600; cursor: pointer;">Cancel</button>
-                <button type="submit" id="orderSubmitButton" style="flex: 2; padding: 12px; border: none; background: #25d366; color: white; border-radius: 8px; font-weight: 600; cursor: pointer;">Send via WhatsApp</button>
+                <button type="submit" id="orderSubmitButton" style="flex: 2; padding: 12px; border: none; background: #111; color: white; border-radius: 8px; font-weight: 600; cursor: pointer;">Place COD Order</button>
             </div>
         </form>
     </div>
@@ -169,7 +170,7 @@ require_once 'views/layouts/customer_header.php';
 
 <script>
     const cartData = <?= json_encode($cart ?? []) ?>;
-    let orderMode = 'whatsapp';
+    let orderMode = 'cod';
 
     function removeFromCart(index) {
         fetch('<?= BASE_URL ?>cart/remove', {
@@ -231,7 +232,7 @@ require_once 'views/layouts/customer_header.php';
             return;
         }
 
-        orderMode = mode || 'whatsapp';
+        orderMode = mode || 'cod';
 
         if (localStorage.getItem('cus_name')) document.getElementById('ordName').value = localStorage.getItem('cus_name');
         if (localStorage.getItem('cus_email')) document.getElementById('ordEmail').value = localStorage.getItem('cus_email');
@@ -246,9 +247,9 @@ require_once 'views/layouts/customer_header.php';
             submitButton.textContent = 'Continue to PayHere';
             submitButton.classList.add('btn-payhere-submit');
         } else {
-            submitButton.textContent = 'Send via WhatsApp';
+            submitButton.textContent = 'Place COD Order';
             submitButton.classList.remove('btn-payhere-submit');
-            submitButton.style.background = '#25d366';
+            submitButton.style.background = '#111';
         }
 
         document.getElementById('orderModal').style.display = 'flex';
@@ -292,46 +293,43 @@ require_once 'views/layouts/customer_header.php';
             return;
         }
 
-        let total = 0;
-        let msg = "*NEW CART ORDER*\n\n";
-
-        msg += "*Items:*\n";
-        cartData.forEach((item, i) => {
-            msg += `${i + 1}. ${item.title}\n`;
-            msg += `   ${item.variants}\n`;
-            msg += `   Price: LKR ${item.price}\n`;
-            msg += `   Qty: ${item.qty || 1}\n\n`;
-            total += (item.price * (item.qty || 1));
-        });
-
-        msg += `*Total Amount: LKR ${total.toLocaleString()}*\n`;
-        msg += "----------------------------\n";
-        msg += "*Customer Details:*\n";
-        msg += "Name: " + data.name + "\n";
-        msg += "Email: " + data.email + "\n";
-        msg += "Address: " + data.address + "\n";
-        msg += "City: " + data.city + "\n";
-        msg += "District: " + data.district + "\n";
-        msg += "Phone 01: " + data.phone1 + "\n";
-        msg += "Phone 02: " + data.phone2 + "\n";
-        if (data.note) msg += "Note: " + data.note + "\n";
-
-        const shopPhone = "<?= str_replace(['+', ' '], '', $settings['shop_whatsapp'] ?? '') ?>";
-        const url = "https://wa.me/" + shopPhone + "?text=" + encodeURIComponent(msg);
-
-        if (typeof showGlobalLoader === 'function') showGlobalLoader();
-
-        setTimeout(() => {
-            window.open(url, '_blank');
-            if (typeof hideGlobalLoader === 'function') hideGlobalLoader();
-            closeOrderModal();
-        }, 1000);
+        submitOrderToCod(data);
     }
 
     function submitOrderToPayHere(data) {
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = '<?= BASE_URL ?>order/startPayhere';
+        form.style.display = 'none';
+
+        const fields = {
+            customer_name: data.name,
+            email: data.email,
+            address: data.address,
+            city: data.city,
+            district: data.district,
+            phone: data.phone1,
+            phone_alt: data.phone2,
+            note: data.note
+        };
+
+        Object.keys(fields).forEach(function (key) {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = key;
+            input.value = fields[key] || '';
+            form.appendChild(input);
+        });
+
+        document.body.appendChild(form);
+        if (typeof showGlobalLoader === 'function') showGlobalLoader();
+        form.submit();
+    }
+
+    function submitOrderToCod(data) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '<?= BASE_URL ?>order/startCod';
         form.style.display = 'none';
 
         const fields = {

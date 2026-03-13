@@ -174,9 +174,10 @@ require_once 'views/layouts/customer_header.php';
                 <!-- Bottom Actions -->
                 <div class="pd-bottom-actions">
                     <!-- Order Now Button (Triggers Modal) -->
-                    <?php if (!isset($settings['whatsapp_ordering_enabled']) || !empty($settings['whatsapp_ordering_enabled'])): ?>
-                        <button class="btn-action btn-whatsapp" onclick="openOrderModal('whatsapp')">
-                            <i class="fab fa-whatsapp"></i> Whatsapp
+                    <?php $codEnabled = !isset($settings['cod_enabled']) ? (!isset($settings['whatsapp_ordering_enabled']) || !empty($settings['whatsapp_ordering_enabled'])) : !empty($settings['cod_enabled']); ?>
+                    <?php if ($codEnabled): ?>
+                        <button class="btn-action btn-whatsapp" onclick="openOrderModal('cod')">
+                            <i class="fas fa-box"></i> Cash on Delivery
                         </button>
                     <?php endif; ?>
 
@@ -484,7 +485,7 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
 
     // Variation Selection Logic
     let selectedVariations = {}; // Store selected variations: { 'Color': 'Red', 'Size': 'M' }
-    let orderMode = 'whatsapp';
+    let orderMode = 'cod';
 
     function selectVariation(el, name, value) {
         // Toggle active class in this group
@@ -497,7 +498,7 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
         console.log("Selected:", selectedVariations);
     }
 
-    function openOrderModal(mode = 'whatsapp') {
+    function openOrderModal(mode = 'cod') {
         orderMode = mode;
         // Load Saved Data
         if (localStorage.getItem('cus_name')) document.getElementById('ordName').value = localStorage.getItem('cus_name');
@@ -513,9 +514,9 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
             submitButton.textContent = 'Continue to PayHere';
             submitButton.classList.add('btn-payhere-submit');
         } else {
-            submitButton.textContent = 'Send via WhatsApp';
+            submitButton.textContent = 'Place COD Order';
             submitButton.classList.remove('btn-payhere-submit');
-            submitButton.style.background = '#6AD07F';
+            submitButton.style.background = '#111';
         }
 
         document.getElementById('orderModal').style.display = 'flex';
@@ -537,7 +538,6 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
     }
 
     function submitOrder() {
-        // Get Form Values
         const name = document.getElementById('ordName').value.trim();
         const email = document.getElementById('ordEmail').value.trim();
         const address = document.getElementById('ordAddress').value.trim();
@@ -547,7 +547,6 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
         const phone2 = document.getElementById('ordPhone2').value.trim();
         const note = document.getElementById('ordNote').value.trim();
 
-        // Validation
         if (!name || !email || !address || !city || !phone1) {
             alert("Please fill in all required fields.");
             return;
@@ -575,53 +574,16 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
             return;
         }
 
-        // Construct Message
-        let msg = "*NEW ORDER REQUEST* 🛍️\n\n";
-
-        // Product Details
-        const qty = parseInt(document.getElementById('qtyInput').value) || 1;
-        const unitPrice = <?= $product['sale_price'] ?: $product['price'] ?>;
-        const total = unitPrice * qty;
-
-        // SKU Injection
-        const sku = "<?= htmlspecialchars($product['sku'] ?? 'N/A') ?>";
-
-        msg += "*Product Details:*\n";
-        msg += "Name: <?= addslashes($product['title']) ?>\n";
-        msg += "SKU: " + sku + "\n"; // Added SKU here
-        msg += "Price: LKR " + unitPrice.toLocaleString('en-US') + "\n";
-        msg += "Quantity: " + qty + "\n";
-        msg += "Total: LKR " + total.toLocaleString('en-US') + "\n";
-        msg += "Link: " + window.location.href + "\n";
-
-        // Add Selected Variations
-        const variantStr = getVariantText();
-        if (variantStr) {
-            msg += "Variations: " + variantStr + "\n";
-        }
-
-        msg += "\n*Customer Details:*\n";
-        msg += "Name: " + name + "\n";
-        msg += "Email: " + email + "\n";
-        msg += "Address: " + address + "\n";
-        msg += "City: " + city + "\n";
-        msg += "District: " + district + "\n";
-        msg += "Phone 01: " + phone1 + "\n";
-        msg += "Phone 02: " + phone2 + "\n";
-        if (note) msg += "Note: " + note + "\n";
-
-        // Redirect
-        const shopPhone = "<?= str_replace(['+', ' '], '', $settings['shop_whatsapp'] ?? '') ?>";
-        const url = "https://wa.me/" + shopPhone + "?text=" + encodeURIComponent(msg);
-
-        // Show Loader & Delay
-        if (typeof showGlobalLoader === 'function') showGlobalLoader();
-
-        setTimeout(() => {
-            window.open(url, '_blank');
-            if (typeof hideGlobalLoader === 'function') hideGlobalLoader();
-            closeOrderModal();
-        }, 1000); // 1s delay to prevent double-clicks
+        submitOrderToCod({
+            name,
+            email,
+            address,
+            city,
+            district,
+            phone1,
+            phone2,
+            note
+        });
     }
 
     function submitOrderToPayHere(data) {
@@ -631,6 +593,42 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = '<?= BASE_URL ?>order/startPayhereSingle';
+        form.style.display = 'none';
+
+        const fields = {
+            product_id: '<?= (int) $product['id'] ?>',
+            quantity: qty,
+            variants: variantStr,
+            customer_name: data.name,
+            email: data.email,
+            address: data.address,
+            city: data.city,
+            district: data.district,
+            phone: data.phone1,
+            phone_alt: data.phone2,
+            note: data.note
+        };
+
+        Object.keys(fields).forEach(function (key) {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = key;
+            input.value = fields[key] || '';
+            form.appendChild(input);
+        });
+
+        document.body.appendChild(form);
+        if (typeof showGlobalLoader === 'function') showGlobalLoader();
+        form.submit();
+    }
+
+    function submitOrderToCod(data) {
+        const qty = parseInt(document.getElementById('qtyInput').value) || 1;
+        const variantStr = getVariantText();
+
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '<?= BASE_URL ?>order/startCodSingle';
         form.style.display = 'none';
 
         const fields = {

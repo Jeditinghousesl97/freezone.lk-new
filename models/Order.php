@@ -88,12 +88,12 @@ class Order extends BaseModel
         }
     }
 
-    public function createFromCart(array $customer, array $cart, array $settings)
+    public function createFromCart(array $customer, array $cart, array $settings, array $options = [])
     {
-        return $this->createFromItems($customer, $cart, $settings);
+        return $this->createFromItems($customer, $cart, $settings, $options);
     }
 
-    public function createFromItems(array $customer, array $items, array $settings)
+    public function createFromItems(array $customer, array $items, array $settings, array $options = [])
     {
         if (empty($items)) {
             return false;
@@ -104,6 +104,16 @@ class Order extends BaseModel
         try {
             $orderNumber = $this->generateOrderNumber();
             $currency = trim($settings['currency_symbol'] ?? 'LKR');
+            $paymentMethod = trim((string) ($options['payment_method'] ?? 'payhere'));
+            $paymentGateway = trim((string) ($options['payment_gateway'] ?? $paymentMethod));
+            $paymentStatus = trim((string) ($options['payment_status'] ?? 'pending'));
+            $orderStatus = trim((string) ($options['order_status'] ?? 'pending'));
+            $transactionType = trim((string) ($options['transaction_type'] ?? 'initiated'));
+            $transactionStatusCode = trim((string) ($options['transaction_status_code'] ?? strtoupper($paymentStatus)));
+            $transactionPayload = $options['transaction_payload'] ?? [
+                'customer' => $customer,
+                'items_count' => count($items)
+            ];
             $totalAmount = 0;
 
             foreach ($items as $item) {
@@ -140,10 +150,10 @@ class Order extends BaseModel
                 ':note' => $customer['note'],
                 ':total_amount' => number_format($totalAmount, 2, '.', ''),
                 ':currency' => $currency,
-                ':payment_method' => 'payhere',
-                ':payment_gateway' => 'payhere',
-                ':payment_status' => 'pending',
-                ':order_status' => 'pending'
+                ':payment_method' => $paymentMethod,
+                ':payment_gateway' => $paymentGateway,
+                ':payment_status' => $paymentStatus,
+                ':order_status' => $orderStatus
             ]);
 
             $orderId = (int) $this->conn->lastInsertId();
@@ -171,10 +181,7 @@ class Order extends BaseModel
                 ]);
             }
 
-            $this->recordTransaction($orderId, 'payhere', 'initiated', null, 'PENDING', $totalAmount, $currency, [
-                'customer' => $customer,
-                'items_count' => count($items)
-            ]);
+            $this->recordTransaction($orderId, $paymentGateway, $transactionType, null, $transactionStatusCode, $totalAmount, $currency, $transactionPayload);
 
             $this->conn->commit();
             return $this->getById($orderId);

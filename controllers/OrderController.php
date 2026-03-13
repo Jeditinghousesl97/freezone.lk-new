@@ -49,6 +49,36 @@ class OrderController extends BaseController
         return [$firstName, $lastName];
     }
 
+    private function buildCustomerFromRequest()
+    {
+        $customerName = trim((string) ($_POST['customer_name'] ?? ''));
+        $email = trim((string) ($_POST['email'] ?? ''));
+        $phone = trim((string) ($_POST['phone'] ?? ''));
+        $address = trim((string) ($_POST['address'] ?? ''));
+        $city = trim((string) ($_POST['city'] ?? ''));
+
+        if ($customerName === '' || $email === '' || $phone === '' || $address === '' || $city === '') {
+            return null;
+        }
+
+        [$firstName, $lastName] = $this->splitName($customerName);
+
+        return [
+            'customer_name' => $customerName,
+            'first_name' => $firstName,
+            'last_name' => $lastName,
+            'email' => $email,
+            'phone' => $phone,
+            'phone_alt' => trim((string) ($_POST['phone_alt'] ?? '')),
+            'address' => $address,
+            'city' => $city,
+            'district' => trim((string) ($_POST['district'] ?? '')),
+            'postal_code' => '',
+            'country' => 'Sri Lanka',
+            'note' => trim((string) ($_POST['note'] ?? ''))
+        ];
+    }
+
     private function requireAdminSession()
     {
         if (!isset($_SESSION['user_id'])) {
@@ -237,34 +267,11 @@ class OrderController extends BaseController
             $this->redirect('cart');
         }
 
-        $customerName = trim($_POST['customer_name'] ?? '');
-        $email = trim($_POST['email'] ?? '');
-        $phone = trim($_POST['phone'] ?? '');
-        $address = trim($_POST['address'] ?? '');
-        $city = trim($_POST['city'] ?? '');
-        $country = 'Sri Lanka';
-
-        if ($customerName === '' || $email === '' || $phone === '' || $address === '' || $city === '') {
+        $customer = $this->buildCustomerFromRequest();
+        if (!$customer) {
             $_SESSION['order_error'] = 'Please fill in all required payment fields.';
             $this->redirect('cart');
         }
-
-        [$firstName, $lastName] = $this->splitName($customerName);
-
-        $customer = [
-            'customer_name' => $customerName,
-            'first_name' => $firstName,
-            'last_name' => $lastName,
-            'email' => $email,
-            'phone' => $phone,
-            'phone_alt' => trim($_POST['phone_alt'] ?? ''),
-            'address' => $address,
-            'city' => $city,
-            'district' => trim($_POST['district'] ?? ''),
-            'postal_code' => '',
-            'country' => $country,
-            'note' => trim($_POST['note'] ?? '')
-        ];
 
         $order = $this->orderModel->createFromCart($customer, $cart, $settings);
         if (!$order) {
@@ -355,6 +362,55 @@ class OrderController extends BaseController
         ]);
     }
 
+    public function startCod()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('cart');
+        }
+
+        $settings = $this->settingModel->getAllPairs();
+        $cart = $_SESSION['cart'] ?? [];
+
+        if (empty($cart)) {
+            $_SESSION['order_error'] = 'Your cart is empty.';
+            $this->redirect('cart');
+        }
+
+        if (isset($settings['cod_enabled']) && empty($settings['cod_enabled'])) {
+            $_SESSION['order_error'] = 'Cash on Delivery is not enabled for this shop.';
+            $this->redirect('cart');
+        }
+
+        $customer = $this->buildCustomerFromRequest();
+        if (!$customer) {
+            $_SESSION['order_error'] = 'Please fill in all required order fields.';
+            $this->redirect('cart');
+        }
+
+        $order = $this->orderModel->createFromCart($customer, $cart, $settings, [
+            'payment_method' => 'cod',
+            'payment_gateway' => 'cod',
+            'payment_status' => 'pending',
+            'order_status' => 'pending',
+            'transaction_type' => 'cod_order_placed',
+            'transaction_status_code' => 'PENDING',
+            'transaction_payload' => [
+                'customer' => $customer,
+                'items_count' => count($cart),
+                'source' => 'cart_cod'
+            ]
+        ]);
+
+        if (!$order) {
+            $_SESSION['order_error'] = 'Unable to place your order right now.';
+            $this->redirect('cart');
+        }
+
+        $_SESSION['cod_order_number'] = $order['order_number'];
+        $_SESSION['cart'] = [];
+        $this->redirect('order/codSuccess?order=' . urlencode($order['order_number']));
+    }
+
     public function startPayhereSingle()
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -378,34 +434,11 @@ class OrderController extends BaseController
             $this->redirect('cart');
         }
 
-        $customerName = trim($_POST['customer_name'] ?? '');
-        $email = trim($_POST['email'] ?? '');
-        $phone = trim($_POST['phone'] ?? '');
-        $address = trim($_POST['address'] ?? '');
-        $city = trim($_POST['city'] ?? '');
-        $country = 'Sri Lanka';
-
-        if ($customerName === '' || $email === '' || $phone === '' || $address === '' || $city === '') {
+        $customer = $this->buildCustomerFromRequest();
+        if (!$customer) {
             $_SESSION['order_error'] = 'Please fill in all required payment fields.';
             $this->redirect('shop/product/' . $productId);
         }
-
-        [$firstName, $lastName] = $this->splitName($customerName);
-
-        $customer = [
-            'customer_name' => $customerName,
-            'first_name' => $firstName,
-            'last_name' => $lastName,
-            'email' => $email,
-            'phone' => $phone,
-            'phone_alt' => trim($_POST['phone_alt'] ?? ''),
-            'address' => $address,
-            'city' => $city,
-            'district' => trim($_POST['district'] ?? ''),
-            'postal_code' => '',
-            'country' => $country,
-            'note' => trim($_POST['note'] ?? '')
-        ];
 
         $unitPrice = (!empty($product['sale_price']) && (float) $product['sale_price'] < (float) $product['price'])
             ? (float) $product['sale_price']
@@ -471,6 +504,78 @@ class OrderController extends BaseController
         ];
 
         require 'views/customer/payhere_redirect.php';
+    }
+
+    public function startCodSingle()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('cart');
+        }
+
+        $settings = $this->settingModel->getAllPairs();
+        if (isset($settings['cod_enabled']) && empty($settings['cod_enabled'])) {
+            $_SESSION['order_error'] = 'Cash on Delivery is not enabled for this shop.';
+            $this->redirect('cart');
+        }
+
+        $productId = (int) ($_POST['product_id'] ?? 0);
+        $qty = max(1, (int) ($_POST['quantity'] ?? 1));
+        $variantText = trim((string) ($_POST['variants'] ?? ''));
+
+        $product = $this->productModel->getById($productId);
+        if (!$product) {
+            $_SESSION['order_error'] = 'The selected product could not be found.';
+            $this->redirect('cart');
+        }
+
+        $customer = $this->buildCustomerFromRequest();
+        if (!$customer) {
+            $_SESSION['order_error'] = 'Please fill in all required order fields.';
+            $this->redirect('shop/product/' . $productId);
+        }
+
+        $unitPrice = (!empty($product['sale_price']) && (float) $product['sale_price'] < (float) $product['price'])
+            ? (float) $product['sale_price']
+            : (float) $product['price'];
+
+        $imageUrl = '';
+        if (!empty($product['main_image'])) {
+            $imagePath = 'assets/uploads/' . $product['main_image'];
+            if (file_exists(ROOT_PATH . $imagePath)) {
+                $imageUrl = BASE_URL . $imagePath;
+            }
+        }
+
+        $items = [[
+            'id' => (int) $product['id'],
+            'title' => $product['title'] ?? 'Product',
+            'price' => $unitPrice,
+            'qty' => $qty,
+            'img' => $imageUrl,
+            'variants' => $variantText
+        ]];
+
+        $order = $this->orderModel->createFromItems($customer, $items, $settings, [
+            'payment_method' => 'cod',
+            'payment_gateway' => 'cod',
+            'payment_status' => 'pending',
+            'order_status' => 'pending',
+            'transaction_type' => 'cod_order_placed',
+            'transaction_status_code' => 'PENDING',
+            'transaction_payload' => [
+                'customer' => $customer,
+                'items_count' => count($items),
+                'source' => 'single_cod'
+            ]
+        ]);
+
+        if (!$order) {
+            $_SESSION['order_error'] = 'Unable to place your order right now.';
+            $this->redirect('shop/product/' . $productId);
+        }
+
+        $_SESSION['cod_order_number'] = $order['order_number'];
+        $this->redirect('order/codSuccess?order=' . urlencode($order['order_number']));
     }
 
     public function payhereNotify()
@@ -652,6 +757,39 @@ class OrderController extends BaseController
             'settings' => $settings,
             'order' => $order,
             'status_type' => 'cancel',
+            'seo_title' => $seo['seo_title'],
+            'seo_description' => $seo['seo_description'],
+            'seo_canonical' => $seo['seo_canonical'],
+            'seo_image' => $seo['seo_image'],
+            'seo_type' => $seo['seo_type'],
+            'seo_robots' => $seo['seo_robots'],
+            'seo_json_ld' => $seo['seo_json_ld']
+        ]);
+    }
+
+    public function codSuccess()
+    {
+        $settings = $this->settingModel->getAllPairs();
+        $orderNumber = $_GET['order'] ?? ($_SESSION['cod_order_number'] ?? '');
+        $order = $this->orderModel->getByOrderNumber($orderNumber);
+
+        if (!$order || ($order['payment_gateway'] ?? '') !== 'cod') {
+            $this->redirect('cart');
+        }
+
+        unset($_SESSION['cod_order_number']);
+
+        $seo = SeoHelper::defaultSeo($settings, [
+            'seo_title' => 'Order Placed | ' . SeoHelper::shopName($settings),
+            'seo_description' => 'Your cash on delivery order has been placed successfully.',
+            'seo_canonical' => SeoHelper::absoluteUrl(BASE_URL . 'order/codSuccess?order=' . urlencode($orderNumber)),
+            'seo_robots' => 'noindex,nofollow'
+        ]);
+
+        $this->view('customer/order_confirmation', [
+            'title' => 'Order Placed',
+            'settings' => $settings,
+            'order' => $order,
             'seo_title' => $seo['seo_title'],
             'seo_description' => $seo['seo_description'],
             'seo_canonical' => $seo['seo_canonical'],

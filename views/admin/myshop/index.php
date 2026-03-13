@@ -367,14 +367,14 @@
                 <label class="section-title">Privacy Policy</label>
                 <textarea name="privacy_policy_content" class="input-white textarea-lg" placeholder="Enter privacy policy content here"><?= htmlspecialchars($settings['privacy_policy_content'] ?? '') ?></textarea>
 
-                <label class="section-title" style="margin-top:24px;">PayHere Payment Settings</label>
+                <label class="section-title" style="margin-top:24px;">Checkout Settings</label>
                 <p style="margin:0 0 14px; font-size:12px; color:#666;">
                     Turn checkout methods on or off for this shop. Use sandbox mode for testing PayHere.
                 </p>
 
                 <label class="slider-remove-row" style="margin:0 0 12px;">
-                    <input type="checkbox" name="whatsapp_ordering_enabled" value="1" <?= !isset($settings['whatsapp_ordering_enabled']) || !empty($settings['whatsapp_ordering_enabled']) ? 'checked' : '' ?>>
-                    Enable WhatsApp ordering
+                    <input type="checkbox" name="cod_enabled" value="1" <?= !isset($settings['cod_enabled']) ? (!isset($settings['whatsapp_ordering_enabled']) || !empty($settings['whatsapp_ordering_enabled']) ? 'checked' : '') : (!empty($settings['cod_enabled']) ? 'checked' : '') ?>>
+                    Enable Cash on Delivery
                 </label>
 
                 <label class="slider-remove-row" style="margin:0 0 12px;">

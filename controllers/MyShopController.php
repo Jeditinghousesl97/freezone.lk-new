@@ -45,6 +45,7 @@ class MyShopController extends BaseController
             'refund_policy_content',
             'terms_conditions_content',
             'privacy_policy_content',
+            'cod_enabled',
             'whatsapp_ordering_enabled',
             'payhere_enabled',
             'payhere_merchant_id',
@@ -92,6 +93,7 @@ class MyShopController extends BaseController
                 $this->settingModel->set('payhere_merchant_secret', trim((string) $_POST['payhere_merchant_secret']));
             }
 
+            $this->settingModel->set('cod_enabled', !empty($_POST['cod_enabled']) ? '1' : '0');
             $this->settingModel->set('whatsapp_ordering_enabled', !empty($_POST['whatsapp_ordering_enabled']) ? '1' : '0');
             $this->settingModel->set('payhere_enabled', !empty($_POST['payhere_enabled']) ? '1' : '0');
             $this->settingModel->set('payhere_sandbox', !empty($_POST['payhere_sandbox']) ? '1' : '0');

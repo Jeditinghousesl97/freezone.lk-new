@@ -93,7 +93,7 @@
 </footer>
 
 <!-- Floating WhatsApp -->
-<?php if ((!isset($settings['whatsapp_ordering_enabled']) || !empty($settings['whatsapp_ordering_enabled'])) && !empty($settings['shop_whatsapp'])): ?>
+<?php if (!empty($settings['shop_whatsapp'])): ?>
     <a href="https://wa.me/<?= preg_replace('/[^0-9]/', '', $settings['shop_whatsapp']) ?>"
         class="floating-whatsapp display-desktop-only" target="_blank">
         <i class="fab fa-whatsapp"></i>
