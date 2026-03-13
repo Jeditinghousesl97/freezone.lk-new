@@ -33,6 +33,7 @@ class Order extends BaseModel
                 payment_gateway VARCHAR(50) NOT NULL DEFAULT 'payhere',
                 payment_status VARCHAR(40) NOT NULL DEFAULT 'pending',
                 order_status VARCHAR(40) NOT NULL DEFAULT 'pending',
+                admin_seen_at TIMESTAMP NULL DEFAULT NULL,
                 gateway_payment_id VARCHAR(120) DEFAULT NULL,
                 gateway_status_code VARCHAR(20) DEFAULT NULL,
                 gateway_message TEXT DEFAULT NULL,
@@ -42,6 +43,7 @@ class Order extends BaseModel
         ");
 
         $this->ensureColumnExists('orders', 'order_status', "ALTER TABLE orders ADD COLUMN order_status VARCHAR(40) NOT NULL DEFAULT 'pending' AFTER payment_status");
+        $this->ensureColumnExists('orders', 'admin_seen_at', "ALTER TABLE orders ADD COLUMN admin_seen_at TIMESTAMP NULL DEFAULT NULL AFTER order_status");
 
         $this->conn->exec("
             CREATE TABLE IF NOT EXISTS order_items (
@@ -227,6 +229,108 @@ class Order extends BaseModel
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    private function buildFilterParts(array $filters)
+    {
+        $where = [];
+        $params = [];
+
+        if (!empty($filters['search'])) {
+            $where[] = "(order_number LIKE :search OR customer_name LIKE :search OR email LIKE :search OR phone LIKE :search)";
+            $params[':search'] = '%' . trim($filters['search']) . '%';
+        }
+
+        if (!empty($filters['payment_status'])) {
+            $where[] = "payment_status = :payment_status";
+            $params[':payment_status'] = trim($filters['payment_status']);
+        }
+
+        if (!empty($filters['order_status'])) {
+            $where[] = "order_status = :order_status";
+            $params[':order_status'] = trim($filters['order_status']);
+        }
+
+        if (!empty($filters['date_from'])) {
+            $where[] = "DATE(created_at) >= :date_from";
+            $params[':date_from'] = trim($filters['date_from']);
+        }
+
+        if (!empty($filters['date_to'])) {
+            $where[] = "DATE(created_at) <= :date_to";
+            $params[':date_to'] = trim($filters['date_to']);
+        }
+
+        if (!empty($filters['only_new'])) {
+            $where[] = "admin_seen_at IS NULL";
+        }
+
+        $sqlWhere = !empty($where) ? (' WHERE ' . implode(' AND ', $where)) : '';
+
+        return [$sqlWhere, $params];
+    }
+
+    public function getFiltered(array $filters = [], $limit = 100)
+    {
+        [$sqlWhere, $params] = $this->buildFilterParts($filters);
+        $sql = "SELECT * FROM orders" . $sqlWhere . " ORDER BY created_at DESC LIMIT :limit";
+        $stmt = $this->conn->prepare($sql);
+
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+
+        $stmt->bindValue(':limit', (int) $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function getFilteredForExport(array $filters = [])
+    {
+        [$sqlWhere, $params] = $this->buildFilterParts($filters);
+        $sql = "SELECT * FROM orders" . $sqlWhere . " ORDER BY created_at DESC";
+        $stmt = $this->conn->prepare($sql);
+
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function getSummaryCounts(array $filters = [])
+    {
+        [$sqlWhere, $params] = $this->buildFilterParts($filters);
+
+        $sql = "
+            SELECT
+                COUNT(*) AS total_orders,
+                SUM(CASE WHEN admin_seen_at IS NULL THEN 1 ELSE 0 END) AS new_orders,
+                SUM(CASE WHEN payment_status = 'paid' THEN 1 ELSE 0 END) AS paid_orders,
+                SUM(CASE WHEN payment_status = 'pending' THEN 1 ELSE 0 END) AS payment_pending_orders,
+                SUM(CASE WHEN order_status = 'processing' THEN 1 ELSE 0 END) AS processing_orders,
+                SUM(CASE WHEN order_status = 'completed' THEN 1 ELSE 0 END) AS completed_orders
+            FROM orders
+            {$sqlWhere}
+        ";
+
+        $stmt = $this->conn->prepare($sql);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+
+        $stmt->execute();
+        $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        return [
+            'total_orders' => (int) ($row['total_orders'] ?? 0),
+            'new_orders' => (int) ($row['new_orders'] ?? 0),
+            'paid_orders' => (int) ($row['paid_orders'] ?? 0),
+            'payment_pending_orders' => (int) ($row['payment_pending_orders'] ?? 0),
+            'processing_orders' => (int) ($row['processing_orders'] ?? 0),
+            'completed_orders' => (int) ($row['completed_orders'] ?? 0),
+        ];
+    }
+
     public function updatePaymentStatus($orderNumber, $status, $paymentId = null, $statusCode = null, $message = null)
     {
         $stmt = $this->conn->prepare("
@@ -257,6 +361,19 @@ class Order extends BaseModel
 
         return $stmt->execute([
             ':order_status' => $status,
+            ':order_number' => $orderNumber
+        ]);
+    }
+
+    public function markSeen($orderNumber)
+    {
+        $stmt = $this->conn->prepare("
+            UPDATE orders
+            SET admin_seen_at = COALESCE(admin_seen_at, NOW())
+            WHERE order_number = :order_number
+        ");
+
+        return $stmt->execute([
             ':order_number' => $orderNumber
         ]);
     }

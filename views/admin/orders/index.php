@@ -9,24 +9,98 @@
 <body>
     <?php include 'views/admin/partials/loader.php'; ?>
     <div class="container">
-        <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; gap:12px; flex-wrap:wrap;">
             <div>
                 <h2 style="margin:0;">Orders</h2>
-                <p style="margin:4px 0 0; font-size:12px; color:#888;">Recent online payment orders from your store.</p>
+                <p style="margin:4px 0 0; font-size:12px; color:#888;">Track new orders, filter them quickly, and export exactly what you need.</p>
             </div>
             <a href="<?= BASE_URL ?>admin/dashboard" style="text-decoration:none; color:#007aff; font-weight:700;">Back to Dashboard</a>
         </div>
 
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:12px; margin-bottom:18px;">
+            <div style="background:#fff; border-radius:16px; padding:16px; box-shadow:0 4px 18px rgba(0,0,0,0.04);">
+                <div style="font-size:11px; color:#888; margin-bottom:6px;">Total Orders</div>
+                <div style="font-size:24px; font-weight:800; color:#111;"><?= (int) ($summary['total_orders'] ?? 0) ?></div>
+            </div>
+            <div style="background:#fff4cf; border-radius:16px; padding:16px; box-shadow:0 4px 18px rgba(0,0,0,0.04);">
+                <div style="font-size:11px; color:#8a6b00; margin-bottom:6px;">New Orders</div>
+                <div style="font-size:24px; font-weight:800; color:#111;"><?= (int) ($summary['new_orders'] ?? 0) ?></div>
+            </div>
+            <div style="background:#e8fff0; border-radius:16px; padding:16px; box-shadow:0 4px 18px rgba(0,0,0,0.04);">
+                <div style="font-size:11px; color:#1a9b57; margin-bottom:6px;">Paid</div>
+                <div style="font-size:24px; font-weight:800; color:#111;"><?= (int) ($summary['paid_orders'] ?? 0) ?></div>
+            </div>
+            <div style="background:#eef5ff; border-radius:16px; padding:16px; box-shadow:0 4px 18px rgba(0,0,0,0.04);">
+                <div style="font-size:11px; color:#2463d0; margin-bottom:6px;">Processing</div>
+                <div style="font-size:24px; font-weight:800; color:#111;"><?= (int) ($summary['processing_orders'] ?? 0) ?></div>
+            </div>
+            <div style="background:#f5f5f5; border-radius:16px; padding:16px; box-shadow:0 4px 18px rgba(0,0,0,0.04);">
+                <div style="font-size:11px; color:#666; margin-bottom:6px;">Completed</div>
+                <div style="font-size:24px; font-weight:800; color:#111;"><?= (int) ($summary['completed_orders'] ?? 0) ?></div>
+            </div>
+        </div>
+
+        <form method="GET" action="<?= BASE_URL ?>order/manage" style="background:#fff; border-radius:18px; padding:18px; box-shadow:0 4px 20px rgba(0,0,0,0.04); margin-bottom:18px;">
+            <div style="display:grid; gap:12px;">
+                <input type="text" name="search" value="<?= htmlspecialchars($filters['search'] ?? '') ?>" placeholder="Search by order no, customer, email, or phone" style="width:100%; padding:12px 14px; border:1px solid #ddd; border-radius:10px; box-sizing:border-box;">
+
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:12px;">
+                    <select name="payment_status" style="width:100%; padding:12px 14px; border:1px solid #ddd; border-radius:10px; box-sizing:border-box;">
+                        <option value="">All Payment Statuses</option>
+                        <?php foreach (['pending', 'paid', 'failed', 'cancelled', 'verification_failed', 'chargedback'] as $status): ?>
+                            <option value="<?= $status ?>" <?= (($filters['payment_status'] ?? '') === $status) ? 'selected' : '' ?>>
+                                <?= htmlspecialchars(ucfirst(str_replace('_', ' ', $status))) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+
+                    <select name="order_status" style="width:100%; padding:12px 14px; border:1px solid #ddd; border-radius:10px; box-sizing:border-box;">
+                        <option value="">All Order Statuses</option>
+                        <?php foreach (['pending', 'processing', 'completed'] as $status): ?>
+                            <option value="<?= $status ?>" <?= (($filters['order_status'] ?? '') === $status) ? 'selected' : '' ?>>
+                                <?= htmlspecialchars(ucfirst($status)) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+
+                    <input type="date" name="date_from" value="<?= htmlspecialchars($filters['date_from'] ?? '') ?>" style="width:100%; padding:12px 14px; border:1px solid #ddd; border-radius:10px; box-sizing:border-box;">
+                    <input type="date" name="date_to" value="<?= htmlspecialchars($filters['date_to'] ?? '') ?>" style="width:100%; padding:12px 14px; border:1px solid #ddd; border-radius:10px; box-sizing:border-box;">
+                </div>
+
+                <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:#555;">
+                    <input type="checkbox" name="only_new" value="1" <?= !empty($filters['only_new']) ? 'checked' : '' ?>>
+                    Show only new orders
+                </label>
+
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <button type="submit" onclick="showGlobalLoader()" style="border:none; background:#111; color:#fff; padding:12px 18px; border-radius:999px; font-weight:700; cursor:pointer;">
+                        Apply Filters
+                    </button>
+                    <a href="<?= BASE_URL ?>order/manage" style="text-decoration:none; background:#f3f3f3; color:#222; padding:12px 18px; border-radius:999px; font-weight:700;">Reset</a>
+                    <a href="<?= BASE_URL ?>order/export?<?= http_build_query(array_filter($filters, function ($value) { return $value !== ''; })) ?>" style="text-decoration:none; background:#007aff; color:#fff; padding:12px 18px; border-radius:999px; font-weight:700;">
+                        Export Excel
+                    </a>
+                </div>
+            </div>
+        </form>
+
         <?php if (empty($orders)): ?>
-            <div style="padding:24px; background:#fff; border-radius:16px; color:#777;">No orders yet.</div>
+            <div style="padding:24px; background:#fff; border-radius:16px; color:#777;">No orders found for the selected filters.</div>
         <?php else: ?>
             <div style="display:grid; gap:14px;">
                 <?php foreach ($orders as $order): ?>
-                    <a href="<?= BASE_URL ?>order/details/<?= urlencode($order['order_number']) ?>" style="display:block; text-decoration:none; color:inherit; background:#fff; border-radius:18px; padding:18px; box-shadow:0 4px 20px rgba(0,0,0,0.04);">
+                    <?php $isNew = empty($order['admin_seen_at']); ?>
+                    <a href="<?= BASE_URL ?>order/details/<?= urlencode($order['order_number']) ?>" style="display:block; text-decoration:none; color:inherit; background:<?= $isNew ? '#fffaf0' : '#fff' ?>; border-radius:18px; padding:18px; box-shadow:0 4px 20px rgba(0,0,0,0.04); border:<?= $isNew ? '1px solid #f1d28a' : '1px solid transparent' ?>;">
                         <div style="display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap;">
                             <div>
-                                <div style="font-size:16px; font-weight:800; color:#111;"><?= htmlspecialchars($order['order_number']) ?></div>
+                                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                                    <div style="font-size:16px; font-weight:800; color:#111;"><?= htmlspecialchars($order['order_number']) ?></div>
+                                    <?php if ($isNew): ?>
+                                        <span style="padding:5px 9px; border-radius:999px; font-size:10px; font-weight:800; background:#ffb300; color:#111;">NEW</span>
+                                    <?php endif; ?>
+                                </div>
                                 <div style="font-size:13px; color:#666; margin-top:4px;"><?= htmlspecialchars($order['customer_name']) ?></div>
+                                <div style="font-size:12px; color:#888; margin-top:4px;"><?= htmlspecialchars($order['phone'] ?? '') ?><?= !empty($order['email']) ? ' | ' . htmlspecialchars($order['email']) : '' ?></div>
                             </div>
                             <div style="text-align:right;">
                                 <div style="font-size:14px; font-weight:700; color:#111;"><?= htmlspecialchars($order['currency']) ?> <?= number_format((float) $order['total_amount'], 2) ?></div>

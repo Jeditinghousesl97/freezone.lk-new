@@ -40,12 +40,23 @@ class OrderController extends BaseController
         $this->requireAdminSession();
 
         $settings = $this->settingModel->getAllPairs();
-        $orders = $this->orderModel->getRecent(50);
+        $filters = [
+            'search' => trim($_GET['search'] ?? ''),
+            'payment_status' => trim($_GET['payment_status'] ?? ''),
+            'order_status' => trim($_GET['order_status'] ?? ''),
+            'date_from' => trim($_GET['date_from'] ?? ''),
+            'date_to' => trim($_GET['date_to'] ?? ''),
+            'only_new' => !empty($_GET['only_new']) ? '1' : ''
+        ];
+        $orders = $this->orderModel->getFiltered($filters, 150);
+        $summary = $this->orderModel->getSummaryCounts($filters);
 
         $this->view('admin/orders/index', [
             'title' => 'Orders',
             'settings' => $settings,
-            'orders' => $orders
+            'orders' => $orders,
+            'filters' => $filters,
+            'summary' => $summary
         ]);
     }
 
@@ -54,6 +65,7 @@ class OrderController extends BaseController
         $this->requireAdminSession();
 
         $settings = $this->settingModel->getAllPairs();
+        $this->orderModel->markSeen($orderNumber);
         $order = $this->orderModel->getByOrderNumberWithItems($orderNumber);
 
         if (!$order) {
@@ -65,6 +77,76 @@ class OrderController extends BaseController
             'settings' => $settings,
             'order' => $order
         ]);
+    }
+
+    public function export()
+    {
+        $this->requireAdminSession();
+
+        $filters = [
+            'search' => trim($_GET['search'] ?? ''),
+            'payment_status' => trim($_GET['payment_status'] ?? ''),
+            'order_status' => trim($_GET['order_status'] ?? ''),
+            'date_from' => trim($_GET['date_from'] ?? ''),
+            'date_to' => trim($_GET['date_to'] ?? ''),
+            'only_new' => !empty($_GET['only_new']) ? '1' : ''
+        ];
+
+        $orders = $this->orderModel->getFilteredForExport($filters);
+
+        $filename = 'orders_export_' . date('Ymd_His') . '.csv';
+        header('Content-Type: text/csv; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+
+        $output = fopen('php://output', 'w');
+        fprintf($output, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+        fputcsv($output, [
+            'Order Number',
+            'Created At',
+            'Customer Name',
+            'Email',
+            'Phone',
+            'Alt Phone',
+            'Address',
+            'City',
+            'District',
+            'Payment Gateway',
+            'Payment Status',
+            'Order Status',
+            'Amount',
+            'Currency',
+            'Payment ID',
+            'Message',
+            'New Order'
+        ]);
+
+        foreach ($orders as $order) {
+            fputcsv($output, [
+                $order['order_number'] ?? '',
+                $order['created_at'] ?? '',
+                $order['customer_name'] ?? '',
+                $order['email'] ?? '',
+                $order['phone'] ?? '',
+                $order['phone_alt'] ?? '',
+                preg_replace('/\s+/', ' ', trim((string) ($order['address'] ?? ''))),
+                $order['city'] ?? '',
+                $order['district'] ?? '',
+                strtoupper((string) ($order['payment_gateway'] ?? '')),
+                ucfirst(str_replace('_', ' ', (string) ($order['payment_status'] ?? ''))),
+                ucfirst(str_replace('_', ' ', (string) ($order['order_status'] ?? ''))),
+                number_format((float) ($order['total_amount'] ?? 0), 2, '.', ''),
+                $order['currency'] ?? '',
+                $order['gateway_payment_id'] ?? '',
+                $order['gateway_message'] ?? '',
+                empty($order['admin_seen_at']) ? 'Yes' : 'No'
+            ]);
+        }
+
+        fclose($output);
+        exit;
     }
 
     public function markCompleted($orderNumber = null)
