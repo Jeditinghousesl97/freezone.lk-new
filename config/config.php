@@ -11,18 +11,18 @@ if ($is_local) {
     define('DB_PASS', '');
 
     // Base URL for links (folder name on your laptop)
-    define('BASE_URL', '/fff/');
+    define('BASE_URL', '/');
 
 } else {
     // === PRODUCTION SETTINGS (domain) ===
-    define('DB_HOST', 'localhost');
+    define('DB_HOST', 'sdb-85.hosting.stackcp.net');
     define('DB_PORT', '3306'); // Standard MySQL Port for Hosting
-    define('DB_NAME', 'fff');
-    define('DB_USER', 'root');
-    define('DB_PASS', '');
+    define('DB_NAME', 'freezone-35303938a36f');
+    define('DB_USER', 'freezone-35303938a36f');
+    define('DB_PASS', 'ne-35303938a');
 
     // Base URL for links (deployment folder on server)
-    define('BASE_URL', '/fff/');
+    define('BASE_URL', '/');
 }
 
 // Global helper for Base Path (Root Directory)
