@@ -194,8 +194,8 @@ class Order extends BaseModel
     private function generateOrderNumber()
     {
         do {
-            $suffix = str_pad((string) random_int(0, 99999), 5, '0', STR_PAD_LEFT);
-            $orderNumber = 'ORD-' . date('YmdHis') . '-' . $suffix;
+            $suffix = str_pad((string) random_int(0, 9999), 4, '0', STR_PAD_LEFT);
+            $orderNumber = 'ORD-' . date('ymd') . '-' . $suffix;
             $exists = $this->getByOrderNumber($orderNumber);
         } while ($exists);
 
