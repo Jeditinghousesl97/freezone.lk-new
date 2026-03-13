@@ -198,9 +198,10 @@
 
         <?php if (!empty($settings['btn_ordernow_bg'])): ?>
             .btn-action.btn-order-now {
-                background-color:
+                background:
                     <?= $settings['btn_ordernow_bg'] ?>
                     !important;
+                background-image: none !important;
             }
 
         <?php endif; ?>
