@@ -373,36 +373,13 @@
 
                 <label class="section-title" style="margin-top:24px;">Checkout Settings</label>
                 <p style="margin:0 0 14px; font-size:12px; color:#666;">
-                    Turn checkout methods on or off for this shop. Use sandbox mode for testing PayHere.
+                    Turn Cash on Delivery on or off for this shop. PayHere settings are now managed from Settings.
                 </p>
 
                 <label class="slider-remove-row" style="margin:0 0 12px;">
                     <input type="checkbox" name="cod_enabled" value="1" <?= !isset($settings['cod_enabled']) ? (!isset($settings['whatsapp_ordering_enabled']) || !empty($settings['whatsapp_ordering_enabled']) ? 'checked' : '') : (!empty($settings['cod_enabled']) ? 'checked' : '') ?>>
                     Enable Cash on Delivery
                 </label>
-
-                <label class="slider-remove-row" style="margin:0 0 12px;">
-                    <input type="checkbox" name="payhere_enabled" value="1" <?= !empty($settings['payhere_enabled']) ? 'checked' : '' ?>>
-                    Enable PayHere checkout
-                </label>
-
-                <label class="slider-remove-row" style="margin:0 0 12px;">
-                    <input type="checkbox" name="payhere_sandbox" value="1" <?= !empty($settings['payhere_sandbox']) ? 'checked' : '' ?>>
-                    Use PayHere sandbox mode
-                </label>
-
-                <input type="text"
-                    name="payhere_merchant_id"
-                    class="input-white"
-                    placeholder="PayHere Merchant ID"
-                    value="<?= htmlspecialchars($settings['payhere_merchant_id'] ?? '') ?>">
-
-                <input type="password"
-                    name="payhere_merchant_secret"
-                    class="input-white"
-                    autocomplete="new-password"
-                    placeholder="Leave blank to keep current PayHere Merchant Secret"
-                    value="">
 
                 <button type="submit" class="publish-btn" style="margin-top:20px;" onclick="showGlobalLoader()">
                     💾 PUBLISH

@@ -324,6 +324,31 @@
                     value="<?= htmlspecialchars($settings['smtp_from_name'] ?? ($settings['shop_name'] ?? '')) ?>">
             </div>
 
+            <div style="margin-top:20px; padding:20px; border-radius:16px; background:#ffffff; border:1px solid #e9e9e9;">
+                <h3 style="margin:0 0 14px;">PayHere Settings</h3>
+                <p style="font-size:12px; color:#777; margin:0 0 16px;">Manage PayHere checkout here. Leave the secret blank if you want to keep the current saved value.</p>
+
+                <label style="display:flex; align-items:center; gap:8px; margin-bottom:14px; font-size:14px; color:#333;">
+                    <input type="checkbox" name="payhere_enabled" value="1" <?= !empty($settings['payhere_enabled']) ? 'checked' : '' ?>>
+                    Enable PayHere checkout
+                </label>
+
+                <label style="display:flex; align-items:center; gap:8px; margin-bottom:18px; font-size:14px; color:#333;">
+                    <input type="checkbox" name="payhere_sandbox" value="1" <?= !empty($settings['payhere_sandbox']) ? 'checked' : '' ?>>
+                    Use PayHere sandbox mode
+                </label>
+
+                <label class="label">PayHere Merchant ID</label>
+                <input type="text" name="payhere_merchant_id" class="input-box" placeholder="PayHere Merchant ID"
+                    value="<?= htmlspecialchars($settings['payhere_merchant_id'] ?? '') ?>">
+
+                <label class="label">PayHere Merchant Secret</label>
+                <input type="password" name="payhere_merchant_secret" class="input-box"
+                    autocomplete="new-password"
+                    placeholder="Leave blank to keep current PayHere Merchant Secret"
+                    value="">
+            </div>
+
             <!-- User Management -->
             <div class="user-mgmt-box">
                 <!-- Hidden ID if exists -->

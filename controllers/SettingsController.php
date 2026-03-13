@@ -75,7 +75,11 @@ class SettingsController extends BaseController
             'smtp_username',
             'smtp_password',
             'smtp_from_email',
-            'smtp_from_name'
+            'smtp_from_name',
+            'payhere_enabled',
+            'payhere_sandbox',
+            'payhere_merchant_id',
+            'payhere_merchant_secret'
         ];
         $settings = $this->settingModel->getMultiple($keys);
 
@@ -162,7 +166,8 @@ class SettingsController extends BaseController
                 'smtp_encryption',
                 'smtp_username',
                 'smtp_from_email',
-                'smtp_from_name'
+                'smtp_from_name',
+                'payhere_merchant_id'
             ];
             foreach ($textFields as $field) {
                 if (isset($_POST[$field])) {
@@ -173,6 +178,13 @@ class SettingsController extends BaseController
             if (isset($_POST['smtp_password']) && trim((string) $_POST['smtp_password']) !== '') {
                 $this->settingModel->set('smtp_password', trim((string) $_POST['smtp_password']));
             }
+
+            if (isset($_POST['payhere_merchant_secret']) && trim((string) $_POST['payhere_merchant_secret']) !== '') {
+                $this->settingModel->set('payhere_merchant_secret', trim((string) $_POST['payhere_merchant_secret']));
+            }
+
+            $this->settingModel->set('payhere_enabled', !empty($_POST['payhere_enabled']) ? '1' : '0');
+            $this->settingModel->set('payhere_sandbox', !empty($_POST['payhere_sandbox']) ? '1' : '0');
 
             // Owner Credentials Update / Create
             $ownerId = $_POST['owner_id'] ?? '';
