@@ -284,6 +284,46 @@
             <input type="text" name="currency_symbol" class="input-box" placeholder="LKR"
                 value="<?= htmlspecialchars($settings['currency_symbol'] ?? '') ?>">
 
+            <div style="margin-top:30px; padding:20px; border-radius:16px; background:#ffffff; border:1px solid #e9e9e9;">
+                <h3 style="margin:0 0 14px;">SMTP Email Settings</h3>
+                <p style="font-size:12px; color:#777; margin:0 0 16px;">These settings are used for order emails to the customer and shop owner.</p>
+
+                <label class="label">SMTP Host</label>
+                <input type="text" name="smtp_host" class="input-box" placeholder="mail.yourdomain.com"
+                    value="<?= htmlspecialchars($settings['smtp_host'] ?? '') ?>">
+
+                <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px;">
+                    <div>
+                        <label class="label">SMTP Port</label>
+                        <input type="text" name="smtp_port" class="input-box" placeholder="587"
+                            value="<?= htmlspecialchars($settings['smtp_port'] ?? '587') ?>">
+                    </div>
+                    <div>
+                        <label class="label">Encryption</label>
+                        <select name="smtp_encryption" class="input-box">
+                            <?php foreach (['tls' => 'TLS', 'ssl' => 'SSL', 'none' => 'None'] as $encKey => $encLabel): ?>
+                                <option value="<?= $encKey ?>" <?= (($settings['smtp_encryption'] ?? 'tls') === $encKey) ? 'selected' : '' ?>><?= htmlspecialchars($encLabel) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+
+                <label class="label">SMTP Username</label>
+                <input type="text" name="smtp_username" class="input-box" placeholder="username"
+                    value="<?= htmlspecialchars($settings['smtp_username'] ?? '') ?>">
+
+                <label class="label">SMTP Password</label>
+                <input type="password" name="smtp_password" class="input-box" placeholder="Leave blank to keep current password" value="">
+
+                <label class="label">From Email</label>
+                <input type="email" name="smtp_from_email" class="input-box" placeholder="noreply@yourshop.com"
+                    value="<?= htmlspecialchars($settings['smtp_from_email'] ?? '') ?>">
+
+                <label class="label">From Name</label>
+                <input type="text" name="smtp_from_name" class="input-box" placeholder="Your Shop Name"
+                    value="<?= htmlspecialchars($settings['smtp_from_name'] ?? ($settings['shop_name'] ?? '')) ?>">
+            </div>
+
             <!-- User Management -->
             <div class="user-mgmt-box">
                 <!-- Hidden ID if exists -->

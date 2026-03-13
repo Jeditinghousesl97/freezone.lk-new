@@ -68,7 +68,14 @@ class SettingsController extends BaseController
             'shop_qr',
             'shop_about',
             'currency_symbol',
-            'shop_whatsapp'
+            'shop_whatsapp',
+            'smtp_host',
+            'smtp_port',
+            'smtp_encryption',
+            'smtp_username',
+            'smtp_password',
+            'smtp_from_email',
+            'smtp_from_name'
         ];
         $settings = $this->settingModel->getMultiple($keys);
 
@@ -144,11 +151,27 @@ class SettingsController extends BaseController
             }
 
             // Text Fields
-            $textFields = ['shop_name', 'shop_url', 'shop_about', 'currency_symbol', 'shop_whatsapp'];
+            $textFields = [
+                'shop_name',
+                'shop_url',
+                'shop_about',
+                'currency_symbol',
+                'shop_whatsapp',
+                'smtp_host',
+                'smtp_port',
+                'smtp_encryption',
+                'smtp_username',
+                'smtp_from_email',
+                'smtp_from_name'
+            ];
             foreach ($textFields as $field) {
                 if (isset($_POST[$field])) {
                     $this->settingModel->set($field, $_POST[$field]);
                 }
+            }
+
+            if (isset($_POST['smtp_password']) && trim((string) $_POST['smtp_password']) !== '') {
+                $this->settingModel->set('smtp_password', trim((string) $_POST['smtp_password']));
             }
 
             // Owner Credentials Update / Create

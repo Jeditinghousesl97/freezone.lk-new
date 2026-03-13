@@ -8,7 +8,8 @@ require_once 'helpers/SecretHelper.php';
 class Setting extends BaseModel
 {
     private $sensitiveKeys = [
-        'payhere_merchant_secret'
+        'payhere_merchant_secret',
+        'smtp_password'
     ];
 
     // Get value by key

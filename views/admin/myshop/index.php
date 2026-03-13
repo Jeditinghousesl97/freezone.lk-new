@@ -310,6 +310,10 @@
                         placeholder="Enter Link here" value="<?= htmlspecialchars($settings['social_whatsapp']) ?>">
                 </div>
 
+                <label class="section-title" style="margin-top:20px;">Shop Owner Email</label>
+                <input type="email" name="shop_owner_email" class="input-white" placeholder="owner@yourshop.com"
+                    value="<?= htmlspecialchars($settings['shop_owner_email'] ?? '') ?>">
+
                 <label class="section-title" style="margin-top:24px;">Home Page Hero Slider</label>
                 <p style="margin:0 0 14px; font-size:12px; color:#666;">
                     Upload custom mobile slider images and add the matching link for each slide.
