@@ -14,8 +14,17 @@ class MyShopController extends BaseController
         $this->settingModel = new Setting();
     }
 
+    private function requireAdminSession()
+    {
+        if (!isset($_SESSION['user_id'])) {
+            $this->redirect('auth/login');
+        }
+    }
+
     public function index()
     {
+        $this->requireAdminSession();
+
         // Fetch all relevant settings
         $keys = [
             'shop_qr',
@@ -53,6 +62,8 @@ class MyShopController extends BaseController
 
     public function update()
     {
+        $this->requireAdminSession();
+
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Shop Owner can only update Socials and Review Link
             $allowedKeys = [
@@ -68,14 +79,17 @@ class MyShopController extends BaseController
                 'refund_policy_content',
                 'terms_conditions_content',
                 'privacy_policy_content',
-                'payhere_merchant_id',
-                'payhere_merchant_secret'
+                'payhere_merchant_id'
             ];
 
             foreach ($allowedKeys as $key) {
                 if (isset($_POST[$key])) {
                     $this->settingModel->set($key, $_POST[$key]);
                 }
+            }
+
+            if (isset($_POST['payhere_merchant_secret']) && trim((string) $_POST['payhere_merchant_secret']) !== '') {
+                $this->settingModel->set('payhere_merchant_secret', trim((string) $_POST['payhere_merchant_secret']));
             }
 
             $this->settingModel->set('whatsapp_ordering_enabled', !empty($_POST['whatsapp_ordering_enabled']) ? '1' : '0');

@@ -3,9 +3,13 @@
  * Setting Model (Key-Value Store)
  */
 require_once 'models/BaseModel.php';
+require_once 'helpers/SecretHelper.php';
 
 class Setting extends BaseModel
 {
+    private $sensitiveKeys = [
+        'payhere_merchant_secret'
+    ];
 
     // Get value by key
     public function get($key, $default = '')
@@ -15,12 +19,18 @@ class Setting extends BaseModel
         $stmt->bindParam(':key', $key);
         $stmt->execute();
         $res = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $res ? $res['setting_value'] : $default;
+        if (!$res) {
+            return $default;
+        }
+
+        return $this->decodeValue($key, $res['setting_value']);
     }
 
     // Set value (Insert or Update)
     public function set($key, $value)
     {
+        $storedValue = $this->encodeValue($key, $value);
+
         // Check if exists
         $sqlCheck = "SELECT id FROM settings WHERE setting_key = :key";
         $stmtCheck = $this->conn->prepare($sqlCheck);
@@ -37,7 +47,7 @@ class Setting extends BaseModel
 
         $stmt = $this->conn->prepare($sql);
         $stmt->bindParam(':key', $key);
-        $stmt->bindParam(':val', $value);
+        $stmt->bindParam(':val', $storedValue);
         return $stmt->execute();
     }
 
@@ -62,9 +72,32 @@ class Setting extends BaseModel
 
         $pairs = [];
         foreach ($rows as $r) {
-            $pairs[$r['setting_key']] = $r['setting_value'];
+            $pairs[$r['setting_key']] = $this->decodeValue($r['setting_key'], $r['setting_value']);
         }
         return $pairs;
+    }
+
+    private function isSensitiveKey($key)
+    {
+        return in_array($key, $this->sensitiveKeys, true);
+    }
+
+    private function encodeValue($key, $value)
+    {
+        if (!$this->isSensitiveKey($key)) {
+            return $value;
+        }
+
+        return SecretHelper::encrypt((string) $value);
+    }
+
+    private function decodeValue($key, $value)
+    {
+        if (!$this->isSensitiveKey($key)) {
+            return $value;
+        }
+
+        return SecretHelper::decrypt((string) $value);
     }
 }
 ?>

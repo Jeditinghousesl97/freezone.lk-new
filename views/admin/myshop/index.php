@@ -393,11 +393,12 @@
                     placeholder="PayHere Merchant ID"
                     value="<?= htmlspecialchars($settings['payhere_merchant_id'] ?? '') ?>">
 
-                <input type="text"
+                <input type="password"
                     name="payhere_merchant_secret"
                     class="input-white"
-                    placeholder="PayHere Merchant Secret"
-                    value="<?= htmlspecialchars($settings['payhere_merchant_secret'] ?? '') ?>">
+                    autocomplete="new-password"
+                    placeholder="Leave blank to keep current PayHere Merchant Secret"
+                    value="">
 
                 <button type="submit" class="publish-btn" style="margin-top:20px;" onclick="showGlobalLoader()">
                     💾 PUBLISH

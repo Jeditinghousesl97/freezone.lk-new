@@ -17,6 +17,27 @@ class OrderController extends BaseController
         $this->productModel = new Product();
     }
 
+    private function logPayhereEvent($event, array $context = [])
+    {
+        $logDir = ROOT_PATH . 'storage/logs/';
+        if (!is_dir($logDir)) {
+            mkdir($logDir, 0775, true);
+        }
+
+        $entry = [
+            'time' => date('c'),
+            'event' => $event,
+            'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
+            'context' => $context
+        ];
+
+        file_put_contents(
+            $logDir . 'payhere.log',
+            json_encode($entry, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . PHP_EOL,
+            FILE_APPEND | LOCK_EX
+        );
+    }
+
     private function splitName($fullName)
     {
         $fullName = trim($fullName);
@@ -454,6 +475,12 @@ class OrderController extends BaseController
 
     public function payhereNotify()
     {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo 'METHOD_NOT_ALLOWED';
+            exit;
+        }
+
         $settings = $this->settingModel->getAllPairs();
         $merchantId = trim((string) ($_POST['merchant_id'] ?? ''));
         $orderNumber = trim((string) ($_POST['order_id'] ?? ''));
@@ -463,9 +490,18 @@ class OrderController extends BaseController
         $statusCode = trim((string) ($_POST['status_code'] ?? ''));
         $md5sig = strtoupper(trim((string) ($_POST['md5sig'] ?? '')));
         $statusMessage = trim((string) ($_POST['status_message'] ?? ''));
+        $this->logPayhereEvent('notify_received', [
+            'order_number' => $orderNumber,
+            'payment_id' => $paymentId,
+            'status_code' => $statusCode
+        ]);
 
         $order = $this->orderModel->getByOrderNumber($orderNumber);
         if (!$order || $merchantId !== trim((string) ($settings['payhere_merchant_id'] ?? ''))) {
+            $this->logPayhereEvent('notify_rejected_order_or_merchant', [
+                'order_number' => $orderNumber,
+                'merchant_id' => $merchantId
+            ]);
             http_response_code(400);
             echo 'INVALID';
             exit;
@@ -494,6 +530,28 @@ class OrderController extends BaseController
 
         if ($localMd5Sig !== $md5sig) {
             $this->orderModel->updatePaymentStatus($orderNumber, 'verification_failed', $paymentId, $statusCode, 'Checksum verification failed');
+            $this->logPayhereEvent('notify_checksum_failed', [
+                'order_number' => $orderNumber,
+                'payment_id' => $paymentId,
+                'status_code' => $statusCode
+            ]);
+            http_response_code(400);
+            echo 'INVALID';
+            exit;
+        }
+
+        $expectedAmount = number_format((float) ($order['total_amount'] ?? 0), 2, '.', '');
+        $expectedCurrency = trim((string) ($order['currency'] ?? 'LKR'));
+        if ($payhereAmount !== $expectedAmount || strtoupper($payhereCurrency) !== strtoupper($expectedCurrency)) {
+            $this->orderModel->updatePaymentStatus($orderNumber, 'verification_failed', $paymentId, $statusCode, 'Payment amount or currency mismatch');
+            $this->logPayhereEvent('notify_amount_mismatch', [
+                'order_number' => $orderNumber,
+                'payment_id' => $paymentId,
+                'expected_amount' => $expectedAmount,
+                'received_amount' => $payhereAmount,
+                'expected_currency' => $expectedCurrency,
+                'received_currency' => $payhereCurrency
+            ]);
             http_response_code(400);
             echo 'INVALID';
             exit;
@@ -520,6 +578,13 @@ class OrderController extends BaseController
         if ($status === 'paid' && (($order['order_status'] ?? 'pending') === 'pending')) {
             $this->orderModel->updateOrderStatus($orderNumber, 'processing');
         }
+
+        $this->logPayhereEvent('notify_processed', [
+            'order_number' => $orderNumber,
+            'payment_id' => $paymentId,
+            'payment_status' => $status,
+            'status_code' => $statusCode
+        ]);
 
         echo 'OK';
         exit;
