@@ -436,7 +436,7 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
                 <button type="button" class="payment-method-card method-payhere" onclick="choosePaymentMethod('payhere')">
                     <span class="payment-method-icon"><i class="fas fa-credit-card"></i></span>
                     <span class="payment-method-copy">
-                        <strong>PayHere</strong>
+                        <strong>Card Payment</strong>
                         <small>Pay online securely before your order is confirmed.</small>
                     </span>
                     <span class="payment-method-arrow"><i class="fas fa-chevron-right"></i></span>
@@ -586,7 +586,7 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
 
         const submitButton = document.getElementById('orderSubmitButton');
         if (orderMode === 'payhere') {
-            submitButton.textContent = 'Continue to PayHere';
+            submitButton.textContent = 'Continue to Card Payment';
             submitButton.classList.add('btn-payhere-submit');
         } else if (orderMode === 'whatsapp') {
             submitButton.textContent = 'Continue to WhatsApp';

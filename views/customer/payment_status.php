@@ -2,7 +2,7 @@
 $hide_mobile_welcome = true;
 require_once 'views/layouts/customer_header.php';
 
-$gatewayName = strtoupper((string) ($gateway_name ?? (($order['payment_gateway'] ?? '') === 'koko' ? 'KOKO' : 'PayHere')));
+$gatewayName = strtoupper((string) ($gateway_name ?? (($order['payment_gateway'] ?? '') === 'koko' ? 'KOKO' : 'Card Payment')));
 $paymentStatus = $order['payment_status'] ?? 'unknown';
 $isSuccess = $paymentStatus === 'paid';
 $isCancelled = $paymentStatus === 'cancelled';

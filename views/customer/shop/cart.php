@@ -116,7 +116,7 @@ require_once 'views/layouts/customer_header.php';
                         <?php if (!empty($settings['payhere_enabled'])): ?>
                             <button onclick="openOrderModal('payhere')" class="btn-payhere-standalone cart-payment-btn cart-payment-btn-payhere">
                                 <i class="fas fa-credit-card" style="font-size: 18px;"></i>
-                                Pay Online with PayHere
+                                Pay Online with Card Payment
                             </button>
                         <?php endif; ?>
 
@@ -265,7 +265,7 @@ require_once 'views/layouts/customer_header.php';
 
         const submitButton = document.getElementById('orderSubmitButton');
         if (orderMode === 'payhere') {
-            submitButton.textContent = 'Continue to PayHere';
+            submitButton.textContent = 'Continue to Card Payment';
             submitButton.classList.add('btn-payhere-submit');
         } else if (orderMode === 'whatsapp') {
             submitButton.textContent = 'Continue to WhatsApp';

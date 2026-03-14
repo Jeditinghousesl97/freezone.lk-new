@@ -8,7 +8,7 @@ require_once 'views/layouts/customer_header.php';
         <div style="width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 18px; background: #f4f1ff; color: #6c45ff; font-size: 28px;">
             ...
         </div>
-        <h1 style="margin: 0 0 8px; font-size: 30px; color: #111;">Redirecting to PayHere</h1>
+        <h1 style="margin: 0 0 8px; font-size: 30px; color: #111;">Redirecting to Card Payment</h1>
         <p style="margin: 0; color: #666; line-height: 1.7;">Please wait a moment while we connect you to the secure payment page.</p>
     </div>
 </div>
