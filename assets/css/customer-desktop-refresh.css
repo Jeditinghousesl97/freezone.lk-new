@@ -640,6 +640,21 @@
 
     .product-info-container {
         padding: 28px !important;
+        position: sticky;
+        top: 162px;
+        align-self: start;
+        max-height: calc(100vh - 186px);
+        overflow-y: auto;
+        scrollbar-gutter: stable;
+    }
+
+    .product-info-container::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .product-info-container::-webkit-scrollbar-thumb {
+        background: rgba(82, 58, 32, 0.14);
+        border-radius: 999px;
     }
 
     .pd-breadcrumb {

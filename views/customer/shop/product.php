@@ -314,6 +314,7 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
             const wrapper = slider.parentElement;
             const btnLeft = wrapper.querySelector('.scroll-btn.left');
             const btnRight = wrapper.querySelector('.scroll-btn.right');
+            const isGallerySlider = slider.classList.contains('gallery-slider');
 
             // --- 1. Smart Buttons Visibility (Desktop Only) ---
             const updateButtons = () => {
@@ -345,9 +346,16 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
 
             // --- 2. Mouse Wheel Horizontal Scroll ---
             slider.addEventListener('wheel', (evt) => {
-                if (window.innerWidth >= 1024) {
+                if (window.innerWidth >= 1024 && !isGallerySlider) {
                     evt.preventDefault();
                     slider.scrollLeft += evt.deltaY;
+                } else if (window.innerWidth >= 1024 && isGallerySlider) {
+                    const horizontalDelta = Math.abs(evt.deltaX) > Math.abs(evt.deltaY) ? evt.deltaX : 0;
+
+                    if (evt.shiftKey || horizontalDelta !== 0) {
+                        evt.preventDefault();
+                        slider.scrollLeft += horizontalDelta !== 0 ? horizontalDelta : evt.deltaY;
+                    }
                 }
             });
 
