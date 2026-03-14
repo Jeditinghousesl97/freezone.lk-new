@@ -1,6 +1,7 @@
 <?php
 // Hide Default Mobile Header for Single Product Page (Task 3.1)
 $hide_mobile_welcome = true;
+require_once ROOT_PATH . 'helpers/ImageHelper.php';
 require_once 'views/layouts/customer_header.php';
 $currency = $settings['currency_symbol'] ?? 'LKR';
 $productUnitPrice = (!empty($product['sale_price']) && (float) $product['sale_price'] < (float) $product['price'])
@@ -105,25 +106,36 @@ $productUnitPrice = (!empty($product['sale_price']) && (float) $product['sale_pr
                     <div class="gallery-slider">
                         <!-- Main Image First -->
                         <?php
-                        $mainImg = 'assets/uploads/' . $product['main_image'];
-                        if (empty($product['main_image']) || !file_exists(ROOT_PATH . $mainImg)) {
-                            $mainImg = 'https://via.placeholder.com/600x600?text=' . urlencode($product['title']);
-                        } else {
-                            $mainImg = BASE_URL . $mainImg;
-                        }
+                        $mainImg = ImageHelper::uploadUrl(
+                            $product['main_image'] ?? '',
+                            'https://via.placeholder.com/600x600?text=' . urlencode($product['title'])
+                        );
                         ?>
-                        <img src="<?= $mainImg ?>" class="gallery-img current" alt="Main Image"
-                            data-index="0" onclick="openImageModal(0)">
+                        <img <?= ImageHelper::attrs([
+                            'src' => $mainImg,
+                            'class' => 'gallery-img current',
+                            'alt' => $product['title'] ?? 'Product image',
+                            'loading' => 'eager',
+                            'decoding' => 'sync',
+                            'fetchpriority' => 'high',
+                            'data-index' => '0'
+                        ]) ?> onclick="openImageModal(0)">
 
                         <!-- Gallery Images -->
                         <?php if (!empty($gallery)): ?>
                             <?php foreach ($gallery as $galleryIndex => $gImg):
-                                $gPath = 'assets/uploads/' . $gImg;
-                                $gUrl = (file_exists(ROOT_PATH . $gPath)) ? BASE_URL . $gPath : '';
+                                $gUrl = ImageHelper::uploadUrl($gImg, '');
                                 if ($gUrl):
                                     ?>
-                                    <img src="<?= $gUrl ?>" class="gallery-img" alt="Gallery Image"
-                                        data-index="<?= (int) $galleryIndex + 1 ?>" onclick="openImageModal(<?= (int) $galleryIndex + 1 ?>)">
+                                    <img <?= ImageHelper::attrs([
+                                        'src' => $gUrl,
+                                        'class' => 'gallery-img',
+                                        'alt' => ($product['title'] ?? 'Product') . ' gallery image',
+                                        'loading' => 'lazy',
+                                        'decoding' => 'async',
+                                        'fetchpriority' => 'low',
+                                        'data-index' => (string) ((int) $galleryIndex + 1)
+                                    ]) ?> onclick="openImageModal(<?= (int) $galleryIndex + 1 ?>)">
                                 <?php endif; endforeach; ?>
                         <?php endif; ?>
                     </div>

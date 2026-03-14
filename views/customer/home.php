@@ -1,4 +1,7 @@
-<?php require_once 'views/layouts/customer_header.php'; ?>
+<?php
+require_once ROOT_PATH . 'helpers/ImageHelper.php';
+require_once 'views/layouts/customer_header.php';
+?>
 
 <!-- Mobile Welcome Block (Moved here or kept in header, keeping here ensures it is part of flow) -->
 <!-- Actually handled in Header for global presence, but specific to Home? 
@@ -55,7 +58,7 @@
             }
 
             $heroSlides[$heroImage] = [
-                'image' => BASE_URL . $heroPath,
+                'image' => ImageHelper::uploadUrl($heroImage, ''),
                 'alt' => $heroProduct['name'] ?? 'Hero slide',
                 'link' => !empty($heroProduct['id']) ? (BASE_URL . 'shop/product/' . $heroProduct['id']) : ''
             ];
@@ -78,16 +81,22 @@
                         <div class="hero-slide">
                             <?php if (!empty($slide['link'])): ?>
                                 <a href="<?= htmlspecialchars($slide['link']) ?>" class="hero-slide-link" aria-label="<?= htmlspecialchars($slide['alt']) ?>">
-                                    <img
-                                        src="<?= htmlspecialchars($slide['image']) ?>"
-                                        alt="<?= htmlspecialchars($slide['alt']) ?>"
-                                        loading="<?= $index === 0 ? 'eager' : 'lazy' ?>">
+                                    <img <?= ImageHelper::attrs([
+                                        'src' => $slide['image'],
+                                        'alt' => $slide['alt'],
+                                        'loading' => $index === 0 ? 'eager' : 'lazy',
+                                        'decoding' => $index === 0 ? 'sync' : 'async',
+                                        'fetchpriority' => $index === 0 ? 'high' : 'low'
+                                    ]) ?>>
                                 </a>
                             <?php else: ?>
-                                <img
-                                    src="<?= htmlspecialchars($slide['image']) ?>"
-                                    alt="<?= htmlspecialchars($slide['alt']) ?>"
-                                    loading="<?= $index === 0 ? 'eager' : 'lazy' ?>">
+                                <img <?= ImageHelper::attrs([
+                                    'src' => $slide['image'],
+                                    'alt' => $slide['alt'],
+                                    'loading' => $index === 0 ? 'eager' : 'lazy',
+                                    'decoding' => $index === 0 ? 'sync' : 'async',
+                                    'fetchpriority' => $index === 0 ? 'high' : 'low'
+                                ]) ?>>
                             <?php endif; ?>
                         </div>
                     <?php endforeach; ?>
@@ -125,12 +134,19 @@
                     <a href="<?= BASE_URL ?>shop/category/<?= $cat['id'] ?>" class="cat-item"
                         style="text-decoration: none; color: inherit; display: block;">
                         <?php
-                        $catPath = 'assets/uploads/' . $cat['image'];
-                        $img = (!empty($cat['image']) && file_exists(ROOT_PATH . $catPath))
-                            ? BASE_URL . $catPath
-                            : 'https://via.placeholder.com/60?text=' . urlencode($cat['name']);
+                        $img = ImageHelper::uploadUrl(
+                            $cat['image'] ?? '',
+                            'https://via.placeholder.com/60?text=' . urlencode($cat['name'])
+                        );
                         ?>
-                        <img src="<?= $img ?>" class="cat-img" alt="<?= htmlspecialchars($cat['name']) ?>">
+                        <img <?= ImageHelper::attrs([
+                            'src' => $img,
+                            'class' => 'cat-img',
+                            'alt' => $cat['name'] ?? 'Category',
+                            'loading' => 'lazy',
+                            'decoding' => 'async',
+                            'fetchpriority' => 'low'
+                        ]) ?>>
                         <div class="cat-name">
                             <?= htmlspecialchars($cat['name']) ?>
                         </div>

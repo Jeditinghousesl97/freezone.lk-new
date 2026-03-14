@@ -1,6 +1,7 @@
 <?php
 // Suppress default Welcome Header
 $hide_mobile_welcome = true;
+require_once ROOT_PATH . 'helpers/ImageHelper.php';
 require_once 'views/layouts/customer_header.php';
 ?>
 
@@ -82,12 +83,19 @@ require_once 'views/layouts/customer_header.php';
                 <?php foreach ($subCategories as $sub): ?>
                     <a href="<?= BASE_URL ?>shop?cat=<?= $sub['id'] ?>" class="cat-item" style="text-decoration: none;">
                         <?php
-                        $subPath = 'assets/uploads/' . $sub['image'];
-                        $subImg = (!empty($sub['image']) && file_exists(ROOT_PATH . $subPath))
-                            ? BASE_URL . $subPath
-                            : 'https://via.placeholder.com/80?text=' . urlencode($sub['name']);
+                        $subImg = ImageHelper::uploadUrl(
+                            $sub['image'] ?? '',
+                            'https://via.placeholder.com/80?text=' . urlencode($sub['name'])
+                        );
                         ?>
-                        <img src="<?= $subImg ?>" class="cat-img" alt="<?= htmlspecialchars($sub['name']) ?>">
+                        <img <?= ImageHelper::attrs([
+                            'src' => $subImg,
+                            'class' => 'cat-img',
+                            'alt' => $sub['name'] ?? 'Category',
+                            'loading' => 'lazy',
+                            'decoding' => 'async',
+                            'fetchpriority' => 'low'
+                        ]) ?>>
                         <div class="cat-name">
                             <?= htmlspecialchars($sub['name']) ?>
                         </div>

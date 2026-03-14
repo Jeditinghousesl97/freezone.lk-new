@@ -63,7 +63,8 @@
     <?php endif; ?>
 
     <!-- Dynamic Global Styles -->
-    <style>
+<?php require_once ROOT_PATH . 'helpers/ImageHelper.php'; ?>
+<style>
         :root {
             /* Core Colors */
             <?php if (!empty($settings['primary_color'])): ?>
@@ -521,19 +522,24 @@
 
                     <!-- Shop Avatar/Logo -->
                     <?php
-                    $logoUrl = $settings['shop_logo'] ?? '';
-                    $logoUrl = str_replace('/Ecom-CMS/', BASE_URL, $logoUrl);
-                    $physicalPath = $_SERVER['DOCUMENT_ROOT'] . $logoUrl;
-                    $logo = (!empty($logoUrl) && file_exists($physicalPath))
-                        ? $logoUrl
-                        : 'https://via.placeholder.com/40';
+                    $logo = ImageHelper::settingsImageUrl(
+                        $settings['shop_logo'] ?? '',
+                        'https://via.placeholder.com/40'
+                    );
                     ?>
-                    <img src="<?= $logo ?>" alt="Shop Logo" style="
+                    <img <?= ImageHelper::attrs([
+                        'src' => $logo,
+                        'alt' => 'Shop Logo',
+                        'loading' => 'eager',
+                        'decoding' => 'async',
+                        'fetchpriority' => 'high',
+                        'style' => '
                     width: 40px; 
                     height: 40px; 
                     border-radius: 50%; 
                     object-fit: cover;
-                    border: 1px solid #eee;">
+                    border: 1px solid #eee;'
+                    ]) ?>>
                 </div>
             </div>
 
@@ -621,17 +627,20 @@
             <div class="logo-area">
                 <?php
                 // Use same logic as mobile
-                $logoUrl = $settings['shop_logo'] ?? '';
-                $logoUrl = str_replace('/Ecom-CMS/', BASE_URL, $logoUrl);
-                $physicalPath = $_SERVER['DOCUMENT_ROOT'] . $logoUrl;
-
-                $logo = (!empty($logoUrl) && file_exists($physicalPath))
-                    ? $logoUrl
-                    : 'https://via.placeholder.com/50';
+                $logo = ImageHelper::settingsImageUrl(
+                    $settings['shop_logo'] ?? '',
+                    'https://via.placeholder.com/50'
+                );
                 ?>
                 <div style="display:flex; align-items:center; gap:10px;">
-                    <img src="<?= $logo ?>" alt="Logo"
-                        style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
+                    <img <?= ImageHelper::attrs([
+                        'src' => $logo,
+                        'alt' => 'Logo',
+                        'loading' => 'eager',
+                        'decoding' => 'async',
+                        'fetchpriority' => 'high',
+                        'style' => 'width: 50px; height: 50px; border-radius: 50%; object-fit: cover;'
+                    ]) ?>>
                     <div>
                         <h2 style="margin:0; font-size: 18px;">
                             <?= !empty($settings['shop_name']) ? htmlspecialchars($settings['shop_name']) : 'Dark Lavender Clothing!' ?>

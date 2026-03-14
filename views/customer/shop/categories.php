@@ -1,6 +1,7 @@
 <?php
 // Suppress default Welcome Header
 $hide_mobile_welcome = true;
+require_once ROOT_PATH . 'helpers/ImageHelper.php';
 require_once 'views/layouts/customer_header.php';
 ?>
 
@@ -88,15 +89,21 @@ require_once 'views/layouts/customer_header.php';
                 <a href="<?= BASE_URL ?>shop/category/<?= $cat['id'] ?>" class="cat-grid-item"
                     style="display: block; text-align: center; text-decoration: none;">
                     <?php
-                    $catPath = 'assets/uploads/' . $cat['image'];
-                    $img = (!empty($cat['image']) && file_exists(ROOT_PATH . $catPath))
-                        ? BASE_URL . $catPath
-                        : 'https://via.placeholder.com/150?text=' . urlencode($cat['name']);
+                    $img = ImageHelper::uploadUrl(
+                        $cat['image'] ?? '',
+                        'https://via.placeholder.com/150?text=' . urlencode($cat['name'])
+                    );
                     ?>
                     <div
                         style="border-radius: 20px; overflow: hidden; aspect-ratio: 1/1; margin-bottom: 10px; background: #f0f0f0;">
-                        <img src="<?= $img ?>" alt="<?= htmlspecialchars($cat['name']) ?>"
-                            style="width: 100%; height: 100%; object-fit: cover;">
+                        <img <?= ImageHelper::attrs([
+                            'src' => $img,
+                            'alt' => $cat['name'] ?? 'Category',
+                            'loading' => 'lazy',
+                            'decoding' => 'async',
+                            'fetchpriority' => 'low',
+                            'style' => 'width: 100%; height: 100%; object-fit: cover;'
+                        ]) ?>>
                     </div>
                     <div style="font-weight: 700; font-size: 14px; text-align: left; color: #000;">
                         <?= htmlspecialchars($cat['name']) ?>

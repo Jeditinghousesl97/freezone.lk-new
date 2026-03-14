@@ -2,14 +2,15 @@
 // Product Card Partial
 // Expects $prod array available AND $settings array (global or passed)
 // We need to ensure $settings is available here. In Home view it is.
+require_once ROOT_PATH . 'helpers/ImageHelper.php';
 
 $currency = isset($settings['currency_symbol']) ? $settings['currency_symbol'] : 'LKR';
 // Fallback to LKR if not set, but database usually has it.
 
-$prodPath = 'assets/uploads/' . ($prod['main_image'] ?? '');
-$imagePath = (!empty($prod['main_image']) && file_exists(ROOT_PATH . $prodPath))
-    ? BASE_URL . $prodPath
-    : 'https://via.placeholder.com/300?text=' . urlencode($prod['title']);
+$imagePath = ImageHelper::uploadUrl(
+    $prod['main_image'] ?? '',
+    'https://via.placeholder.com/300?text=' . urlencode($prod['title'])
+);
 
 $isOnSale = !empty($prod['sale_price']) && $prod['sale_price'] < $prod['price'];
 ?>
@@ -17,7 +18,14 @@ $isOnSale = !empty($prod['sale_price']) && $prod['sale_price'] < $prod['price'];
 <div class="product-card">
     <div class="product-thumb-container">
         <a href="<?= BASE_URL ?>shop/product/<?= $prod['id'] ?>">
-            <img src="<?= $imagePath ?>" class="product-thumb" alt="<?= htmlspecialchars($prod['title']) ?>">
+            <img <?= ImageHelper::attrs([
+                'src' => $imagePath,
+                'class' => 'product-thumb',
+                'alt' => $prod['title'] ?? 'Product',
+                'loading' => 'lazy',
+                'decoding' => 'async',
+                'fetchpriority' => 'low'
+            ]) ?>>
         </a>
 
         <?php if ($isOnSale): ?>
