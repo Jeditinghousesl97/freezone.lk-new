@@ -664,18 +664,19 @@
                         <select name="stock_mode" id="stockModeInput" class="input-box" onchange="toggleStockPanels()">
                             <?php
                                 $rawStockMode = $product['stock_mode'] ?? 'always_in_stock';
-                                $stockMode = $rawStockMode === 'track_stock' ? 'track_stock' : 'always_in_stock';
+                                $stockMode = in_array($rawStockMode, ['track_stock', 'manual_out_of_stock'], true) ? $rawStockMode : 'always_in_stock';
                             ?>
                             <option value="always_in_stock" <?= $stockMode === 'always_in_stock' ? 'selected' : '' ?>>Always in Stock</option>
                             <option value="track_stock" <?= $stockMode === 'track_stock' ? 'selected' : '' ?>>Track Product Stock</option>
+                            <option value="manual_out_of_stock" <?= $stockMode === 'manual_out_of_stock' ? 'selected' : '' ?>>Out of Stock</option>
                         </select>
                     </div>
                     <div>
                         <span class="sub-label">Variation stock appears only when stock tracking is enabled</span>
-                        <div class="input-box" style="display:flex; align-items:center; color:#666; min-height:46px;">Exact variation stock matrix for tracked products</div>
+                        <div class="input-box" id="stockModeHintBox" style="display:flex; align-items:center; color:#666; min-height:46px;">Exact variation stock matrix for tracked products</div>
                     </div>
                 </div>
-                <input type="hidden" name="manual_stock_status" value="in_stock">
+                <input type="hidden" name="manual_stock_status" id="manualStockStatusHidden" value="<?= $stockMode === 'manual_out_of_stock' ? 'out_of_stock' : 'in_stock' ?>">
 
                 <div id="simpleStockPanel" class="stock-panel">
                     <div class="stock-row">
@@ -966,15 +967,25 @@
             const stockMode = document.getElementById('stockModeInput')?.value || 'always_in_stock';
             const simplePanel = document.getElementById('simpleStockPanel');
             const variantPanel = document.getElementById('variantStockPanel');
+            const manualStockStatusHidden = document.getElementById('manualStockStatusHidden');
+            const stockModeHintBox = document.getElementById('stockModeHintBox');
             const selectedGroups = getSelectedVariationGroups();
             const hasVariantSelections = selectedGroups.length > 0 || variantStockRows.length > 0;
             const isTrackingStock = stockMode === 'track_stock';
 
+            if (manualStockStatusHidden) {
+                manualStockStatusHidden.value = stockMode === 'manual_out_of_stock' ? 'out_of_stock' : 'in_stock';
+            }
             if (simplePanel) {
                 simplePanel.style.display = isTrackingStock && !hasVariantSelections ? 'block' : 'none';
             }
             if (variantPanel) {
                 variantPanel.style.display = isTrackingStock && hasVariantSelections ? 'block' : 'none';
+            }
+            if (stockModeHintBox) {
+                stockModeHintBox.textContent = stockMode === 'manual_out_of_stock'
+                    ? 'This product will appear as out of stock on the website.'
+                    : (isTrackingStock ? 'Exact variation stock matrix for tracked products' : 'This product will stay available without quantity tracking.');
             }
         }
 
