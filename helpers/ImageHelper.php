@@ -161,6 +161,59 @@ class ImageHelper
         return $files;
     }
 
+    public static function getUploadOptimizationSummary()
+    {
+        $files = self::getOptimizableUploads();
+        $summary = [
+            'total_optimizable' => count($files),
+            'fully_optimized' => 0,
+            'missing_derivatives' => 0,
+            'missing_formats' => [],
+            'derived_files' => 0
+        ];
+
+        $derivedDir = ROOT_PATH . self::DERIVED_DIR;
+        if (is_dir($derivedDir)) {
+            foreach (scandir($derivedDir) ?: [] as $entry) {
+                if ($entry === '.' || $entry === '..') {
+                    continue;
+                }
+                if (is_file($derivedDir . $entry)) {
+                    $summary['derived_files']++;
+                }
+            }
+        }
+
+        foreach ($files as $file) {
+            $baseName = pathinfo($file, PATHINFO_FILENAME);
+            $expected = self::expectedDerivedFiles($file);
+            $existing = self::derivedFilesFor($file);
+            $existingMap = [];
+
+            foreach ($existing as $derivedFile) {
+                $existingMap[basename($derivedFile)] = true;
+            }
+
+            $hasMissing = false;
+            foreach ($expected as $expectedFile) {
+                $expectedName = $baseName . '__' . $expectedFile['width'] . '.' . $expectedFile['format'];
+                if (empty($existingMap[$expectedName])) {
+                    $hasMissing = true;
+                    $summary['missing_formats'][$expectedFile['format']] = ($summary['missing_formats'][$expectedFile['format']] ?? 0) + 1;
+                }
+            }
+
+            if ($hasMissing) {
+                $summary['missing_derivatives']++;
+            } else {
+                $summary['fully_optimized']++;
+            }
+        }
+
+        ksort($summary['missing_formats']);
+        return $summary;
+    }
+
     public static function optimizeExistingUploadsBatch($force = false, $limit = 25, $offset = 0)
     {
         self::ensureDirectory(ROOT_PATH . self::DERIVED_DIR);
@@ -447,6 +500,42 @@ class ImageHelper
         }
 
         return glob(ROOT_PATH . self::DERIVED_DIR . $baseName . '__*') ?: [];
+    }
+
+    private static function expectedDerivedFiles($filename)
+    {
+        $filename = basename(trim((string) $filename));
+        $sourcePath = ROOT_PATH . self::ORIGINAL_DIR . $filename;
+        if (!is_file($sourcePath)) {
+            return [];
+        }
+
+        $dimensions = @getimagesize($sourcePath);
+        $sourceWidth = max(1, (int) ($dimensions[0] ?? 0));
+        if ($sourceWidth <= 0) {
+            return [];
+        }
+
+        $formats = [];
+        if (extension_loaded('imagick') || function_exists('imageavif')) {
+            $formats[] = 'avif';
+        }
+        if (extension_loaded('imagick') || function_exists('imagewebp')) {
+            $formats[] = 'webp';
+        }
+
+        $expected = [];
+        foreach ([160, 240, 320, 480, 640, 960, 1440] as $width) {
+            $targetWidth = min($width, $sourceWidth);
+            foreach ($formats as $format) {
+                $expected[] = [
+                    'width' => $targetWidth,
+                    'format' => $format
+                ];
+            }
+        }
+
+        return $expected;
     }
 
     private static function isOptimizableImage($filename)

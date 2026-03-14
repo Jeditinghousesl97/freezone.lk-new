@@ -152,9 +152,9 @@ class AdminController extends BaseController
         $runSummary = null;
         $mode = 'scan';
         $batchLimit = 25;
-        $totalOptimizable = 0;
+        $optimizationSummary = [];
 
-        $totalOptimizable = count(ImageHelper::getOptimizableUploads());
+        $optimizationSummary = ImageHelper::getUploadOptimizationSummary();
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $mode = ($_POST['run_mode'] ?? 'missing') === 'rebuild' ? 'rebuild' : 'missing';
@@ -162,6 +162,7 @@ class AdminController extends BaseController
             $batchLimit = max(1, (int) ($_POST['limit'] ?? 25));
             $offset = max(0, (int) ($_POST['offset'] ?? 0));
             $runSummary = ImageHelper::optimizeExistingUploadsBatch($force, $batchLimit, $offset);
+            $optimizationSummary = ImageHelper::getUploadOptimizationSummary();
         }
 
         $uploadDir = ROOT_PATH . 'assets/uploads/';
@@ -199,7 +200,7 @@ class AdminController extends BaseController
             'run_summary' => $runSummary,
             'mode' => $mode,
             'batch_limit' => $batchLimit,
-            'total_optimizable' => $totalOptimizable
+            'optimization_summary' => $optimizationSummary
         ]);
     }
 }

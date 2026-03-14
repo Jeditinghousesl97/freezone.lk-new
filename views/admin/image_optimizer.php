@@ -49,13 +49,13 @@
         </div>
         <div class="imgopt-card">
             <div class="imgopt-label">Derived Images</div>
-            <div class="imgopt-value"><?= (int) ($derived_count ?? 0) ?></div>
+            <div class="imgopt-value"><?= (int) (($optimization_summary['derived_files'] ?? $derived_count) ?? 0) ?></div>
             <div class="imgopt-note">Optimized responsive files already generated in <code>assets/uploads/derived</code>.</div>
         </div>
         <div class="imgopt-card">
-            <div class="imgopt-label">Recommended Run</div>
-            <div class="imgopt-value" style="font-size:18px; line-height:1.4;"><?= (int) ($total_optimizable ?? 0) ?> Optimizable</div>
-            <div class="imgopt-note">Safe option for first run is batch processing. It avoids server timeouts.</div>
+            <div class="imgopt-label">Need Optimization</div>
+            <div class="imgopt-value" style="font-size:18px; line-height:1.4;"><?= (int) (($optimization_summary['missing_derivatives'] ?? 0)) ?> Files</div>
+            <div class="imgopt-note"><?= (int) (($optimization_summary['fully_optimized'] ?? 0)) ?> files are already fully optimized.</div>
         </div>
     </div>
 
@@ -80,6 +80,13 @@
                 <button type="submit" name="run_mode" value="rebuild" class="imgopt-btn warn" onclick="return confirm('Rebuild all optimized images? This will delete old derived files and generate them again.')">Rebuild All</button>
             </div>
         </form>
+        <?php if (!empty($optimization_summary['missing_formats'])): ?>
+            <div class="imgopt-badges">
+                <?php foreach ($optimization_summary['missing_formats'] as $format => $count): ?>
+                    <span class="imgopt-badge">Missing <?= htmlspecialchars(strtoupper((string) $format)) ?>: <?= (int) $count ?></span>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
     </div>
 
     <?php if (!empty($run_summary)): ?>
