@@ -26,6 +26,7 @@ class SeoController extends BaseController
             SeoHelper::absoluteUrl(BASE_URL . 'shop/index'),
             SeoHelper::absoluteUrl(BASE_URL . 'shop/categories'),
             SeoHelper::absoluteUrl(BASE_URL . 'shop/featured'),
+            SeoHelper::absoluteUrl(BASE_URL . 'shop/free_shipping'),
             SeoHelper::absoluteUrl(BASE_URL . 'shop/new_arrivals'),
             SeoHelper::absoluteUrl(BASE_URL . 'shop/sales'),
             SeoHelper::absoluteUrl(BASE_URL . 'discounts'),

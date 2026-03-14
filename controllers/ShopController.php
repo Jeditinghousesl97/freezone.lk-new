@@ -341,6 +341,42 @@ class ShopController extends BaseController
         ]);
     }
 
+    // 4. Free Shipping (UI: "Free Shipping")
+    public function free_shipping()
+    {
+        $products = $this->productModel->getFreeShippingProducts(20);
+        $categories = $this->categoryModel->getAll();
+        $settings = $this->settingModel->getAllPairs();
+        $seo = SeoHelper::defaultSeo($settings, [
+            'seo_title' => 'Free Shipping | ' . SeoHelper::shopName($settings),
+            'seo_description' => SeoHelper::trimText('Browse free shipping products from ' . SeoHelper::shopName($settings) . '.', 160),
+            'seo_canonical' => SeoHelper::absoluteUrl(BASE_URL . 'shop/free_shipping'),
+            'seo_json_ld' => [
+                SeoHelper::buildOrganizationSchema($settings),
+                SeoHelper::buildWebsiteSchema($settings),
+                SeoHelper::buildBreadcrumbSchema([
+                    ['name' => SeoHelper::shopName($settings), 'url' => SeoHelper::absoluteUrl(BASE_URL)],
+                    ['name' => 'Free Shipping', 'url' => SeoHelper::absoluteUrl(BASE_URL . 'shop/free_shipping')]
+                ])
+            ]
+        ]);
+
+        $this->view('customer/shop/index', [
+            'title' => 'Free Shipping',
+            'products' => $products,
+            'categories' => $categories,
+            'settings' => $settings,
+            'isSpecialPage' => true,
+            'seo_title' => $seo['seo_title'],
+            'seo_description' => $seo['seo_description'],
+            'seo_canonical' => $seo['seo_canonical'],
+            'seo_image' => $seo['seo_image'],
+            'seo_type' => $seo['seo_type'],
+            'seo_robots' => $seo['seo_robots'],
+            'seo_json_ld' => $seo['seo_json_ld']
+        ]);
+    }
+
     // List All Categories Page
     public function categories()
     {
