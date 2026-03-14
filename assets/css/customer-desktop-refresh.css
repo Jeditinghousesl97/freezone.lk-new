@@ -137,11 +137,32 @@
     }
 
     .btn-red {
-        background: linear-gradient(135deg, #d95d4f 0%, #bb3d33 100%) !important;
+        background: linear-gradient(135deg, #fff4eb 0%, #ffe6d2 100%) !important;
+        color: #8f3d16 !important;
+        border: 1px solid rgba(201, 123, 61, 0.22) !important;
+        box-shadow: 0 14px 28px rgba(201, 123, 61, 0.14) !important;
+        position: relative;
+        overflow: hidden;
     }
 
     .header-actions > a[href*="cart"] {
         background: rgba(255, 255, 255, 0.84);
+    }
+
+    .btn-red::before {
+        content: "Hot";
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 10px;
+        padding: 5px 8px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, #d95d4f 0%, #bb3d33 100%);
+        color: #fff;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
     }
 
     .cart-badge-count {
@@ -191,9 +212,10 @@
         left: max(28px, calc((100vw - 1340px) / 2 + 28px)) !important;
         top: 162px !important;
         height: calc(100vh - 186px) !important;
-        padding-right: 0 !important;
+        padding-right: 12px !important;
         border-right: 0 !important;
         gap: 16px;
+        scrollbar-gutter: stable;
     }
 
     .sidebar::-webkit-scrollbar {
@@ -238,12 +260,18 @@
         display: flex;
         align-items: center;
         gap: 10px;
-        padding: 8px 0;
+        padding: 3px 0;
         color: var(--desktop-muted);
+        line-height: 1.2;
     }
 
     .checkbox-label input {
         accent-color: var(--desktop-accent);
+    }
+
+    .filter-group div[style*="flex-direction: column"] .checkbox-label {
+        padding: 2px 0 !important;
+        font-size: 11px !important;
     }
 
     .btn-apply-filter {
@@ -269,7 +297,9 @@
     }
 
     .social-icons {
+        display: flex !important;
         gap: 12px !important;
+        margin-top: 6px;
     }
 
     .social-icons a {
@@ -690,10 +720,13 @@
         min-height: 54px;
     }
 
-    .desktop-policy-links {
-        max-width: 1340px !important;
-        margin: 0 auto !important;
-        padding: 0 28px !important;
+    .desktop-policy-links,
+    .payment-gateway-banner-wrap {
+        width: min(calc(100% - 56px), calc(1340px - 322px)) !important;
+        margin-left: max(calc((100vw - 1340px) / 2 + 350px), 350px) !important;
+        margin-right: 28px !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
     }
 
     .desktop-policy-links-inner {
@@ -706,45 +739,28 @@
         box-shadow: var(--desktop-shadow-soft);
     }
 
-    footer.main-footer {
-        display: block !important;
-        background: transparent !important;
-        padding: 14px 0 34px !important;
+    footer.main-footer,
+    .main-footer {
+        display: none !important;
     }
 
-    footer.main-footer .container {
-        max-width: 1340px !important;
-        padding: 0 28px !important;
-    }
-
-    footer.main-footer .container > div {
-        grid-template-columns: 1.2fr 1fr 0.8fr !important;
-        padding: 26px;
-        border-radius: 30px;
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.88) 0%, rgba(248, 243, 235, 0.94) 100%);
-        border: 1px solid rgba(82, 58, 32, 0.08);
-        box-shadow: var(--desktop-shadow);
-    }
-
-    footer.main-footer h3 {
-        font-size: 24px !important;
-        font-weight: 900 !important;
-        margin-bottom: 12px !important;
-    }
-
-    footer.main-footer p,
-    footer.main-footer a,
     .desktop-policy-links a {
         color: var(--desktop-muted) !important;
     }
 
     .payment-gateway-banner-wrap {
-        padding: 0 28px 22px !important;
+        padding-top: 0 !important;
+        padding-bottom: 22px !important;
     }
 
     .payment-gateway-banner {
-        max-width: 1340px !important;
         background: linear-gradient(180deg, rgba(255, 255, 255, 0.82) 0%, rgba(246, 239, 228, 0.92) 100%) !important;
+    }
+
+    .payment-gateway-banner-title,
+    .payment-gateway-banner-icons {
+        justify-content: center !important;
+        text-align: center;
     }
 
     .floating-whatsapp.display-desktop-only {
