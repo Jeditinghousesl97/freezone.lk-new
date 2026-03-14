@@ -37,6 +37,44 @@ $productUnitPrice = (!empty($product['sale_price']) && (float) $product['sale_pr
         background: #f08f2e;
         color: #fff;
     }
+
+    .lightbox-slider {
+        display: flex;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        width: min(92vw, 720px);
+        max-height: 82vh;
+        border-radius: 18px;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        -webkit-overflow-scrolling: touch;
+        touch-action: pan-x pinch-zoom;
+        background: #fff;
+    }
+
+    .lightbox-slider::-webkit-scrollbar {
+        display: none;
+    }
+
+    .lightbox-slide {
+        min-width: 100%;
+        width: 100%;
+        scroll-snap-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #fff;
+    }
+
+    .lightbox-slide img {
+        width: 100%;
+        max-height: 82vh;
+        object-fit: contain;
+        display: block;
+        border-radius: 18px;
+        user-select: none;
+        -webkit-user-drag: none;
+    }
 </style>
 
 <!-- Wrappers for Sidebar Layout -->
@@ -75,17 +113,17 @@ $productUnitPrice = (!empty($product['sale_price']) && (float) $product['sale_pr
                         }
                         ?>
                         <img src="<?= $mainImg ?>" class="gallery-img current" alt="Main Image"
-                            onclick="openImageModal(this.src)">
+                            data-index="0" onclick="openImageModal(0)">
 
                         <!-- Gallery Images -->
                         <?php if (!empty($gallery)): ?>
-                            <?php foreach ($gallery as $gImg):
+                            <?php foreach ($gallery as $galleryIndex => $gImg):
                                 $gPath = 'assets/uploads/' . $gImg;
                                 $gUrl = (file_exists(ROOT_PATH . $gPath)) ? BASE_URL . $gPath : '';
                                 if ($gUrl):
                                     ?>
                                     <img src="<?= $gUrl ?>" class="gallery-img" alt="Gallery Image"
-                                        onclick="openImageModal(this.src)">
+                                        data-index="<?= (int) $galleryIndex + 1 ?>" onclick="openImageModal(<?= (int) $galleryIndex + 1 ?>)">
                                 <?php endif; endforeach; ?>
                         <?php endif; ?>
                     </div>
@@ -295,7 +333,7 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
     style="display: none; align-items: center; justify-content: center; z-index: 3000;">
 
     <!-- Image Wrapper (Relative for button positioning) -->
-    <div onclick="event.stopPropagation()" style="position: relative; display: inline-block;">
+    <div onclick="event.stopPropagation()" style="position: relative; display: inline-block; width: min(92vw, 720px);">
 
         <!-- Close Button (Absolute Top-Right of Image) -->
         <div onclick="closeImageModal()" style="position: absolute; top: -15px; right: -15px; cursor: pointer; z-index: 3001; 
@@ -305,18 +343,65 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
             <i class="fas fa-times" style="color: black; font-size: 16px;"></i>
         </div>
 
-        <img id="imgModalSrc" src="" style="max-width: 85vw; max-height: 80vh; width: auto; height: auto; 
-                   object-fit: contain; border-radius: 12px; display: block; background: #fff;">
+        <button type="button" onclick="moveImageModal(-1)" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); z-index:3001; width:38px; height:38px; border:none; border-radius:50%; background:rgba(255,255,255,0.92); box-shadow:0 2px 10px rgba(0,0,0,0.18); cursor:pointer; display:flex; align-items:center; justify-content:center;">
+            <i class="fas fa-chevron-left" style="color:#111; font-size:14px;"></i>
+        </button>
+
+        <div id="imgModalSlider" class="lightbox-slider"></div>
+
+        <button type="button" onclick="moveImageModal(1)" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); z-index:3001; width:38px; height:38px; border:none; border-radius:50%; background:rgba(255,255,255,0.92); box-shadow:0 2px 10px rgba(0,0,0,0.18); cursor:pointer; display:flex; align-items:center; justify-content:center;">
+            <i class="fas fa-chevron-right" style="color:#111; font-size:14px;"></i>
+        </button>
     </div>
 </div>
 
 <script>
-    function openImageModal(src) {
-        document.getElementById('imgModalSrc').src = src;
-        document.getElementById('imgModal').style.display = 'flex';
+    let modalImageIndex = 0;
+
+    function getGalleryImages() {
+        return Array.from(document.querySelectorAll('.gallery-slider .gallery-img')).map(function (img) {
+            return img.getAttribute('src');
+        }).filter(Boolean);
     }
+
+    function renderImageModalSlides() {
+        const slider = document.getElementById('imgModalSlider');
+        if (!slider) {
+            return;
+        }
+
+        const images = getGalleryImages();
+        slider.innerHTML = images.map(function (src, index) {
+            return '<div class="lightbox-slide"><img src="' + src + '" alt="Product image ' + (index + 1) + '"></div>';
+        }).join('');
+    }
+
+    function syncModalImagePosition(index, behavior) {
+        const slider = document.getElementById('imgModalSlider');
+        const images = getGalleryImages();
+        if (!slider || !images.length) {
+            return;
+        }
+
+        modalImageIndex = Math.max(0, Math.min(index, images.length - 1));
+        slider.scrollTo({
+            left: slider.clientWidth * modalImageIndex,
+            behavior: behavior || 'smooth'
+        });
+    }
+
+    function openImageModal(index) {
+        renderImageModalSlides();
+        document.getElementById('imgModal').style.display = 'flex';
+        syncModalImagePosition(Number(index || 0), 'auto');
+    }
+
     function closeImageModal() {
         document.getElementById('imgModal').style.display = 'none';
+    }
+
+    function moveImageModal(direction) {
+        syncModalImagePosition(modalImageIndex + direction, 'smooth');
     }
     // Size Guide Modal Logic (Fix Task 2)
     function openSizeGuide() {
@@ -329,6 +414,7 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
     document.addEventListener('DOMContentLoaded', () => {
         const slider = document.querySelector('.gallery-slider');
         const dots = document.querySelectorAll('.gallery-dots .dot');
+        const modalSlider = document.getElementById('imgModalSlider');
 
         if (slider && dots.length > 0) {
             slider.addEventListener('scroll', () => {
@@ -342,6 +428,18 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
                     if (i === index) dot.classList.add('active');
                     else dot.classList.remove('active');
                 });
+            });
+        }
+
+        if (slider) {
+            slider.style.webkitOverflowScrolling = 'touch';
+            slider.style.touchAction = 'pan-x pinch-zoom';
+        }
+
+        if (modalSlider) {
+            modalSlider.addEventListener('scroll', function () {
+                const width = modalSlider.offsetWidth || 1;
+                modalImageIndex = Math.round(modalSlider.scrollLeft / width);
             });
         }
     });
