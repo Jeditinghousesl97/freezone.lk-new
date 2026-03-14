@@ -14,6 +14,28 @@ $productUnitPrice = (!empty($product['sale_price']) && (float) $product['sale_pr
         pointer-events: none;
         filter: grayscale(0.15);
     }
+
+    .stock-filter-actions {
+        display: flex;
+        justify-content: flex-end;
+        margin: -4px 0 18px;
+    }
+
+    .stock-clear-btn {
+        border: 1px solid #d9d9d9;
+        background: #fff;
+        color: #444;
+        border-radius: 999px;
+        padding: 8px 14px;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .stock-clear-btn:hover {
+        border-color: #111;
+        color: #111;
+    }
 </style>
 
 <!-- Wrappers for Sidebar Layout -->
@@ -162,6 +184,11 @@ $productUnitPrice = (!empty($product['sale_price']) && (float) $product['sale_pr
                             </div>
                         </div>
                     <?php endforeach; ?>
+                    <div class="stock-filter-actions">
+                        <button type="button" id="clearStockFilterBtn" class="stock-clear-btn" onclick="clearVariationSelection()" style="display:none;">
+                            Clear Filter
+                        </button>
+                    </div>
                 <?php endif; ?>
                 <div id="productStockNotice" style="display:none; margin: 0 0 18px; padding: 12px 14px; border-radius: 12px; font-size: 13px; font-weight: 700;"></div>
 
@@ -767,16 +794,27 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
         }
     }
 
+    function updateClearFilterButton() {
+        const button = document.getElementById('clearStockFilterBtn');
+        if (!button) {
+            return;
+        }
+
+        button.style.display = Object.keys(selectedVariations).length ? 'inline-flex' : 'none';
+    }
+
     function refreshVariantAvailability() {
         if (!Array.isArray(variantStockRows) || !variantStockRows.length) {
+            updateClearFilterButton();
             if (productStockSnapshot && productStockSnapshot.status === 'out_of_stock') {
-                updateProductStockNotice('This product is currently out of stock.', 'error');
+                updateProductStockNotice('Out of stock', 'error');
             } else {
-                updateProductStockNotice('', '');
+                updateProductStockNotice('In stock', 'success');
             }
             return;
         }
 
+        updateClearFilterButton();
         const pills = document.querySelectorAll('.var-pill');
         pills.forEach(pill => {
             const nextPairs = buildSelectionForPill(pill);
@@ -788,16 +826,16 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
         const activeVariant = getActiveVariantRow();
         if (activeVariant) {
             if (activeVariant.stock_mode === 'track_stock' && Number(activeVariant.stock_qty || 0) <= 0) {
-                updateProductStockNotice('Selected variation is out of stock.', 'error');
-            } else if (activeVariant.stock_mode === 'track_stock' && Number(activeVariant.stock_qty || 0) <= Number(activeVariant.low_stock_threshold || 0)) {
-                updateProductStockNotice(`Only ${Number(activeVariant.stock_qty || 0)} left for this variation.`, 'warning');
+                updateProductStockNotice('Out of stock', 'error');
+            } else if (activeVariant.stock_mode === 'manual_out_of_stock' && String(activeVariant.manual_stock_status || 'in_stock') !== 'in_stock') {
+                updateProductStockNotice('Out of stock', 'error');
             } else {
-                updateProductStockNotice('Selected variation is available.', 'success');
+                updateProductStockNotice('In stock', 'success');
             }
         } else if (Object.keys(selectedVariations).length > 0) {
-            updateProductStockNotice('This variation combination is not available.', 'error');
+            updateProductStockNotice('Out of stock', 'error');
         } else {
-            updateProductStockNotice('', '');
+            updateProductStockNotice('In stock', 'success');
         }
     }
 
@@ -805,25 +843,25 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
         qty = qty || (parseInt(document.getElementById('qtyInput').value) || 1);
         if (Array.isArray(variantStockRows) && variantStockRows.length) {
             if (!getSelectedVariantKey()) {
-                return { ok: false, message: 'Please choose a valid product variation.' };
+                return { ok: false, message: 'Please choose a valid stock option.' };
             }
 
             const activeVariant = getActiveVariantRow();
             if (!activeVariant) {
-                return { ok: false, message: 'This variation combination is not available.' };
+                return { ok: false, message: 'This stock option is out of stock.' };
             }
 
             if (activeVariant.stock_mode === 'manual_out_of_stock' && activeVariant.manual_stock_status !== 'in_stock') {
-                return { ok: false, message: 'Selected variation is out of stock.' };
+                return { ok: false, message: 'Selected stock is out of stock.' };
             }
 
             if (activeVariant.stock_mode === 'track_stock' && Number(activeVariant.stock_qty || 0) < qty) {
-                return { ok: false, message: `Only ${Number(activeVariant.stock_qty || 0)} items available for this variation.` };
+                return { ok: false, message: 'Selected stock is out of stock.' };
             }
         } else if (productStockSnapshot && productStockSnapshot.stock_mode === 'track_stock' && Number(productStockSnapshot.stock_qty || 0) < qty) {
-            return { ok: false, message: `Only ${Number(productStockSnapshot.stock_qty || 0)} items available in stock.` };
+            return { ok: false, message: 'Out of stock.' };
         } else if (productStockSnapshot && productStockSnapshot.status === 'out_of_stock') {
-            return { ok: false, message: 'This product is currently out of stock.' };
+            return { ok: false, message: 'Out of stock.' };
         }
 
         return { ok: true };
@@ -844,6 +882,14 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
             variation_value_id: Number(el.dataset.valueId || 0),
             variation_value: el.dataset.valueLabel || el.textContent.trim()
         };
+        refreshVariantAvailability();
+    }
+
+    function clearVariationSelection() {
+        selectedVariations = {};
+        document.querySelectorAll('.var-pill.active').forEach(function (pill) {
+            pill.classList.remove('active');
+        });
         refreshVariantAvailability();
     }
 
