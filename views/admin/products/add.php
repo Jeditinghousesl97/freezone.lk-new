@@ -653,6 +653,10 @@
                     <span class="slider"></span>
                 </label>
 
+                <div style="margin-top: 24px;">
+                    <button type="button" class="btn-yellow" onclick="openVarModal()">Add Variations</button>
+                </div>
+
                 <span class="section-label" style="margin-top:20px;">Stock Management</span>
                 <div class="stock-grid">
                     <div>
@@ -722,7 +726,6 @@
                 </div>
 
                 <div style="margin-top: 30px;">
-                    <button type="button" class="btn-yellow" onclick="openVarModal()">Add Variations</button>
                     <button type="submit" class="btn-blue" onclick="showGlobalLoader()">Publish</button>
                 </div>
 
