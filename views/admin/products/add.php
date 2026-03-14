@@ -396,6 +396,93 @@
             color: #d83b31;
             border: 1px solid #ffd6d1;
         }
+
+        @media (max-width: 640px) {
+            .stock-grid,
+            .stock-row,
+            .images-container,
+            .price-row {
+                grid-template-columns: 1fr;
+                flex-direction: column;
+            }
+
+            .btn-yellow,
+            .btn-blue {
+                width: 100%;
+                float: none;
+            }
+
+            .variant-stock-actions {
+                flex-direction: column;
+            }
+
+            .variant-stock-actions .btn-soft {
+                width: 100%;
+            }
+
+            .variant-stock-table,
+            .variant-stock-table thead,
+            .variant-stock-table tbody,
+            .variant-stock-table tr,
+            .variant-stock-table td {
+                display: block;
+                width: 100%;
+            }
+
+            .variant-stock-table {
+                margin-top: 14px;
+            }
+
+            .variant-stock-table thead {
+                display: none;
+            }
+
+            .variant-stock-table tr {
+                background: #fafafa;
+                border: 1px solid #ececec;
+                border-radius: 14px;
+                padding: 12px;
+                margin-bottom: 12px;
+            }
+
+            .variant-stock-table td {
+                border: none;
+                padding: 0;
+                margin-bottom: 10px;
+            }
+
+            .variant-stock-table td:last-child {
+                margin-bottom: 0;
+            }
+
+            .variant-stock-table td::before {
+                content: attr(data-label);
+                display: block;
+                font-size: 10px;
+                font-weight: 800;
+                letter-spacing: 0.06em;
+                text-transform: uppercase;
+                color: #777;
+                margin-bottom: 4px;
+            }
+
+            .variant-stock-table td[data-label="Remove"]::before {
+                display: none;
+            }
+
+            .variant-stock-table td[data-label="Active"] input[type="checkbox"] {
+                width: 20px;
+                height: 20px;
+            }
+
+            .variant-stock-table td[data-label="Remove"] .btn-soft-danger {
+                width: 100%;
+            }
+
+            #variantStockEmptyState td::before {
+                display: none;
+            }
+        }
     </style>
 </head>
 
@@ -737,30 +824,30 @@
 
             tbody.innerHTML = variantStockRows.map((row, index) => `
                 <tr>
-                    <td>
+                    <td data-label="Combination">
                         <div style="font-weight:700; color:#111;">${row.combination_label || row.combination_key}</div>
                         <div style="font-size:11px; color:#888; margin-top:4px;">${row.combination_key}</div>
                     </td>
-                    <td><input type="text" value="${escapeHtml(row.sku || '')}" onchange="updateVariantRow(${index}, 'sku', this.value)"></td>
-                    <td>
+                    <td data-label="SKU"><input type="text" value="${escapeHtml(row.sku || '')}" onchange="updateVariantRow(${index}, 'sku', this.value)"></td>
+                    <td data-label="Mode">
                         <select onchange="updateVariantRow(${index}, 'stock_mode', this.value)">
                             <option value="always_in_stock" ${row.stock_mode === 'always_in_stock' ? 'selected' : ''}>Always In Stock</option>
                             <option value="track_stock" ${row.stock_mode === 'track_stock' ? 'selected' : ''}>Track Stock</option>
                             <option value="manual_out_of_stock" ${row.stock_mode === 'manual_out_of_stock' ? 'selected' : ''}>Manual Status</option>
                         </select>
                     </td>
-                    <td><input type="number" min="0" step="1" value="${Number(row.stock_qty || 0)}" onchange="updateVariantRow(${index}, 'stock_qty', this.value)"></td>
-                    <td><input type="number" min="0" step="1" value="${Number(row.low_stock_threshold || 5)}" onchange="updateVariantRow(${index}, 'low_stock_threshold', this.value)"></td>
-                    <td>
+                    <td data-label="Qty"><input type="number" min="0" step="1" value="${Number(row.stock_qty || 0)}" onchange="updateVariantRow(${index}, 'stock_qty', this.value)"></td>
+                    <td data-label="Low Stock"><input type="number" min="0" step="1" value="${Number(row.low_stock_threshold || 5)}" onchange="updateVariantRow(${index}, 'low_stock_threshold', this.value)"></td>
+                    <td data-label="Status">
                         <select onchange="updateVariantRow(${index}, 'manual_stock_status', this.value)">
                             <option value="in_stock" ${(row.manual_stock_status || 'in_stock') === 'in_stock' ? 'selected' : ''}>In Stock</option>
                             <option value="out_of_stock" ${(row.manual_stock_status || 'in_stock') === 'out_of_stock' ? 'selected' : ''}>Out of Stock</option>
                         </select>
                     </td>
-                    <td style="text-align:center;">
+                    <td data-label="Active" style="text-align:center;">
                         <input type="checkbox" ${row.is_active ? 'checked' : ''} onchange="updateVariantRow(${index}, 'is_active', this.checked)">
                     </td>
-                    <td>
+                    <td data-label="Remove">
                         <button type="button" class="btn-soft btn-soft-danger" onclick="removeVariantRow(${index})">Remove</button>
                     </td>
                 </tr>
