@@ -920,6 +920,248 @@ class Product extends BaseModel
         return ['summary' => $summary, 'products' => $products];
     }
 
+    private function buildStockReportOrderFilterParts(array $filters)
+    {
+        $where = [];
+        $params = [];
+
+        if (!empty($filters['date_from'])) {
+            $where[] = "DATE(o.created_at) >= :date_from";
+            $params[':date_from'] = trim((string) $filters['date_from']);
+        }
+
+        if (!empty($filters['date_to'])) {
+            $where[] = "DATE(o.created_at) <= :date_to";
+            $params[':date_to'] = trim((string) $filters['date_to']);
+        }
+
+        if (!empty($filters['payment_status'])) {
+            $where[] = "o.payment_status = :payment_status";
+            $params[':payment_status'] = trim((string) $filters['payment_status']);
+        }
+
+        if (!empty($filters['order_status'])) {
+            $where[] = "o.order_status = :order_status";
+            $params[':order_status'] = trim((string) $filters['order_status']);
+        } else {
+            $where[] = "o.order_status != 'cancelled'";
+        }
+
+        return [$where, $params];
+    }
+
+    private function getStockReportSalesMap(array $filters)
+    {
+        [$where, $params] = $this->buildStockReportOrderFilterParts($filters);
+
+        $sql = "
+            SELECT
+                oi.product_id,
+                COUNT(DISTINCT oi.order_id) AS orders_count,
+                COALESCE(SUM(oi.qty), 0) AS units_sold,
+                COALESCE(SUM(oi.line_total), 0) AS revenue_total,
+                MAX(o.created_at) AS last_ordered_at
+            FROM order_items oi
+            INNER JOIN orders o ON o.id = oi.order_id
+            WHERE oi.product_id IS NOT NULL
+        ";
+
+        if (!empty($where)) {
+            $sql .= ' AND ' . implode(' AND ', $where);
+        }
+
+        $sql .= ' GROUP BY oi.product_id';
+
+        $stmt = $this->conn->prepare($sql);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+        $stmt->execute();
+
+        $map = [];
+        foreach (($stmt->fetchAll(PDO::FETCH_ASSOC) ?: []) as $row) {
+            $map[(int) $row['product_id']] = [
+                'orders_count' => (int) ($row['orders_count'] ?? 0),
+                'units_sold' => (int) ($row['units_sold'] ?? 0),
+                'revenue_total' => (float) ($row['revenue_total'] ?? 0),
+                'last_ordered_at' => $row['last_ordered_at'] ?? null
+            ];
+        }
+
+        return $map;
+    }
+
+    public function getStockReport(array $filters = [])
+    {
+        $overview = $this->getStockOverview();
+        $salesMap = $this->getStockReportSalesMap($filters);
+        $search = trim((string) ($filters['search'] ?? ''));
+        $stockState = trim((string) ($filters['stock_state'] ?? ''));
+        $productType = trim((string) ($filters['product_type'] ?? ''));
+
+        $summary = [
+            'total_products' => 0,
+            'tracked_products' => 0,
+            'variant_products' => 0,
+            'simple_products' => 0,
+            'in_stock' => 0,
+            'low_stock' => 0,
+            'out_of_stock' => 0,
+            'units_on_hand' => 0,
+            'inventory_value' => 0.0,
+            'products_with_sales' => 0,
+            'zero_sales_products' => 0,
+            'total_units_sold' => 0,
+            'total_sales_revenue' => 0.0
+        ];
+        $rows = [];
+
+        foreach (($overview['products'] ?? []) as $product) {
+            $snapshot = $product['stock_snapshot'] ?? $this->getStockSnapshot($product);
+            $sales = $salesMap[(int) $product['id']] ?? [
+                'orders_count' => 0,
+                'units_sold' => 0,
+                'revenue_total' => 0.0,
+                'last_ordered_at' => null
+            ];
+            $effectivePrice = (!empty($product['sale_price']) && (float) $product['sale_price'] > 0 && (float) $product['sale_price'] < (float) $product['price'])
+                ? (float) $product['sale_price']
+                : (float) ($product['price'] ?? 0);
+            $availableQty = $snapshot['available_qty'];
+            $inventoryValue = $availableQty !== null ? ((int) $availableQty * $effectivePrice) : null;
+            $row = [
+                'id' => (int) $product['id'],
+                'title' => (string) ($product['title'] ?? 'Product'),
+                'sku' => (string) ($product['sku'] ?? ''),
+                'category_name' => (string) ($product['category_name'] ?? ''),
+                'status' => (string) ($snapshot['status'] ?? 'in_stock'),
+                'stock_mode' => (string) ($snapshot['stock_mode'] ?? 'always_in_stock'),
+                'available_qty' => $availableQty === null ? null : (int) $availableQty,
+                'low_stock_threshold' => (int) ($snapshot['low_stock_threshold'] ?? 0),
+                'has_variant_stock' => !empty($snapshot['has_variant_stock']),
+                'variant_count' => !empty($snapshot['variant_rows']) ? count($snapshot['variant_rows']) : 0,
+                'product_type' => !empty($snapshot['has_variant_stock']) ? 'variant' : 'simple',
+                'units_sold' => (int) ($sales['units_sold'] ?? 0),
+                'orders_count' => (int) ($sales['orders_count'] ?? 0),
+                'revenue_total' => (float) ($sales['revenue_total'] ?? 0),
+                'last_ordered_at' => $sales['last_ordered_at'] ?? null,
+                'inventory_value' => $inventoryValue,
+                'effective_price' => $effectivePrice,
+                'is_active' => !empty($product['is_active'])
+            ];
+
+            if ($search !== '') {
+                $haystack = strtolower(trim(implode(' ', [
+                    $row['title'],
+                    $row['sku'],
+                    $row['category_name']
+                ])));
+                if (strpos($haystack, strtolower($search)) === false) {
+                    continue;
+                }
+            }
+
+            if ($stockState !== '' && $row['status'] !== $stockState) {
+                continue;
+            }
+
+            if ($productType !== '' && $row['product_type'] !== $productType) {
+                continue;
+            }
+
+            $summary['total_products']++;
+            $summary['total_units_sold'] += $row['units_sold'];
+            $summary['total_sales_revenue'] += $row['revenue_total'];
+
+            if ($row['stock_mode'] === 'track_stock' || $row['has_variant_stock']) {
+                $summary['tracked_products']++;
+            }
+            if ($row['has_variant_stock']) {
+                $summary['variant_products']++;
+            } else {
+                $summary['simple_products']++;
+            }
+            if ($row['status'] === 'in_stock') {
+                $summary['in_stock']++;
+            } elseif ($row['status'] === 'low_stock') {
+                $summary['low_stock']++;
+            } else {
+                $summary['out_of_stock']++;
+            }
+            if ($row['available_qty'] !== null) {
+                $summary['units_on_hand'] += $row['available_qty'];
+            }
+            if ($row['inventory_value'] !== null) {
+                $summary['inventory_value'] += $row['inventory_value'];
+            }
+            if ($row['units_sold'] > 0) {
+                $summary['products_with_sales']++;
+            } else {
+                $summary['zero_sales_products']++;
+            }
+
+            $rows[] = $row;
+        }
+
+        $byUnitsSold = $rows;
+        usort($byUnitsSold, function ($a, $b) {
+            if ($b['units_sold'] === $a['units_sold']) {
+                return $b['revenue_total'] <=> $a['revenue_total'];
+            }
+            return $b['units_sold'] <=> $a['units_sold'];
+        });
+
+        $byRevenue = $rows;
+        usort($byRevenue, function ($a, $b) {
+            if ($b['revenue_total'] === $a['revenue_total']) {
+                return $b['units_sold'] <=> $a['units_sold'];
+            }
+            return $b['revenue_total'] <=> $a['revenue_total'];
+        });
+
+        $byAttention = $rows;
+        usort($byAttention, function ($a, $b) {
+            $priority = [
+                'out_of_stock' => 3,
+                'low_stock' => 2,
+                'in_stock' => 1
+            ];
+            $aPriority = $priority[$a['status']] ?? 0;
+            $bPriority = $priority[$b['status']] ?? 0;
+            if ($bPriority === $aPriority) {
+                if ($a['units_sold'] === $b['units_sold']) {
+                    return strcmp($a['title'], $b['title']);
+                }
+                return $a['units_sold'] <=> $b['units_sold'];
+            }
+            return $bPriority <=> $aPriority;
+        });
+
+        $deadStock = array_values(array_filter($rows, function ($row) {
+            return $row['units_sold'] === 0;
+        }));
+        usort($deadStock, function ($a, $b) {
+            if (($b['inventory_value'] ?? 0) === ($a['inventory_value'] ?? 0)) {
+                return strcmp($a['title'], $b['title']);
+            }
+            return ($b['inventory_value'] ?? 0) <=> ($a['inventory_value'] ?? 0);
+        });
+
+        return [
+            'summary' => $summary,
+            'rows' => $byAttention,
+            'best_seller' => !empty($byUnitsSold) && (int) ($byUnitsSold[0]['units_sold'] ?? 0) > 0 ? $byUnitsSold[0] : null,
+            'top_sellers' => array_slice(array_values(array_filter($byUnitsSold, function ($row) {
+                return $row['units_sold'] > 0;
+            })), 0, 5),
+            'top_revenue' => array_slice(array_values(array_filter($byRevenue, function ($row) {
+                return $row['revenue_total'] > 0;
+            })), 0, 5),
+            'attention_products' => array_slice($byAttention, 0, 8),
+            'dead_stock' => array_slice($deadStock, 0, 8)
+        ];
+    }
+
     /**
      * Get Related Products (Same category, excluding current)
      */

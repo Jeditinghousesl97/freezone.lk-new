@@ -35,7 +35,10 @@
             <h1 class="page-title">Stock Management</h1>
             <p class="shop-subtitle">Track simple products, variant combinations, low stock, and out-of-stock items.</p>
         </div>
-        <a href="<?= BASE_URL ?>admin/dashboard" class="stock-btn secondary">Back to Dashboard</a>
+        <div class="stock-actions" style="margin-top:0;">
+            <a href="<?= BASE_URL ?>stock/report" class="stock-btn primary">Open Stock Report</a>
+            <a href="<?= BASE_URL ?>admin/dashboard" class="stock-btn secondary">Back to Dashboard</a>
+        </div>
     </div>
 
     <div class="stock-summary-grid">

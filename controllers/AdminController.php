@@ -33,7 +33,8 @@ class AdminController extends BaseController
             'feedbacks' => $db->query("SELECT COUNT(*) FROM reviews")->fetchColumn(),
             'size_guides' => $db->query("SELECT COUNT(*) FROM size_guides")->fetchColumn(),
             'orders' => $orderModel->countAll(),
-            'low_stock' => (int) ($stockOverview['summary']['low_stock'] ?? 0)
+            'low_stock' => (int) ($stockOverview['summary']['low_stock'] ?? 0),
+            'tracked_products' => (int) ($stockOverview['summary']['tracked_products'] ?? 0)
         ];
         $finance = $orderModel->getFinanceSummary([]);
         $chartRows = array_reverse($orderModel->getReportRows([], 14));

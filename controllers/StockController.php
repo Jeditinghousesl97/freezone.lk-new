@@ -20,6 +20,19 @@ class StockController extends BaseController
         }
     }
 
+    private function getReportFilters()
+    {
+        return [
+            'search' => trim((string) ($_GET['search'] ?? '')),
+            'stock_state' => trim((string) ($_GET['stock_state'] ?? '')),
+            'product_type' => trim((string) ($_GET['product_type'] ?? '')),
+            'payment_status' => trim((string) ($_GET['payment_status'] ?? '')),
+            'order_status' => trim((string) ($_GET['order_status'] ?? '')),
+            'date_from' => trim((string) ($_GET['date_from'] ?? '')),
+            'date_to' => trim((string) ($_GET['date_to'] ?? ''))
+        ];
+    }
+
     public function index()
     {
         $this->requireAdminSession();
@@ -48,5 +61,86 @@ class StockController extends BaseController
             'products' => $products,
             'active_filter' => $filter
         ]);
+    }
+
+    public function report()
+    {
+        $this->requireAdminSession();
+        $settings = $this->settingModel->getAllPairs();
+        $filters = $this->getReportFilters();
+        $report = $this->productModel->getStockReport($filters);
+
+        $this->view('admin/stock/report', [
+            'title' => 'Stock Report',
+            'settings' => $settings,
+            'filters' => $filters,
+            'summary' => $report['summary'],
+            'rows' => $report['rows'],
+            'bestSeller' => $report['best_seller'],
+            'topSellers' => $report['top_sellers'],
+            'topRevenue' => $report['top_revenue'],
+            'attentionProducts' => $report['attention_products'],
+            'deadStock' => $report['dead_stock']
+        ]);
+    }
+
+    public function exportReport()
+    {
+        $this->requireAdminSession();
+        $filters = $this->getReportFilters();
+        $report = $this->productModel->getStockReport($filters);
+        $rows = $report['rows'] ?? [];
+
+        $filename = 'stock_report_' . date('Ymd_His') . '.csv';
+        header('Content-Type: text/csv; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+
+        $output = fopen('php://output', 'w');
+        fprintf($output, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+        fputcsv($output, [
+            'Product',
+            'SKU',
+            'Category',
+            'Product Type',
+            'Stock Status',
+            'Stock Mode',
+            'Available Qty',
+            'Low Stock Threshold',
+            'Variant Count',
+            'Selling Price',
+            'Inventory Value',
+            'Units Sold',
+            'Orders Count',
+            'Sales Revenue',
+            'Last Ordered At',
+            'Product Active'
+        ]);
+
+        foreach ($rows as $row) {
+            fputcsv($output, [
+                $row['title'] ?? '',
+                $row['sku'] ?? '',
+                $row['category_name'] ?? '',
+                ucfirst((string) ($row['product_type'] ?? 'simple')),
+                ucwords(str_replace('_', ' ', (string) ($row['status'] ?? 'in_stock'))),
+                ucwords(str_replace('_', ' ', (string) ($row['stock_mode'] ?? 'always_in_stock'))),
+                $row['available_qty'] === null ? 'Unlimited / Manual' : (int) $row['available_qty'],
+                (int) ($row['low_stock_threshold'] ?? 0),
+                (int) ($row['variant_count'] ?? 0),
+                number_format((float) ($row['effective_price'] ?? 0), 2, '.', ''),
+                $row['inventory_value'] === null ? '' : number_format((float) $row['inventory_value'], 2, '.', ''),
+                (int) ($row['units_sold'] ?? 0),
+                (int) ($row['orders_count'] ?? 0),
+                number_format((float) ($row['revenue_total'] ?? 0), 2, '.', ''),
+                $row['last_ordered_at'] ?? '',
+                !empty($row['is_active']) ? 'Yes' : 'No'
+            ]);
+        }
+
+        fclose($output);
+        exit;
     }
 }

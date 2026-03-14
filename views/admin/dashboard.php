@@ -463,6 +463,10 @@
                 <h2 class="stat-number"><?= $stats['low_stock'] ?? 0 ?></h2>
                 <p class="stat-label">Low Stock</p>
             </a>
+            <a href="<?= BASE_URL ?>stock/report" class="stat-card stat-card-link">
+                <h2 class="stat-number"><?= $stats['tracked_products'] ?? 0 ?></h2>
+                <p class="stat-label">Stock Report</p>
+            </a>
             <a href="<?= BASE_URL ?>order/reports" class="stat-card stat-card-link">
                 <h2 class="stat-number"><?= (int) ($stats['orders'] ?? 0) ?></h2>
                 <p class="stat-label">Accounting</p>
