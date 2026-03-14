@@ -2146,6 +2146,14 @@ p {
     .gallery-slider {
         order: 1;
         /* Image First */
+        border-radius: 22px !important;
+        overflow: hidden !important;
+        background: #fff;
+    }
+
+    .gallery-slider .gallery-img,
+    .gallery-slider img {
+        border-radius: 22px !important;
     }
 
     .gallery-dots {
