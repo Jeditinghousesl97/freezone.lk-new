@@ -97,7 +97,7 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
                     <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px;">
                         <span style="font-size: 14px; font-weight: 700; color: #888;">Shipping Fee</span>
                         <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
-                            <button type="button" id="selectDistrictButton" onclick="openDistrictSelector()" style="border:1px solid #d9d9d9; background:#fff; color:#222; border-radius:999px; padding:6px 10px; font-size:11px; font-weight:700; cursor:pointer;">
+                            <button type="button" id="selectDistrictButton" onclick="openDistrictSelector()" style="border:1px solid #d97f2f; background:#ffefe1; color:#9a4d10; border-radius:999px; padding:6px 10px; font-size:11px; font-weight:700; cursor:pointer;">
                                 Select District
                             </button>
                             <span style="font-size: 15px; font-weight: 700; color: #444;" id="cartShippingDisplay">Select district</span>
@@ -231,6 +231,44 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
     </div>
 </div>
 
+<div id="districtEstimateModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 420px; width: 90%; padding: 22px; border-radius: 15px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px;">
+            <div>
+                <h3 style="margin:0; font-size:18px; font-weight:800;">Check Shipping Fee</h3>
+                <p style="margin:4px 0 0; font-size:12px; color:#777;">Choose a district to estimate delivery.</p>
+            </div>
+            <button type="button" onclick="closeDistrictSelector()" style="border:none; background:transparent; font-size:22px; line-height:1; cursor:pointer; color:#666;">&times;</button>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px;">District</label>
+            <input type="text" id="estimateDistrictInput" class="form-control" list="districtListCart" placeholder="Search district" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+        </div>
+
+        <div style="background:#fafafa; border:1px solid #ededed; border-radius:12px; padding:14px; margin-bottom:18px;">
+            <div style="display:flex; justify-content:space-between; gap:12px; margin-bottom:8px;">
+                <span style="font-size:13px; color:#777; font-weight:600;">Subtotal</span>
+                <span id="estimateSubTotalDisplay" style="font-size:13px; color:#222; font-weight:700;"><?= htmlspecialchars($currency) ?> <?= number_format($subtotal ?? 0, 0) ?></span>
+            </div>
+            <div style="display:flex; justify-content:space-between; gap:12px; margin-bottom:8px;">
+                <span style="font-size:13px; color:#777; font-weight:600;">Shipping Fee</span>
+                <span id="estimateShippingDisplay" style="font-size:13px; color:#222; font-weight:700;">Select district</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; gap:12px; padding-top:8px; border-top:1px dashed #e1e1e1;">
+                <span style="font-size:14px; color:#111; font-weight:800;">Estimated Total</span>
+                <span id="estimateGrandTotalDisplay" style="font-size:16px; color:#111; font-weight:800;"><?= htmlspecialchars($currency) ?> <?= number_format($subtotal ?? 0, 0) ?></span>
+            </div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end;">
+            <button type="button" onclick="closeDistrictSelector()" style="border:none; background:#111; color:#fff; padding:10px 16px; border-radius:999px; font-weight:700; cursor:pointer;">
+                Done
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
     const cartData = <?= json_encode($cart ?? []) ?>;
     const currencySymbol = <?= json_encode($currency) ?>;
@@ -317,13 +355,19 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
         const modalShippingEl = document.getElementById('modalShippingDisplay');
         const cartGrandTotalEl = document.getElementById('cartGrandTotalDisplay');
         const modalGrandTotalEl = document.getElementById('modalGrandTotalDisplay');
+        const estimateSubTotalEl = document.getElementById('estimateSubTotalDisplay');
+        const estimateShippingEl = document.getElementById('estimateShippingDisplay');
+        const estimateGrandTotalEl = document.getElementById('estimateGrandTotalDisplay');
 
         if (!cartSubtotalEl || !modalSubtotalEl || !cartShippingEl || !modalShippingEl || !cartGrandTotalEl || !modalGrandTotalEl) {
             return calculateShippingQuote(cartData, '');
         }
 
         const districtInput = document.getElementById('ordDistrict');
-        const activeDistrict = districtInput ? districtInput.value : (localStorage.getItem('cus_district') || '');
+        const estimateInput = document.getElementById('estimateDistrictInput');
+        const activeDistrict = districtInput && districtInput.value
+            ? districtInput.value
+            : (estimateInput && estimateInput.value ? estimateInput.value : (localStorage.getItem('shipping_estimate_district') || localStorage.getItem('cus_district') || ''));
         const quote = calculateShippingQuote(cartData, activeDistrict);
 
         cartSubtotalEl.textContent = formatMoney(quote.subtotal);
@@ -337,6 +381,11 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
         modalShippingEl.textContent = shippingText;
         cartGrandTotalEl.textContent = formatMoney(quote.hasRate || quote.chargeableWeight === 0 ? quote.total : quote.subtotal);
         modalGrandTotalEl.textContent = formatMoney(quote.hasRate || quote.chargeableWeight === 0 ? quote.total : quote.subtotal);
+        if (estimateSubTotalEl && estimateShippingEl && estimateGrandTotalEl) {
+            estimateSubTotalEl.textContent = formatMoney(quote.subtotal);
+            estimateShippingEl.textContent = shippingText;
+            estimateGrandTotalEl.textContent = formatMoney(quote.hasRate || quote.chargeableWeight === 0 ? quote.total : quote.subtotal);
+        }
 
         const selectDistrictButton = document.getElementById('selectDistrictButton');
         if (selectDistrictButton) {
@@ -443,13 +492,18 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
     }
 
     function openDistrictSelector() {
-        openOrderModal(orderMode || 'cod');
-
-        const districtInput = document.getElementById('ordDistrict');
-        if (districtInput) {
-            districtInput.focus();
-            districtInput.click();
+        const estimateInput = document.getElementById('estimateDistrictInput');
+        const currentDistrict = normalizeDistrict(localStorage.getItem('shipping_estimate_district') || localStorage.getItem('cus_district') || '');
+        if (estimateInput) {
+            estimateInput.value = currentDistrict;
         }
+        document.getElementById('districtEstimateModal').style.display = 'flex';
+        updateShippingDisplays();
+        if (estimateInput) estimateInput.focus();
+    }
+
+    function closeDistrictSelector() {
+        document.getElementById('districtEstimateModal').style.display = 'none';
     }
 
     function saveCustomerDetails(data) {
@@ -653,6 +707,21 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
                 const normalized = normalizeDistrict(districtInput.value);
                 if (normalized) {
                     districtInput.value = normalized;
+                }
+                updateShippingDisplays();
+            });
+        }
+        const estimateInput = document.getElementById('estimateDistrictInput');
+        if (estimateInput) {
+            estimateInput.addEventListener('input', function () {
+                localStorage.setItem('shipping_estimate_district', estimateInput.value.trim());
+                updateShippingDisplays();
+            });
+            estimateInput.addEventListener('change', function () {
+                const normalized = normalizeDistrict(estimateInput.value);
+                if (normalized) {
+                    estimateInput.value = normalized;
+                    localStorage.setItem('shipping_estimate_district', normalized);
                 }
                 updateShippingDisplays();
             });
