@@ -2224,3 +2224,79 @@ p {
     font-size: 14px;
     letter-spacing: 1px;
 }
+
+.payment-gateway-banner-wrap {
+    padding: 0 20px 20px;
+}
+
+.payment-gateway-banner {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 18px 20px;
+    border: 1px solid #ece7de;
+    border-radius: 18px;
+    background: linear-gradient(180deg, #fffdf8 0%, #f7f3ea 100%);
+    box-shadow: 0 12px 30px rgba(17, 17, 17, 0.05);
+}
+
+.payment-gateway-banner-title {
+    display: block;
+    margin-bottom: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #7b6f5c;
+}
+
+.payment-gateway-banner-icons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+}
+
+.payment-gateway-badge {
+    min-width: 108px;
+    min-height: 52px;
+    padding: 8px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(17, 17, 17, 0.08);
+    background: rgba(255, 255, 255, 0.88);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.payment-gateway-badge img {
+    max-height: 28px;
+    width: auto;
+    object-fit: contain;
+}
+
+.payment-gateway-badge span {
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
+    color: #262626;
+}
+
+@media (max-width: 1023px) {
+    .payment-gateway-banner-wrap {
+        padding: 0 0 20px;
+    }
+
+    .payment-gateway-banner {
+        padding: 16px;
+        border-radius: 16px;
+    }
+
+    .payment-gateway-banner-icons {
+        gap: 10px;
+    }
+
+    .payment-gateway-badge {
+        min-width: calc(50% - 5px);
+        flex: 1 1 calc(50% - 5px);
+    }
+}

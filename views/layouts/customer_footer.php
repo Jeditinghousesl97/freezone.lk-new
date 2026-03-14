@@ -1,5 +1,53 @@
 </div> <!-- End Main Wrapper -->
 
+<?php
+$paymentGatewayIconBasePath = 'assets/icons/payment-gateways/';
+$paymentGatewayIconBaseUrl = BASE_URL . $paymentGatewayIconBasePath;
+$paymentGatewayIcons = [];
+
+$shopWhatsappTarget = preg_replace('/[^0-9]/', '', (string) ($settings['shop_whatsapp'] ?? ''));
+if ($shopWhatsappTarget === '') {
+    $shopWhatsappTarget = preg_replace('/[^0-9]/', '', (string) ($settings['social_whatsapp'] ?? ''));
+}
+
+$gatewayDefinitions = [
+    'payhere' => [
+        'enabled' => !empty($settings['payhere_enabled']),
+        'label' => 'PayHere',
+        'file' => 'payhere.png'
+    ],
+    'whatsapp' => [
+        'enabled' => !empty($settings['whatsapp_ordering_enabled']) && $shopWhatsappTarget !== '',
+        'label' => 'WhatsApp Order',
+        'file' => 'whatsapp-order.png'
+    ],
+    'cod' => [
+        'enabled' => !empty($settings['cod_enabled']),
+        'label' => 'Cash on Delivery',
+        'file' => 'cod.png'
+    ],
+    'koko' => [
+        'enabled' => !empty($settings['koko_enabled']),
+        'label' => 'KOKO',
+        'file' => 'koko.png'
+    ],
+];
+
+foreach ($gatewayDefinitions as $gatewayKey => $gateway) {
+    if (empty($gateway['enabled'])) {
+        continue;
+    }
+
+    $iconRelativePath = $paymentGatewayIconBasePath . $gateway['file'];
+    $paymentGatewayIcons[] = [
+        'key' => $gatewayKey,
+        'label' => $gateway['label'],
+        'url' => $paymentGatewayIconBaseUrl . $gateway['file'],
+        'exists' => defined('ROOT_PATH') && file_exists(ROOT_PATH . $iconRelativePath)
+    ];
+}
+?>
+
 <!-- Mobile Footer Links -->
 <div class="mobile-policy-links d-lg-none" style="padding: 56px 20px 100px; font-size: 12px; color: #666;">
     <div style="display:flex; flex-wrap:wrap; gap:8px; justify-content:center; line-height:1.7; text-align:center;">
@@ -25,6 +73,26 @@
         <a href="<?= BASE_URL ?>page/privacyPolicy">Privacy Policy</a>
     </div>
 </div>
+
+<?php if (!empty($paymentGatewayIcons)): ?>
+    <div class="payment-gateway-banner-wrap">
+        <div class="payment-gateway-banner">
+            <span class="payment-gateway-banner-title">Payment Methods</span>
+            <div class="payment-gateway-banner-icons">
+                <?php foreach ($paymentGatewayIcons as $gatewayIcon): ?>
+                    <div class="payment-gateway-badge payment-gateway-<?= htmlspecialchars($gatewayIcon['key']) ?>">
+                        <?php if (!empty($gatewayIcon['exists'])): ?>
+                            <img src="<?= htmlspecialchars($gatewayIcon['url']) ?>"
+                                alt="<?= htmlspecialchars($gatewayIcon['label']) ?>">
+                        <?php else: ?>
+                            <span><?= htmlspecialchars($gatewayIcon['label']) ?></span>
+                        <?php endif; ?>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </div>
+<?php endif; ?>
 
 <!-- Mobile Bottom Navigation -->
 <nav class="bottom-nav">
