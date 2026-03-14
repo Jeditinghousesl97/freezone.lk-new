@@ -47,6 +47,7 @@
         <link rel="icon" type="image/x-icon" href="<?= str_replace('/Ecom-CMS/', BASE_URL, $settings['shop_favicon']) ?>">
     <?php endif; ?>
     <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/customer.css?v=<?= time() ?>">
+    <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/customer-desktop-refresh.css?v=<?= time() ?>">
     <!-- Font Awesome for Icons (Optional, or use images) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
