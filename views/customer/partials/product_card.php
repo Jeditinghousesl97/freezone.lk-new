@@ -18,14 +18,18 @@ $isOnSale = !empty($prod['sale_price']) && $prod['sale_price'] < $prod['price'];
 <div class="product-card">
     <div class="product-thumb-container">
         <a href="<?= BASE_URL ?>shop/product/<?= $prod['id'] ?>">
-            <img <?= ImageHelper::attrs([
-                'src' => $imagePath,
-                'class' => 'product-thumb',
-                'alt' => $prod['title'] ?? 'Product',
-                'loading' => 'lazy',
-                'decoding' => 'async',
-                'fetchpriority' => 'low'
-            ]) ?>>
+            <?= ImageHelper::renderResponsivePicture(
+                $prod['main_image'] ?? '',
+                $imagePath,
+                [
+                    'class' => 'product-thumb',
+                    'alt' => $prod['title'] ?? 'Product',
+                    'loading' => 'lazy',
+                    'decoding' => 'async',
+                    'fetchpriority' => 'low'
+                ],
+                'product_card'
+            ) ?>
         </a>
 
         <?php if ($isOnSale): ?>

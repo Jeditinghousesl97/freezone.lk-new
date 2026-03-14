@@ -59,6 +59,7 @@ require_once 'views/layouts/customer_header.php';
 
             $heroSlides[$heroImage] = [
                 'image' => ImageHelper::uploadUrl($heroImage, ''),
+                'image_name' => $heroImage,
                 'alt' => $heroProduct['name'] ?? 'Hero slide',
                 'link' => !empty($heroProduct['id']) ? (BASE_URL . 'shop/product/' . $heroProduct['id']) : ''
             ];
@@ -81,22 +82,30 @@ require_once 'views/layouts/customer_header.php';
                         <div class="hero-slide">
                             <?php if (!empty($slide['link'])): ?>
                                 <a href="<?= htmlspecialchars($slide['link']) ?>" class="hero-slide-link" aria-label="<?= htmlspecialchars($slide['alt']) ?>">
-                                    <img <?= ImageHelper::attrs([
-                                        'src' => $slide['image'],
+                                    <?= ImageHelper::renderResponsivePicture(
+                                        $slide['image_name'] ?? '',
+                                        $slide['image'],
+                                        [
+                                            'alt' => $slide['alt'],
+                                            'loading' => $index === 0 ? 'eager' : 'lazy',
+                                            'decoding' => $index === 0 ? 'sync' : 'async',
+                                            'fetchpriority' => $index === 0 ? 'high' : 'low'
+                                        ],
+                                        'hero'
+                                    ) ?>
+                                </a>
+                            <?php else: ?>
+                                <?= ImageHelper::renderResponsivePicture(
+                                    $slide['image_name'] ?? '',
+                                    $slide['image'],
+                                    [
                                         'alt' => $slide['alt'],
                                         'loading' => $index === 0 ? 'eager' : 'lazy',
                                         'decoding' => $index === 0 ? 'sync' : 'async',
                                         'fetchpriority' => $index === 0 ? 'high' : 'low'
-                                    ]) ?>>
-                                </a>
-                            <?php else: ?>
-                                <img <?= ImageHelper::attrs([
-                                    'src' => $slide['image'],
-                                    'alt' => $slide['alt'],
-                                    'loading' => $index === 0 ? 'eager' : 'lazy',
-                                    'decoding' => $index === 0 ? 'sync' : 'async',
-                                    'fetchpriority' => $index === 0 ? 'high' : 'low'
-                                ]) ?>>
+                                    ],
+                                    'hero'
+                                ) ?>
                             <?php endif; ?>
                         </div>
                     <?php endforeach; ?>
@@ -139,14 +148,18 @@ require_once 'views/layouts/customer_header.php';
                             'https://via.placeholder.com/60?text=' . urlencode($cat['name'])
                         );
                         ?>
-                        <img <?= ImageHelper::attrs([
-                            'src' => $img,
-                            'class' => 'cat-img',
-                            'alt' => $cat['name'] ?? 'Category',
-                            'loading' => 'lazy',
-                            'decoding' => 'async',
-                            'fetchpriority' => 'low'
-                        ]) ?>>
+                        <?= ImageHelper::renderResponsivePicture(
+                            $cat['image'] ?? '',
+                            $img,
+                            [
+                                'class' => 'cat-img',
+                                'alt' => $cat['name'] ?? 'Category',
+                                'loading' => 'lazy',
+                                'decoding' => 'async',
+                                'fetchpriority' => 'low'
+                            ],
+                            'category_card'
+                        ) ?>
                         <div class="cat-name">
                             <?= htmlspecialchars($cat['name']) ?>
                         </div>

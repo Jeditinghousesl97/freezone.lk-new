@@ -487,6 +487,7 @@
 </head>
 
 <body>
+    <?php require_once ROOT_PATH . 'helpers/ImageHelper.php'; ?>
 
     <!-- Global Loader Injection -->
     <?php include 'views/admin/partials/loader.php'; ?>
@@ -518,8 +519,9 @@
                 <!-- Main Image -->
                 <div class="main-img-box" onclick="document.getElementById('mainImgInput').click()">
                     <?php if (isset($mode) && $mode === 'edit' && !empty($product['main_image'])): ?>
+                        <?php $mainPreviewImage = ImageHelper::uploadUrl($product['main_image'], ''); ?>
                         <img id="mainPreview" class="preview-img"
-                            src="<?= BASE_URL ?>assets/uploads/<?= $product['main_image'] ?>" style="display:block;">
+                            src="<?= htmlspecialchars($mainPreviewImage) ?>" style="display:block;">
                         <div id="mainPlaceholder" style="display:none;">
                         <?php else: ?>
                             <img id="mainPreview" class="preview-img">

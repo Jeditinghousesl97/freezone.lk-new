@@ -88,14 +88,18 @@ require_once 'views/layouts/customer_header.php';
                             'https://via.placeholder.com/80?text=' . urlencode($sub['name'])
                         );
                         ?>
-                        <img <?= ImageHelper::attrs([
-                            'src' => $subImg,
-                            'class' => 'cat-img',
-                            'alt' => $sub['name'] ?? 'Category',
-                            'loading' => 'lazy',
-                            'decoding' => 'async',
-                            'fetchpriority' => 'low'
-                        ]) ?>>
+                        <?= ImageHelper::renderResponsivePicture(
+                            $sub['image'] ?? '',
+                            $subImg,
+                            [
+                                'class' => 'cat-img',
+                                'alt' => $sub['name'] ?? 'Category',
+                                'loading' => 'lazy',
+                                'decoding' => 'async',
+                                'fetchpriority' => 'low'
+                            ],
+                            'category_card'
+                        ) ?>
                         <div class="cat-name">
                             <?= htmlspecialchars($sub['name']) ?>
                         </div>

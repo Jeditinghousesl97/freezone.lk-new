@@ -119,6 +119,7 @@
 </head>
 
 <body>
+    <?php require_once ROOT_PATH . 'helpers/ImageHelper.php'; ?>
  <!-- Global Loader Injection -->
     <?php include 'views/admin/partials/loader.php'; ?>
     <div class="container">
@@ -136,8 +137,19 @@
         <div class="feedback-grid">
             <?php foreach ($feedbacks as $fb): ?>
                 <div class="fb-item">
-                    <img src="<?= BASE_URL ?>assets/uploads/<?= htmlspecialchars($fb['image_path']) ?>" class="fb-img"
-                        alt="Feedback">
+                    <?php $feedbackImage = ImageHelper::uploadUrl($fb['image_path'] ?? '', 'https://via.placeholder.com/320?text=Feedback'); ?>
+                    <?= ImageHelper::renderResponsivePicture(
+                        $fb['image_path'] ?? '',
+                        $feedbackImage,
+                        [
+                            'class' => 'fb-img',
+                            'alt' => 'Feedback',
+                            'loading' => 'lazy',
+                            'decoding' => 'async',
+                            'fetchpriority' => 'low'
+                        ],
+                        'feedback'
+                    ) ?>
                     <div class="delete-btn" onclick="confirmDelete(<?= $fb['id'] ?>);">
                         🗑
                     </div>

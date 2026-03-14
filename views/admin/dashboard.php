@@ -141,6 +141,7 @@
 </head>
 
 <body>
+ <?php require_once ROOT_PATH . 'helpers/ImageHelper.php'; ?>
  <!-- Global Loader Injection -->
     <?php include 'views/admin/partials/loader.php'; ?>
     <div class="container">
@@ -467,6 +468,10 @@
                 <h2 class="stat-number"><?= $stats['tracked_products'] ?? 0 ?></h2>
                 <p class="stat-label">Stock Report</p>
             </a>
+            <a href="<?= BASE_URL ?>admin/imageOptimizer" class="stat-card stat-card-link">
+                <h2 class="stat-number"><?= (int) ($stats['products'] ?? 0) ?></h2>
+                <p class="stat-label">Image Optimizer</p>
+            </a>
             <a href="<?= BASE_URL ?>order/reports" class="stat-card stat-card-link">
                 <h2 class="stat-number"><?= (int) ($stats['orders'] ?? 0) ?></h2>
                 <p class="stat-label">Accounting</p>
@@ -498,8 +503,21 @@
                                 🗑
                             </a>
                         </div>
-                        <img src="<?= BASE_URL ?>assets/uploads/<?= $product['main_image'] ?? 'default.png' ?>"
-                            class="product-thumb" alt="Img">
+                        <?php
+                        $dashboardImage = ImageHelper::uploadUrl($product['main_image'] ?? '', 'https://via.placeholder.com/160?text=Product');
+                        ?>
+                        <?= ImageHelper::renderResponsivePicture(
+                            $product['main_image'] ?? '',
+                            $dashboardImage,
+                            [
+                                'class' => 'product-thumb',
+                                'alt' => 'Img',
+                                'loading' => 'lazy',
+                                'decoding' => 'async',
+                                'fetchpriority' => 'low'
+                            ],
+                            'admin_thumb'
+                        ) ?>
                         <div style="flex: 1; display: flex; justify-content: space-between; align-items: center;">
                             <div class="product-info" style="flex: unset;">
                                 <h4 class="product-name"><?= htmlspecialchars($product['title']) ?></h4>

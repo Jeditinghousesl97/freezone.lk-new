@@ -6,6 +6,15 @@
  */
 class AdminController extends BaseController
 {
+    private function requireAdminSession()
+    {
+        if (!isset($_SESSION['user_id'])) {
+            $this->redirect('auth/login');
+            return false;
+        }
+
+        return true;
+    }
 
     /**
      * Dashboard Page
@@ -13,8 +22,7 @@ class AdminController extends BaseController
     public function dashboard()
     {
         // Security Check: Must be logged in
-        if (!isset($_SESSION['user_id'])) {
-            $this->redirect('auth/login');
+        if (!$this->requireAdminSession()) {
             return;
         }
 
@@ -69,8 +77,7 @@ class AdminController extends BaseController
      */
     public function settings()
     {
-        if (!isset($_SESSION['user_id'])) {
-            $this->redirect('auth/login');
+        if (!$this->requireAdminSession()) {
             return;
         }
 
@@ -89,8 +96,7 @@ class AdminController extends BaseController
 
     public function serverCheck()
     {
-        if (!isset($_SESSION['user_id'])) {
-            $this->redirect('auth/login');
+        if (!$this->requireAdminSession()) {
             return;
         }
 
@@ -128,6 +134,65 @@ class AdminController extends BaseController
             'settings' => $settings,
             'checks' => $checks,
             'recommendations' => $recommendations
+        ]);
+    }
+
+    public function imageOptimizer()
+    {
+        if (!$this->requireAdminSession()) {
+            return;
+        }
+
+        require_once 'models/Setting.php';
+        require_once 'helpers/ImageHelper.php';
+
+        $settingModel = new Setting();
+        $settings = $settingModel->getMultiple(['shop_name', 'shop_logo', 'currency_symbol']);
+
+        $runSummary = null;
+        $mode = 'scan';
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $mode = ($_POST['run_mode'] ?? 'missing') === 'rebuild' ? 'rebuild' : 'missing';
+            $force = $mode === 'rebuild';
+            $limit = max(0, (int) ($_POST['limit'] ?? 0));
+            $runSummary = ImageHelper::optimizeExistingUploads($force, $limit);
+        }
+
+        $uploadDir = ROOT_PATH . 'assets/uploads/';
+        $derivedDir = ROOT_PATH . 'assets/uploads/derived/';
+        $uploadCount = 0;
+        $derivedCount = 0;
+
+        if (is_dir($uploadDir)) {
+            foreach (scandir($uploadDir) ?: [] as $entry) {
+                if ($entry === '.' || $entry === '..') {
+                    continue;
+                }
+                if (is_file($uploadDir . $entry)) {
+                    $uploadCount++;
+                }
+            }
+        }
+
+        if (is_dir($derivedDir)) {
+            foreach (scandir($derivedDir) ?: [] as $entry) {
+                if ($entry === '.' || $entry === '..') {
+                    continue;
+                }
+                if (is_file($derivedDir . $entry)) {
+                    $derivedCount++;
+                }
+            }
+        }
+
+        $this->view('admin/image_optimizer', [
+            'title' => 'Image Optimizer',
+            'settings' => $settings,
+            'upload_count' => $uploadCount,
+            'derived_count' => $derivedCount,
+            'run_summary' => $runSummary,
+            'mode' => $mode
         ]);
     }
 }

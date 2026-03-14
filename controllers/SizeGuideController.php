@@ -3,6 +3,7 @@
  * Size Guide Controller
  */
 require_once 'models/SizeGuide.php';
+require_once 'helpers/ImageHelper.php';
 
 class SizeGuideController extends BaseController
 {
@@ -37,20 +38,7 @@ class SizeGuideController extends BaseController
             $name = $_POST['name'] ?? '';
 
             // Image Upload
-            $imagePath = '';
-            if (isset($_FILES['image']) && $_FILES['image']['error'] == 0) {
-                // Fix: Use dynamic path consistent with ProductController
-                $targetDir = dirname(__DIR__) . "/assets/uploads/";
-                if (!is_dir($targetDir))
-                    mkdir($targetDir, 0777, true);
-
-                $fileName = time() . '_sg_' . basename($_FILES['image']['name']);
-                $targetFile = $targetDir . $fileName;
-
-                if (move_uploaded_file($_FILES['image']['tmp_name'], $targetFile)) {
-                    $imagePath = $fileName;
-                }
-            }
+            $imagePath = isset($_FILES['image']) ? ImageHelper::storeUploadedFile($_FILES['image'], 'sizeguide') : '';
 
             if (
                 $this->model->create([

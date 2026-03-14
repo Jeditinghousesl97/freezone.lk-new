@@ -3,6 +3,7 @@
  * Feedback Controller
  */
 require_once 'models/Feedback.php';
+require_once 'helpers/ImageHelper.php';
 
 class FeedbackController extends BaseController
 {
@@ -34,10 +35,6 @@ class FeedbackController extends BaseController
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-            $uploadDir = dirname(__DIR__) . "/assets/uploads/";
-            if (!is_dir($uploadDir))
-                mkdir($uploadDir, 0777, true);
-
             // Handle Multiple Files
             if (isset($_FILES['images'])) {
                 $files = $_FILES['images'];
@@ -45,11 +42,9 @@ class FeedbackController extends BaseController
 
                 for ($i = 0; $i < $count; $i++) {
                     if ($files['error'][$i] == 0) {
-                        $fileName = time() . "_fb_{$i}_" . basename($files['name'][$i]);
-                        $targetFile = $uploadDir . $fileName;
-
-                        if (move_uploaded_file($files['tmp_name'][$i], $targetFile)) {
-                            $this->model->create($fileName);
+                        $storedName = ImageHelper::storeUploadedArrayFile($files, $i, 'feedback_' . $i);
+                        if ($storedName !== '') {
+                            $this->model->create($storedName);
                         }
                     }
                 }

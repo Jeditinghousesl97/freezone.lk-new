@@ -1,6 +1,7 @@
 <?php
 // Hide Default Mobile Header
 $hide_mobile_welcome = true;
+require_once ROOT_PATH . 'helpers/ImageHelper.php';
 require_once 'views/layouts/customer_header.php';
 ?>
 
@@ -59,8 +60,7 @@ require_once 'views/layouts/customer_header.php';
                         <div style="width:100%; text-align:center; padding: 20px; color:#aaa;">No feedback available yet.</div>
                     <?php else: ?>
                         <?php foreach ($feedbacks as $fb):
-                            $fbPath = 'assets/uploads/' . $fb['image_path'];
-                            $fbImg = (file_exists(ROOT_PATH . $fbPath)) ? BASE_URL . $fbPath : '';
+                            $fbImg = ImageHelper::uploadUrl($fb['image_path'] ?? '', '');
 
                             if ($fbImg):
                                 ?>
@@ -74,13 +74,24 @@ require_once 'views/layouts/customer_header.php';
                                 height: 450px; /* FIXED HEIGHT */
                                 position: relative;
                             ">
-                                    <img src="<?= $fbImg ?>" alt="Feedback" onclick="openImageModal(this.src)" style="
+                                    <?= ImageHelper::renderResponsivePicture(
+                                        $fb['image_path'] ?? '',
+                                        $fbImg,
+                                        [
+                                            'alt' => 'Feedback',
+                                            'onclick' => 'openImageModal(this.currentSrc || this.src)',
+                                            'loading' => 'lazy',
+                                            'decoding' => 'async',
+                                            'fetchpriority' => 'low',
+                                            'style' => '
                                     width: 100%; 
                                     height: 100%; 
-                                    object-fit: cover; /* Zoom/Crop to fill */
-                                    object-position: top; /* Standardize alignment */
-                                    display: block;
-                                ">
+                                    object-fit: cover;
+                                    object-position: top;
+                                    display: block;'
+                                        ],
+                                        'feedback'
+                                    ) ?>
                                 </div>
 
                             <?php endif; endforeach; ?>
@@ -93,12 +104,20 @@ require_once 'views/layouts/customer_header.php';
                  <!-- Logo -->
                  <div style="display: flex; justify-content: center; position: relative; z-index: 10;">
                     <?php
-                    $logoUrl = $settings['shop_logo'] ?? '';
-                    $logoUrl = str_replace('/Ecom-CMS/', BASE_URL, $logoUrl);
-                    $physicalPath = $_SERVER['DOCUMENT_ROOT'] . $logoUrl;
-                    $logo = (!empty($logoUrl) && file_exists($physicalPath)) ? $logoUrl : 'https://via.placeholder.com/120';
+                    $logo = ImageHelper::settingsImageUrl($settings['shop_logo'] ?? '', 'https://via.placeholder.com/120');
                     ?>
-                    <img src="<?= $logo ?>" alt="Shop Logo" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 4px solid #fff; background: #fff; box-shadow: 0 5px 15px rgba(0,0,0,0.05);">
+                    <?= ImageHelper::renderResponsivePicture(
+                        basename((string) parse_url($logo, PHP_URL_PATH)),
+                        $logo,
+                        [
+                            'alt' => 'Shop Logo',
+                            'loading' => 'eager',
+                            'decoding' => 'async',
+                            'fetchpriority' => 'high',
+                            'style' => 'width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 4px solid #fff; background: #fff; box-shadow: 0 5px 15px rgba(0,0,0,0.05);'
+                        ],
+                        'logo'
+                    ) ?>
                 </div>
 
                 <!-- Gray Info Box -->
@@ -193,11 +212,22 @@ require_once 'views/layouts/customer_header.php';
             <div class="shop-grid" style="grid-template-columns: repeat(4, 1fr);">
                 <?php if (!empty($feedbacks)):
                     foreach ($feedbacks as $fb):
-                        $fbPath = 'assets/uploads/' . $fb['image_path'];
-                        if (file_exists(ROOT_PATH . $fbPath)):
+                        $fbPath = ImageHelper::uploadUrl($fb['image_path'] ?? '', '');
+                        if ($fbPath):
                             ?>
                             <div style="border-radius: 10px; overflow: hidden; border: 1px solid #eee;">
-                                <img src="<?= BASE_URL . $fbPath ?>" style="width: 100%;">
+                                <?= ImageHelper::renderResponsivePicture(
+                                    $fb['image_path'] ?? '',
+                                    $fbPath,
+                                    [
+                                        'alt' => 'Feedback',
+                                        'loading' => 'lazy',
+                                        'decoding' => 'async',
+                                        'fetchpriority' => 'low',
+                                        'style' => 'width: 100%;'
+                                    ],
+                                    'feedback'
+                                ) ?>
                             </div>
                         <?php endif; endforeach; endif; ?>
             </div>

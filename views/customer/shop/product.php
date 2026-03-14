@@ -111,15 +111,20 @@ $productUnitPrice = (!empty($product['sale_price']) && (float) $product['sale_pr
                             'https://via.placeholder.com/600x600?text=' . urlencode($product['title'])
                         );
                         ?>
-                        <img <?= ImageHelper::attrs([
-                            'src' => $mainImg,
-                            'class' => 'gallery-img current',
-                            'alt' => $product['title'] ?? 'Product image',
-                            'loading' => 'eager',
-                            'decoding' => 'sync',
-                            'fetchpriority' => 'high',
-                            'data-index' => '0'
-                        ]) ?> onclick="openImageModal(0)">
+                        <?= ImageHelper::renderResponsivePicture(
+                            $product['main_image'] ?? '',
+                            $mainImg,
+                            [
+                                'class' => 'gallery-img current',
+                                'alt' => $product['title'] ?? 'Product image',
+                                'loading' => 'eager',
+                                'decoding' => 'sync',
+                                'fetchpriority' => 'high',
+                                'data-index' => '0',
+                                'onclick' => 'openImageModal(0)'
+                            ],
+                            'product_gallery'
+                        ) ?>
 
                         <!-- Gallery Images -->
                         <?php if (!empty($gallery)): ?>
@@ -127,15 +132,20 @@ $productUnitPrice = (!empty($product['sale_price']) && (float) $product['sale_pr
                                 $gUrl = ImageHelper::uploadUrl($gImg, '');
                                 if ($gUrl):
                                     ?>
-                                    <img <?= ImageHelper::attrs([
-                                        'src' => $gUrl,
-                                        'class' => 'gallery-img',
-                                        'alt' => ($product['title'] ?? 'Product') . ' gallery image',
-                                        'loading' => 'lazy',
-                                        'decoding' => 'async',
-                                        'fetchpriority' => 'low',
-                                        'data-index' => (string) ((int) $galleryIndex + 1)
-                                    ]) ?> onclick="openImageModal(<?= (int) $galleryIndex + 1 ?>)">
+                                    <?= ImageHelper::renderResponsivePicture(
+                                        $gImg,
+                                        $gUrl,
+                                        [
+                                            'class' => 'gallery-img',
+                                            'alt' => ($product['title'] ?? 'Product') . ' gallery image',
+                                            'loading' => 'lazy',
+                                            'decoding' => 'async',
+                                            'fetchpriority' => 'low',
+                                            'data-index' => (string) ((int) $galleryIndex + 1),
+                                            'onclick' => 'openImageModal(' . ((int) $galleryIndex + 1) . ')'
+                                        ],
+                                        'product_gallery'
+                                    ) ?>
                                 <?php endif; endforeach; ?>
                         <?php endif; ?>
                     </div>
@@ -207,8 +217,8 @@ $productUnitPrice = (!empty($product['sale_price']) && (float) $product['sale_pr
                     </div>
 
                     <?php
-                    $sgPath = 'assets/uploads/' . ($product['size_guide_image'] ?? '');
-                    if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
+                    $sizeGuideImage = ImageHelper::uploadUrl($product['size_guide_image'] ?? '', '');
+                    if ($sizeGuideImage):
                         ?>
                         <button class="btn-size-guide" onclick="openSizeGuide()">Size Guide</button>
                     <?php endif; ?>
@@ -324,9 +334,8 @@ $productUnitPrice = (!empty($product['sale_price']) && (float) $product['sale_pr
 
 <!-- Size Guide Modal (Basic) -->
 <?php
-$sgPath = 'assets/uploads/' . ($product['size_guide_image'] ?? '');
-if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
-    $sgImg = BASE_URL . $sgPath;
+$sgImg = ImageHelper::uploadUrl($product['size_guide_image'] ?? '', '');
+if ($sgImg):
     ?>
     <div id="sgModal" class="modal-overlay" onclick="closeSizeGuide()" style="display: none;">
         <div class="modal-content" onclick="event.stopPropagation()" style="position: relative; padding: 0;">
@@ -334,7 +343,18 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
                 style="position: absolute; top: 10px; right: 10px; cursor: pointer; z-index: 100; background: rgba(255,255,255,0.7); border-radius: 50%; padding: 5px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;">
                 <img src="<?= BASE_URL ?>assets/icons/delete.png" alt="Close" style="width: 15px; height: 15px;">
             </div>
-            <img src="<?= $sgImg ?>" style="width:100%; border-radius:10px; display: block;">
+            <?= ImageHelper::renderResponsivePicture(
+                $product['size_guide_image'] ?? '',
+                $sgImg,
+                [
+                    'alt' => 'Size guide',
+                    'loading' => 'lazy',
+                    'decoding' => 'async',
+                    'fetchpriority' => 'low',
+                    'style' => 'width:100%; border-radius:10px; display: block;'
+                ],
+                'product_gallery'
+            ) ?>
         </div>
     </div>
     </script>
@@ -1355,14 +1375,7 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
             return;
         }
 
-        <?php
-        $img = 'assets/uploads/' . $product['main_image'];
-        if (empty($product['main_image']) || !file_exists(ROOT_PATH . $img)) {
-            $imgUrl = 'https://via.placeholder.com/150';
-        } else {
-            $imgUrl = BASE_URL . $img;
-        }
-        ?>
+        <?php $imgUrl = ImageHelper::uploadUrl($product['main_image'] ?? '', 'https://via.placeholder.com/150'); ?>
         const img = "<?= $imgUrl ?>";
 
         // Format Variations String

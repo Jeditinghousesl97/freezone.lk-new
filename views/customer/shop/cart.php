@@ -1,5 +1,6 @@
 <?php
 $hide_mobile_welcome = true;
+require_once ROOT_PATH . 'helpers/ImageHelper.php';
 require_once 'views/layouts/customer_header.php';
 $currency = $settings['currency_symbol'] ?? 'LKR';
 ?>
@@ -55,7 +56,22 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
                         $subtotal += $itemTotal;
                     ?>
                         <div class="cart-item" style="display: flex; align-items: center; gap: 15px; background: #fff; padding: 15px; border-radius: 20px; position: relative; margin-bottom: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.03);">
-                            <img src="<?= htmlspecialchars($item['img']) ?>" style="width: 70px; height: 70px; border-radius: 12px; object-fit: cover; background: #f0f0f0;">
+                            <?php
+                            $cartImageName = basename((string) parse_url((string) ($item['img'] ?? ''), PHP_URL_PATH));
+                            $cartFallback = (string) ($item['img'] ?? '');
+                            ?>
+                            <?= ImageHelper::renderResponsivePicture(
+                                $cartImageName,
+                                $cartFallback,
+                                [
+                                    'alt' => $item['title'] ?? 'Product',
+                                    'loading' => 'lazy',
+                                    'decoding' => 'async',
+                                    'fetchpriority' => 'low',
+                                    'style' => 'width: 70px; height: 70px; border-radius: 12px; object-fit: cover; background: #f0f0f0;'
+                                ],
+                                'admin_thumb'
+                            ) ?>
                             <div style="flex: 1;">
                                 <h4 style="font-size: 14px; font-weight: 700; margin: 0 0 5px 0;"><?= htmlspecialchars($item['title']) ?></h4>
                                 <?php if (!empty($item['is_free_shipping'])): ?>

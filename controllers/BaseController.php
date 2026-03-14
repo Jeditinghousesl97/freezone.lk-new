@@ -57,19 +57,8 @@ class BaseController
             return;
         }
 
-        // Construct Absolute Path
-        // ROOT_PATH is defined in config.php
-        $filePath = ROOT_PATH . 'assets/uploads/' . $filename;
-
-        // Safety Checks & Deletion
-        try {
-            if (file_exists($filePath) && is_file($filePath)) {
-                unlink($filePath);
-            }
-        } catch (Exception $e) {
-            // Fail silently. Database integrity is more important than disk space here.
-            // We do NOT want to crash the request if permission fails.
-        }
+        require_once ROOT_PATH . 'helpers/ImageHelper.php';
+        ImageHelper::deleteImageSet($filename);
     }
 
 }

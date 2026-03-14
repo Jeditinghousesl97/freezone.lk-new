@@ -6,6 +6,7 @@ require_once 'models/Product.php';
 require_once 'models/Category.php';
 require_once 'models/SizeGuide.php';
 require_once 'models/Variation.php';
+require_once 'helpers/ImageHelper.php';
 
 class ProductController extends BaseController
 {
@@ -133,30 +134,8 @@ class ProductController extends BaseController
                 return;
             }
 
-            // 3. Setup Upload Directory
-            $uploadDir = dirname(__DIR__) . "/assets/uploads/";
-            if (!is_dir($uploadDir)) {
-                if (!mkdir($uploadDir, 0777, true)) {
-                    // Critical Error: Cannot create folder
-                    echo "Error: Failed to create upload directory. Please check server permissions.";
-                    return;
-                }
-            }
-
             // 4. Handle Main Image
-            $mainImagePath = '';
-            if (isset($_FILES['main_image']) && $_FILES['main_image']['error'] == 0) {
-                // Validate Image Type
-                $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-                $ext = strtolower(pathinfo($_FILES['main_image']['name'], PATHINFO_EXTENSION));
-
-                if (in_array($ext, $allowed)) {
-                    $fileName = time() . '_main_' . preg_replace('/[^a-zA-Z0-9\._-]/', '', basename($_FILES['main_image']['name']));
-                    if (move_uploaded_file($_FILES['main_image']['tmp_name'], $uploadDir . $fileName)) {
-                        $mainImagePath = $fileName;
-                    }
-                }
-            }
+            $mainImagePath = isset($_FILES['main_image']) ? ImageHelper::storeUploadedFile($_FILES['main_image'], 'main') : '';
 
             // 5. Handle Gallery Images
             $galleryPaths = [];
@@ -165,17 +144,10 @@ class ProductController extends BaseController
                 $count = count($files['name']);
 
                 for ($i = 0; $i < $count; $i++) {
-                    // Check if file provided and no error
                     if (!empty($files['name'][$i]) && $files['error'][$i] == 0) {
-                        $ext = strtolower(pathinfo($files['name'][$i], PATHINFO_EXTENSION));
-                        // Basic validation
-                        if (in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
-                            $cleanName = preg_replace('/[^a-zA-Z0-9\._-]/', '', basename($files['name'][$i]));
-                            $gFileName = time() . "_gal_{$i}_" . $cleanName;
-
-                            if (move_uploaded_file($files['tmp_name'][$i], $uploadDir . $gFileName)) {
-                                $galleryPaths[] = $gFileName;
-                            }
+                        $storedName = ImageHelper::storeUploadedArrayFile($files, $i, 'gal_' . $i);
+                        if ($storedName !== '') {
+                            $galleryPaths[] = $storedName;
                         }
                     }
                 }
@@ -310,27 +282,15 @@ class ProductController extends BaseController
                 return;
             }
 
-            // 3. Setup Upload Directory (Safety Check)
-            $uploadDir = dirname(__DIR__) . "/assets/uploads/";
-            if (!is_dir($uploadDir)) {
-                if (!mkdir($uploadDir, 0777, true)) {
-                    echo "Error: Failed to create upload directory. Please check server permissions.";
-                    return;
-                }
-            }
-
             // 4. Handle Main Image (Update only if new one provided)
             $mainImagePath = $_POST['current_main_image'] ?? '';
             if (isset($_FILES['main_image']) && $_FILES['main_image']['error'] == 0) {
-                // Validate Image Type
-                $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-                $ext = strtolower(pathinfo($_FILES['main_image']['name'], PATHINFO_EXTENSION));
-
-                if (in_array($ext, $allowed)) {
-                    $fileName = time() . '_main_' . preg_replace('/[^a-zA-Z0-9\._-]/', '', basename($_FILES['main_image']['name']));
-                    if (move_uploaded_file($_FILES['main_image']['tmp_name'], $uploadDir . $fileName)) {
-                        $mainImagePath = $fileName;
+                $storedMain = ImageHelper::storeUploadedFile($_FILES['main_image'], 'main');
+                if ($storedMain !== '') {
+                    if (!empty($_POST['current_main_image'])) {
+                        $this->deleteFile($_POST['current_main_image']);
                     }
+                    $mainImagePath = $storedMain;
                 }
             }
 
@@ -341,19 +301,9 @@ class ProductController extends BaseController
                 $count = count($files['name']);
                 for ($i = 0; $i < $count; $i++) {
                     if (!empty($files['name'][$i]) && $files['error'][$i] == 0) {
-                        $ext = strtolower(pathinfo($files['name'][$i], PATHINFO_EXTENSION));
-                        if (in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
-                            $cleanName = preg_replace('/[^a-zA-Z0-9\._-]/', '', basename($files['name'][$i]));
-                            $gFileName = time() . "_gal_{$i}_" . $cleanName;
-                            if (move_uploaded_file($_FILES['main_image']['tmp_name'], $uploadDir . $fileName)) {
-                        $mainImagePath = $fileName;
-                        
-                        // Safe Delete Old Main Image if replaced
-                        if (!empty($_POST['current_main_image'])) {
-                            $this->deleteFile($_POST['current_main_image']);
-                        }
-                    }
-
+                        $storedGallery = ImageHelper::storeUploadedArrayFile($files, $i, 'gal_' . $i);
+                        if ($storedGallery !== '') {
+                            $galleryPaths[] = $storedGallery;
                         }
                     }
                 }

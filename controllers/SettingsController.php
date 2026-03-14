@@ -5,6 +5,7 @@
  */
 require_once 'models/Setting.php';
 require_once 'models/User.php';
+require_once 'helpers/ImageHelper.php';
 require_once 'models/DeliverySetting.php';
 require_once 'helpers/DeliveryHelper.php';
 
@@ -142,15 +143,10 @@ class SettingsController extends BaseController
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-            $uploadDir = ROOT_PATH . "assets/uploads/";
-            if (!is_dir($uploadDir))
-                mkdir($uploadDir, 0777, true);
-
             // Handle Logo
             if (isset($_FILES['shop_logo']) && $_FILES['shop_logo']['error'] == 0) {
-                $fileName = time() . '_logo_' . basename($_FILES['shop_logo']['name']);
-                if (move_uploaded_file($_FILES['shop_logo']['tmp_name'], $uploadDir . $fileName)) {
-                    
+                $fileName = ImageHelper::storeUploadedFile($_FILES['shop_logo'], 'logo');
+                if ($fileName !== '') {
                     // Delete Old Logo
                     $oldUrl = $this->settingModel->get('shop_logo');
                     if (!empty($oldUrl)) {
@@ -164,8 +160,8 @@ class SettingsController extends BaseController
 
             // Handle QR
             if (isset($_FILES['shop_qr']) && $_FILES['shop_qr']['error'] == 0) {
-                $fileName = time() . '_qr_' . basename($_FILES['shop_qr']['name']);
-                if (move_uploaded_file($_FILES['shop_qr']['tmp_name'], $uploadDir . $fileName)) {
+                $fileName = ImageHelper::storeUploadedFile($_FILES['shop_qr'], 'qr');
+                if ($fileName !== '') {
 
                     // Delete Old QR
                     $oldUrl = $this->settingModel->get('shop_qr');
@@ -181,8 +177,8 @@ class SettingsController extends BaseController
 
             // Handle Favicon
             if (isset($_FILES['shop_favicon']) && $_FILES['shop_favicon']['error'] == 0) {
-                $fileName = time() . '_fav_' . basename($_FILES['shop_favicon']['name']);
-                if (move_uploaded_file($_FILES['shop_favicon']['tmp_name'], $uploadDir . $fileName)) {
+                $fileName = ImageHelper::storeUploadedFile($_FILES['shop_favicon'], 'fav');
+                if ($fileName !== '') {
 
                     // Delete Old Favicon
                     $oldUrl = $this->settingModel->get('shop_favicon');

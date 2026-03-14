@@ -1,5 +1,6 @@
 <?php
 $hide_mobile_welcome = true;
+require_once ROOT_PATH . 'helpers/ImageHelper.php';
 require_once 'views/layouts/customer_header.php';
 ?>
 
@@ -89,7 +90,19 @@ require_once 'views/layouts/customer_header.php';
                 <?php foreach (($order['items'] ?? []) as $item): ?>
                     <div style="display:flex; align-items:center; gap:12px; background:#fafafa; border-radius:18px; padding:12px;">
                         <?php if (!empty($item['image_url'])): ?>
-                            <img src="<?= htmlspecialchars($item['image_url']) ?>" alt="<?= htmlspecialchars($item['product_title'] ?? 'Product') ?>" style="width:62px; height:62px; border-radius:14px; object-fit:cover; background:#f0f0f0;">
+                            <?php $lookupImageName = basename((string) parse_url((string) $item['image_url'], PHP_URL_PATH)); ?>
+                            <?= ImageHelper::renderResponsivePicture(
+                                $lookupImageName,
+                                (string) $item['image_url'],
+                                [
+                                    'alt' => $item['product_title'] ?? 'Product',
+                                    'loading' => 'lazy',
+                                    'decoding' => 'async',
+                                    'fetchpriority' => 'low',
+                                    'style' => 'width:62px; height:62px; border-radius:14px; object-fit:cover; background:#f0f0f0;'
+                                ],
+                                'admin_thumb'
+                            ) ?>
                         <?php else: ?>
                             <div style="width:62px; height:62px; border-radius:14px; background:#f0f0f0;"></div>
                         <?php endif; ?>

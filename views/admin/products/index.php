@@ -139,6 +139,7 @@
 </head>
 
 <body>
+    <?php require_once ROOT_PATH . 'helpers/ImageHelper.php'; ?>
  <!-- Global Loader Injection -->
     <?php include 'views/admin/partials/loader.php'; ?>
     <div class="container" style="padding-bottom: 80px;">
@@ -193,11 +194,20 @@
                         </div>
 
                         <?php
-                        $imgSrc = !empty($prod['main_image'])
-                            ? BASE_URL . "assets/uploads/" . $prod['main_image']
-                            : BASE_URL . "assets/icons/products.png"; // Fallback
+                        $imgSrc = ImageHelper::uploadUrl($prod['main_image'] ?? '', BASE_URL . "assets/icons/products.png");
                         ?>
-                        <img src="<?= $imgSrc ?>" class="prod-thumb">
+                        <?= ImageHelper::renderResponsivePicture(
+                            $prod['main_image'] ?? '',
+                            $imgSrc,
+                            [
+                                'class' => 'prod-thumb',
+                                'alt' => $prod['title'] ?? 'Product',
+                                'loading' => 'lazy',
+                                'decoding' => 'async',
+                                'fetchpriority' => 'low'
+                            ],
+                            'admin_thumb'
+                        ) ?>
 
                         <div style="flex: 1; display: flex; justify-content: space-between; align-items: center;">
                             <div class="prod-info" style="flex: unset;">

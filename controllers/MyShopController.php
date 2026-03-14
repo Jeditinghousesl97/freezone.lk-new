@@ -3,6 +3,7 @@
  * My Shop Controller
  */
 require_once 'models/Setting.php';
+require_once 'helpers/ImageHelper.php';
 
 class MyShopController extends BaseController
 {
@@ -91,11 +92,6 @@ class MyShopController extends BaseController
             $this->settingModel->set('cod_enabled', !empty($_POST['cod_enabled']) ? '1' : '0');
             $this->settingModel->set('whatsapp_ordering_enabled', !empty($_POST['whatsapp_ordering_enabled']) ? '1' : '0');
 
-            $uploadDir = ROOT_PATH . 'assets/uploads/';
-            if (!is_dir($uploadDir)) {
-                mkdir($uploadDir, 0777, true);
-            }
-
             for ($i = 1; $i <= 3; $i++) {
                 $imageKey = 'hero_slide_' . $i . '_image';
                 $removeKey = 'remove_hero_slide_' . $i . '_image';
@@ -109,12 +105,11 @@ class MyShopController extends BaseController
                 }
 
                 if (isset($_FILES[$imageKey]) && $_FILES[$imageKey]['error'] === 0) {
-                    $fileName = time() . '_hero_' . $i . '_' . preg_replace('/[^a-zA-Z0-9\._-]/', '', basename($_FILES[$imageKey]['name']));
-
-                    if (move_uploaded_file($_FILES[$imageKey]['tmp_name'], $uploadDir . $fileName)) {
+                    $fileName = ImageHelper::storeUploadedFile($_FILES[$imageKey], 'hero_' . $i);
+                    if ($fileName !== '') {
                         $oldUrl = $this->settingModel->get($imageKey);
                         if (!empty($oldUrl)) {
-                            $this->deleteFile(basename($oldUrl));
+                            $this->deleteFile(basename((string) $oldUrl));
                         }
 
                         $this->settingModel->set($imageKey, BASE_URL . 'assets/uploads/' . $fileName);

@@ -80,6 +80,7 @@
 </head>
 
 <body>
+    <?php require_once ROOT_PATH . 'helpers/ImageHelper.php'; ?>
 <!-- Global Loader Injection -->
     <?php include 'views/admin/partials/loader.php'; ?>
     <div class="container">
@@ -99,8 +100,19 @@
                 <div class="guide-item">
                     <div class="guide-info">
                         <?php if (!empty($guide['image_path'])): ?>
-                            <img src="<?= BASE_URL ?>assets/uploads/<?= htmlspecialchars($guide['image_path']) ?>"
-                                class="guide-thumb" alt="SG">
+                            <?php $guideImage = ImageHelper::uploadUrl($guide['image_path'], 'https://via.placeholder.com/160?text=Guide'); ?>
+                            <?= ImageHelper::renderResponsivePicture(
+                                $guide['image_path'],
+                                $guideImage,
+                                [
+                                    'class' => 'guide-thumb',
+                                    'alt' => $guide['name'] ?? 'Size guide',
+                                    'loading' => 'lazy',
+                                    'decoding' => 'async',
+                                    'fetchpriority' => 'low'
+                                ],
+                                'admin_thumb'
+                            ) ?>
                         <?php else: ?>
                             <div class="guide-thumb"></div>
                         <?php endif; ?>

@@ -96,14 +96,18 @@ require_once 'views/layouts/customer_header.php';
                     ?>
                     <div
                         style="border-radius: 20px; overflow: hidden; aspect-ratio: 1/1; margin-bottom: 10px; background: #f0f0f0;">
-                        <img <?= ImageHelper::attrs([
-                            'src' => $img,
-                            'alt' => $cat['name'] ?? 'Category',
-                            'loading' => 'lazy',
-                            'decoding' => 'async',
-                            'fetchpriority' => 'low',
-                            'style' => 'width: 100%; height: 100%; object-fit: cover;'
-                        ]) ?>>
+                        <?= ImageHelper::renderResponsivePicture(
+                            $cat['image'] ?? '',
+                            $img,
+                            [
+                                'alt' => $cat['name'] ?? 'Category',
+                                'loading' => 'lazy',
+                                'decoding' => 'async',
+                                'fetchpriority' => 'low',
+                                'style' => 'width: 100%; height: 100%; object-fit: cover;'
+                            ],
+                            'category_card'
+                        ) ?>
                     </div>
                     <div style="font-weight: 700; font-size: 14px; text-align: left; color: #000;">
                         <?= htmlspecialchars($cat['name']) ?>

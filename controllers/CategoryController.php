@@ -3,6 +3,7 @@
  * Category Controller
  */
 require_once 'models/Category.php';
+require_once 'helpers/ImageHelper.php';
 
 class CategoryController extends BaseController
 {
@@ -72,27 +73,7 @@ class CategoryController extends BaseController
             $parent_id = ($type === 'sub') ? ($_POST['parent_id'] ?? null) : null;
 
             // Image Upload Logic (Fixed)
-            $imagePath = '';
-            if (isset($_FILES['image']) && $_FILES['image']['error'] == 0) {
-                // Use absolute path
-                $targetDir = dirname(__DIR__) . "/assets/uploads/";
-
-                // Create dir if not exists
-                if (!is_dir($targetDir)) {
-                    mkdir($targetDir, 0777, true);
-                }
-
-                $fileName = time() . '_' . basename($_FILES['image']['name']);
-                $targetFile = $targetDir . $fileName;
-
-                if (move_uploaded_file($_FILES['image']['tmp_name'], $targetFile)) {
-                    $imagePath = $fileName;
-                } else {
-                    // Debugging: Fail silently or log error? For now, let's just proceed with empty image, 
-                    // or echo error for dev.
-                    // echo "Upload failed to: " . $targetFile; exit; 
-                }
-            }
+            $imagePath = isset($_FILES['image']) ? ImageHelper::storeUploadedFile($_FILES['image'], 'category') : '';
 
             if (
                 $this->categoryModel->create([
@@ -151,17 +132,9 @@ class CategoryController extends BaseController
             // Image Logic
             $imagePath = null;
             if (isset($_FILES['image']) && $_FILES['image']['error'] == 0) {
-                $targetDir = dirname(__DIR__) . "/assets/uploads/";
-                if (!is_dir($targetDir))
-                    mkdir($targetDir, 0777, true);
-
-                $fileName = time() . '_' . basename($_FILES['image']['name']);
-                $targetFile = $targetDir . $fileName;
-
-                if (move_uploaded_file($_FILES['image']['tmp_name'], $targetFile)) {
-                    $imagePath = $fileName;
-
-                    // Safe Delete Old Image
+                $storedName = ImageHelper::storeUploadedFile($_FILES['image'], 'category');
+                if ($storedName !== '') {
+                    $imagePath = $storedName;
                     $currentCat = $this->categoryModel->getById($id);
                     if ($currentCat && !empty($currentCat['image'])) {
                         $this->deleteFile($currentCat['image']);

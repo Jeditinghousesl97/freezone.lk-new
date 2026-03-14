@@ -39,6 +39,7 @@
     <div class="server-actions">
         <a href="<?= BASE_URL ?>admin/dashboard" class="server-btn secondary">Back to Dashboard</a>
         <a href="<?= BASE_URL ?>admin/serverCheck" class="server-btn primary">Refresh Check</a>
+        <a href="<?= BASE_URL ?>admin/imageOptimizer" class="server-btn secondary">Open Image Optimizer</a>
     </div>
 
     <div class="server-grid">
