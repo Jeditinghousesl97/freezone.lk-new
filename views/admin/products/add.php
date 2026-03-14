@@ -662,21 +662,20 @@
                     <div>
                         <span class="sub-label">Choose how this product should be sold</span>
                         <select name="stock_mode" id="stockModeInput" class="input-box" onchange="toggleStockPanels()">
-                            <?php $stockMode = $product['stock_mode'] ?? 'always_in_stock'; ?>
+                            <?php
+                                $rawStockMode = $product['stock_mode'] ?? 'always_in_stock';
+                                $stockMode = $rawStockMode === 'track_stock' ? 'track_stock' : 'always_in_stock';
+                            ?>
                             <option value="always_in_stock" <?= $stockMode === 'always_in_stock' ? 'selected' : '' ?>>Always in Stock</option>
                             <option value="track_stock" <?= $stockMode === 'track_stock' ? 'selected' : '' ?>>Track Product Stock</option>
-                            <option value="manual_out_of_stock" <?= $stockMode === 'manual_out_of_stock' ? 'selected' : '' ?>>Manual In/Out of Stock</option>
                         </select>
                     </div>
                     <div>
-                        <span class="sub-label">Manual status used when not tracking quantity</span>
-                        <select name="manual_stock_status" id="manualStockStatusInput" class="input-box">
-                            <?php $manualStockStatus = $product['manual_stock_status'] ?? 'in_stock'; ?>
-                            <option value="in_stock" <?= $manualStockStatus === 'in_stock' ? 'selected' : '' ?>>In Stock</option>
-                            <option value="out_of_stock" <?= $manualStockStatus === 'out_of_stock' ? 'selected' : '' ?>>Out of Stock</option>
-                        </select>
+                        <span class="sub-label">Variation stock appears only when stock tracking is enabled</span>
+                        <div class="input-box" style="display:flex; align-items:center; color:#666; min-height:46px;">Exact variation stock matrix for tracked products</div>
                     </div>
                 </div>
+                <input type="hidden" name="manual_stock_status" value="in_stock">
 
                 <div id="simpleStockPanel" class="stock-panel">
                     <div class="stock-row">
@@ -969,12 +968,13 @@
             const variantPanel = document.getElementById('variantStockPanel');
             const selectedGroups = getSelectedVariationGroups();
             const hasVariantSelections = selectedGroups.length > 0 || variantStockRows.length > 0;
+            const isTrackingStock = stockMode === 'track_stock';
 
             if (simplePanel) {
-                simplePanel.style.display = stockMode === 'track_stock' && !hasVariantSelections ? 'block' : 'none';
+                simplePanel.style.display = isTrackingStock && !hasVariantSelections ? 'block' : 'none';
             }
             if (variantPanel) {
-                variantPanel.style.display = hasVariantSelections ? 'block' : 'none';
+                variantPanel.style.display = isTrackingStock && hasVariantSelections ? 'block' : 'none';
             }
         }
 
