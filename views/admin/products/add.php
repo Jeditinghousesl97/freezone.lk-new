@@ -965,13 +965,13 @@
             const simplePanel = document.getElementById('simpleStockPanel');
             const variantPanel = document.getElementById('variantStockPanel');
             const selectedGroups = getSelectedVariationGroups();
-            const hasMultipleGroups = selectedGroups.length > 0;
+            const hasVariantSelections = selectedGroups.length > 0 || variantStockRows.length > 0;
 
             if (simplePanel) {
-                simplePanel.style.display = stockMode === 'track_stock' ? 'block' : 'none';
+                simplePanel.style.display = stockMode === 'track_stock' && !hasVariantSelections ? 'block' : 'none';
             }
             if (variantPanel) {
-                variantPanel.style.display = hasMultipleGroups ? 'block' : 'none';
+                variantPanel.style.display = hasVariantSelections ? 'block' : 'none';
             }
         }
 

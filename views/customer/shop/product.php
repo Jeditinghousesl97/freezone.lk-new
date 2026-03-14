@@ -7,6 +7,14 @@ $productUnitPrice = (!empty($product['sale_price']) && (float) $product['sale_pr
     ? (float) $product['sale_price']
     : (float) $product['price'];
 ?>
+<style>
+    .var-pill.is-disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+        pointer-events: none;
+        filter: grayscale(0.15);
+    }
+</style>
 
 <!-- Wrappers for Sidebar Layout -->
 <div class="home-layout">
@@ -689,7 +697,52 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
 
     function getActiveVariantRow() {
         const variantKey = getSelectedVariantKey();
-        return variantStockRows.find(row => row.combination_key === variantKey && row.is_active) || null;
+        return variantStockRows.find(row => row.combination_key === variantKey && Number(row.is_active)) || null;
+    }
+
+    function isVariantRowPurchasable(row) {
+        if (!row || !Number(row.is_active)) {
+            return false;
+        }
+
+        if (row.stock_mode === 'manual_out_of_stock') {
+            return String(row.manual_stock_status || 'in_stock') === 'in_stock';
+        }
+
+        if (row.stock_mode === 'track_stock') {
+            return Number(row.stock_qty || 0) > 0;
+        }
+
+        return true;
+    }
+
+    function rowMatchesSelection(row, pairs) {
+        if (!row || !pairs.length) {
+            return false;
+        }
+
+        const rowPairs = String(row.combination_key || '').split('|').filter(Boolean);
+        return pairs.every(pair => rowPairs.includes(pair));
+    }
+
+    function buildSelectionForPill(pill) {
+        const nextSelection = { ...selectedVariations };
+        const variationName = pill.dataset.variationName;
+
+        nextSelection[variationName] = {
+            variation_id: Number(pill.dataset.variationId || 0),
+            variation_name: variationName,
+            variation_value_id: Number(pill.dataset.valueId || 0),
+            variation_value: pill.dataset.valueLabel || pill.textContent.trim()
+        };
+
+        return Object.values(nextSelection)
+            .map(item => `${item.variation_id}:${item.variation_value_id}`)
+            .sort((a, b) => {
+                const [aVariationId, aValueId] = a.split(':').map(Number);
+                const [bVariationId, bValueId] = b.split(':').map(Number);
+                return aVariationId - bVariationId || aValueId - bValueId;
+            });
     }
 
     function updateProductStockNotice(message, type) {
@@ -726,27 +779,10 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
 
         const pills = document.querySelectorAll('.var-pill');
         pills.forEach(pill => {
-            const nextSelection = { ...selectedVariations };
-            const variationName = pill.dataset.variationName;
-            nextSelection[variationName] = {
-                variation_id: Number(pill.dataset.variationId || 0),
-                variation_name: variationName,
-                variation_value_id: Number(pill.dataset.valueId || 0),
-                variation_value: pill.dataset.valueLabel || pill.textContent.trim()
-            };
+            const nextPairs = buildSelectionForPill(pill);
+            const isPossible = variantStockRows.some(row => isVariantRowPurchasable(row) && rowMatchesSelection(row, nextPairs));
 
-            const nextKey = Object.values(nextSelection)
-                .map(item => `${item.variation_id}:${item.variation_value_id}`)
-                .sort();
-
-            const isPossible = variantStockRows.some(row => {
-                if (!row.is_active) {
-                    return false;
-                }
-                return nextKey.every(pair => String(row.combination_key || '').split('|').includes(pair));
-            });
-            pill.style.opacity = isPossible ? '1' : '0.35';
-            pill.style.pointerEvents = isPossible ? 'auto' : 'none';
+            pill.classList.toggle('is-disabled', !isPossible);
         });
 
         const activeVariant = getActiveVariantRow();
@@ -794,6 +830,9 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
     }
 
     function selectVariation(el) {
+        if (el.classList.contains('is-disabled')) {
+            return;
+        }
         let siblings = el.parentElement.querySelectorAll('.var-pill');
         siblings.forEach(s => s.classList.remove('active'));
         el.classList.add('active');
