@@ -241,24 +241,50 @@ if (($current_page ?? '') !== 'cart'):
         }
     }
 
-    
-        // --- Navigation Interceptor (Fixed) ---
-    document.addEventListener('click', function(e) {
-        const link = e.target.closest('a');
-        if (!link) return;
-        
-        // 1. Basic Safety
-        if (link.target === '_blank') return; 
-        const hrefAttr = link.getAttribute('href');
-        if (!hrefAttr || hrefAttr.startsWith('#') || hrefAttr.startsWith('javascript:') || hrefAttr.startsWith('mailto:') || hrefAttr.startsWith('tel:')) return;
-        if (link.classList.contains('no-loader')) return;
+    function shouldSkipCustomerLoaderLink(link, event) {
+        if (!link) return true;
+        if (link.classList.contains('no-loader') || link.hasAttribute('data-no-loader')) return true;
+        if (link.target === '_blank' || link.hasAttribute('download')) return true;
+        if (event && (event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0)) return true;
 
-        // 2. Internal Link Check (Hostname Matching)
-        // This works for both relative (/shop) and absolute (http://site.com/shop) links
-        if (link.hostname === window.location.hostname) {
-            showGlobalLoader();
+        const hrefAttr = link.getAttribute('href');
+        if (!hrefAttr || hrefAttr.startsWith('#') || hrefAttr.startsWith('javascript:') || hrefAttr.startsWith('mailto:') || hrefAttr.startsWith('tel:')) {
+            return true;
         }
-    });
+
+        return link.hostname !== window.location.hostname;
+    }
+
+    function shouldSkipCustomerLoaderForm(form, event) {
+        if (!form) return true;
+        if (form.classList.contains('no-loader') || form.hasAttribute('data-no-loader')) return true;
+        if (event && event.defaultPrevented) return true;
+        if ((form.getAttribute('target') || '').toLowerCase() === '_blank') return true;
+
+        const method = (form.getAttribute('method') || 'get').toLowerCase();
+        if (method === 'dialog') return true;
+
+        const action = form.getAttribute('action');
+        if (action && action.trim().toLowerCase().startsWith('javascript:')) return true;
+
+        return false;
+    }
+
+    document.addEventListener('click', function(event) {
+        const link = event.target.closest('a');
+        if (shouldSkipCustomerLoaderLink(link, event)) {
+            return;
+        }
+        showGlobalLoader();
+    }, false);
+
+    document.addEventListener('submit', function(event) {
+        const form = event.target;
+        if (shouldSkipCustomerLoaderForm(form, event)) {
+            return;
+        }
+        showGlobalLoader();
+    }, false);
 
 
     // --- Safety Valve  ---

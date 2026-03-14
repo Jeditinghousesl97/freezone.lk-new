@@ -54,24 +54,60 @@
 
 <!-- Scripts -->
 <script>
-    let adminLoaderTimeout;
-
     function showGlobalLoader() {
-        // Clear any existing timer
-        clearTimeout(adminLoaderTimeout);
-        
-        // Slight delay to prevent flickering on instant actions
-        adminLoaderTimeout = setTimeout(() => {
-            const loader = document.getElementById('adminGlobalLoader');
-            if(loader) loader.style.display = 'flex';
-        }, 300);
+        const loader = document.getElementById('adminGlobalLoader');
+        if(loader) loader.style.display = 'flex';
     }
 
     function hideGlobalLoader() {
-        clearTimeout(adminLoaderTimeout);
         const loader = document.getElementById('adminGlobalLoader');
         if(loader) loader.style.display = 'none';
     }
+
+    function shouldSkipLoaderLink(link, event) {
+        if (!link) return true;
+        if (link.classList.contains('no-loader') || link.hasAttribute('data-no-loader')) return true;
+        if (link.target === '_blank' || link.hasAttribute('download')) return true;
+        if (event && (event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0)) return true;
+
+        const hrefAttr = link.getAttribute('href');
+        if (!hrefAttr || hrefAttr.startsWith('#') || hrefAttr.startsWith('javascript:') || hrefAttr.startsWith('mailto:') || hrefAttr.startsWith('tel:')) {
+            return true;
+        }
+
+        return link.hostname !== window.location.hostname;
+    }
+
+    function shouldSkipLoaderForm(form, event) {
+        if (!form) return true;
+        if (form.classList.contains('no-loader') || form.hasAttribute('data-no-loader')) return true;
+        if (event && event.defaultPrevented) return true;
+        if ((form.getAttribute('target') || '').toLowerCase() === '_blank') return true;
+
+        const method = (form.getAttribute('method') || 'get').toLowerCase();
+        if (method === 'dialog') return true;
+
+        const action = form.getAttribute('action');
+        if (action && action.trim().toLowerCase().startsWith('javascript:')) return true;
+
+        return false;
+    }
+
+    document.addEventListener('click', function(event) {
+        const link = event.target.closest('a');
+        if (shouldSkipLoaderLink(link, event)) {
+            return;
+        }
+        showGlobalLoader();
+    }, false);
+
+    document.addEventListener('submit', function(event) {
+        const form = event.target;
+        if (shouldSkipLoaderForm(form, event)) {
+            return;
+        }
+        showGlobalLoader();
+    }, false);
 
     // Safety: Hide on page show (bfcache)
     window.addEventListener('pageshow', function(event) {
