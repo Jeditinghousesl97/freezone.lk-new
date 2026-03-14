@@ -132,6 +132,17 @@
         font-weight: 700 !important;
     }
 
+    .cat-btn,
+    .btn-red,
+    .header-actions > a[href*="cart"] {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 8px;
+        white-space: nowrap;
+        text-decoration: none !important;
+    }
+
     .cat-btn {
         background: linear-gradient(135deg, var(--desktop-accent) 0%, #3f2e1e 100%) !important;
     }
@@ -143,6 +154,8 @@
         box-shadow: 0 14px 28px rgba(201, 123, 61, 0.14) !important;
         position: relative;
         overflow: hidden;
+        min-width: 158px;
+        padding: 0 18px !important;
     }
 
     .header-actions > a[href*="cart"] {
@@ -154,8 +167,8 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        margin-right: 10px;
-        padding: 5px 8px;
+        margin-right: 4px;
+        padding: 5px 9px;
         border-radius: 999px;
         background: linear-gradient(135deg, #d95d4f 0%, #bb3d33 100%);
         color: #fff;
@@ -163,6 +176,15 @@
         font-weight: 800;
         letter-spacing: 0.08em;
         text-transform: uppercase;
+        flex: 0 0 auto;
+    }
+
+    .btn-red,
+    .btn-red:hover,
+    .btn-red:focus,
+    .btn-red:visited {
+        color: #8f3d16 !important;
+        opacity: 1 !important;
     }
 
     .cart-badge-count {
@@ -216,6 +238,10 @@
         border-right: 0 !important;
         gap: 16px;
         scrollbar-gutter: stable;
+    }
+
+    .shop-info-box {
+        margin-top: auto;
     }
 
     .sidebar::-webkit-scrollbar {
@@ -299,7 +325,8 @@
     .social-icons {
         display: flex !important;
         gap: 12px !important;
-        margin-top: 6px;
+        margin-top: 12px;
+        flex-wrap: wrap;
     }
 
     .social-icons a {
@@ -317,6 +344,9 @@
     .social-icon-img {
         width: 20px !important;
         height: 20px !important;
+        display: block !important;
+        opacity: 1 !important;
+        visibility: visible !important;
     }
 
     .main-content {
