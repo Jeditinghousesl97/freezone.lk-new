@@ -106,8 +106,16 @@
         if (shouldSkipLoaderForm(form, event)) {
             return;
         }
+        if (typeof form.checkValidity === 'function' && !form.checkValidity()) {
+            hideGlobalLoader();
+            return;
+        }
         showGlobalLoader();
     }, false);
+
+    document.addEventListener('invalid', function() {
+        hideGlobalLoader();
+    }, true);
 
     // Safety: Hide on page show (bfcache)
     window.addEventListener('pageshow', function(event) {

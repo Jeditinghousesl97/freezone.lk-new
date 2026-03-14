@@ -283,8 +283,16 @@ if (($current_page ?? '') !== 'cart'):
         if (shouldSkipCustomerLoaderForm(form, event)) {
             return;
         }
+        if (typeof form.checkValidity === 'function' && !form.checkValidity()) {
+            hideGlobalLoader();
+            return;
+        }
         showGlobalLoader();
     }, false);
+
+    document.addEventListener('invalid', function() {
+        hideGlobalLoader();
+    }, true);
 
 
     // --- Safety Valve  ---
