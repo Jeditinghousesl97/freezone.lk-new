@@ -140,6 +140,8 @@ class ShopController extends BaseController
         // Fetch additional details
         $gallery = $this->productModel->getGalleryImages($id);
         $variations = $this->productModel->getVariations($id);
+        $variantStockRows = $this->productModel->getVariantStockRows($id);
+        $stockSnapshot = $this->productModel->getStockSnapshot($product);
         $relatedProducts = $this->productModel->getRelated($product['category_id'], $id, 3);
 
         // Fetch Categories for Sidebar
@@ -177,6 +179,8 @@ class ShopController extends BaseController
             'product' => $product,
             'gallery' => $gallery,
             'variations' => $variations,
+            'variant_stock_rows' => $variantStockRows,
+            'stock_snapshot' => $stockSnapshot,
             'relatedProducts' => $relatedProducts,
             'categories' => $categories, // For sidebar
             'settings' => $settings,

@@ -312,6 +312,90 @@
             border-left: 2px solid #eee;
             padding-left: 10px;
         }
+
+        .stock-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .stock-panel {
+            background: #fff;
+            border: 1px solid #e8e8e8;
+            border-radius: 12px;
+            padding: 14px;
+            margin-top: 12px;
+        }
+
+        .stock-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .stock-row > * {
+            flex: 1;
+        }
+
+        .variant-stock-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 12px;
+            font-size: 12px;
+        }
+
+        .variant-stock-table th,
+        .variant-stock-table td {
+            border-bottom: 1px solid #f0f0f0;
+            padding: 10px 8px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .variant-stock-table th {
+            color: #777;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .variant-stock-table input,
+        .variant-stock-table select {
+            width: 100%;
+            margin-bottom: 0;
+            font-size: 12px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            background: #fff;
+            box-sizing: border-box;
+        }
+
+        .variant-stock-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+
+        .btn-soft {
+            background: #f3f6ff;
+            color: #1f5eff;
+            border: 1px solid #d9e4ff;
+            padding: 10px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .btn-soft-danger {
+            background: #fff1f0;
+            color: #d83b31;
+            border: 1px solid #ffd6d1;
+        }
     </style>
 </head>
 
@@ -482,6 +566,74 @@
                     <span class="slider"></span>
                 </label>
 
+                <span class="section-label" style="margin-top:20px;">Stock Management</span>
+                <div class="stock-grid">
+                    <div>
+                        <span class="sub-label">Choose how this product should be sold</span>
+                        <select name="stock_mode" id="stockModeInput" class="input-box" onchange="toggleStockPanels()">
+                            <?php $stockMode = $product['stock_mode'] ?? 'always_in_stock'; ?>
+                            <option value="always_in_stock" <?= $stockMode === 'always_in_stock' ? 'selected' : '' ?>>Always in Stock</option>
+                            <option value="track_stock" <?= $stockMode === 'track_stock' ? 'selected' : '' ?>>Track Product Stock</option>
+                            <option value="manual_out_of_stock" <?= $stockMode === 'manual_out_of_stock' ? 'selected' : '' ?>>Manual In/Out of Stock</option>
+                        </select>
+                    </div>
+                    <div>
+                        <span class="sub-label">Manual status used when not tracking quantity</span>
+                        <select name="manual_stock_status" id="manualStockStatusInput" class="input-box">
+                            <?php $manualStockStatus = $product['manual_stock_status'] ?? 'in_stock'; ?>
+                            <option value="in_stock" <?= $manualStockStatus === 'in_stock' ? 'selected' : '' ?>>In Stock</option>
+                            <option value="out_of_stock" <?= $manualStockStatus === 'out_of_stock' ? 'selected' : '' ?>>Out of Stock</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="simpleStockPanel" class="stock-panel">
+                    <div class="stock-row">
+                        <div>
+                            <span class="sub-label">Available quantity</span>
+                            <input type="number" name="stock_qty" class="input-box" min="0" step="1"
+                                value="<?= htmlspecialchars((string) ($product['stock_qty'] ?? '0')) ?>">
+                        </div>
+                        <div>
+                            <span class="sub-label">Low stock alert threshold</span>
+                            <input type="number" name="low_stock_threshold" class="input-box" min="0" step="1"
+                                value="<?= htmlspecialchars((string) ($product['low_stock_threshold'] ?? '5')) ?>">
+                        </div>
+                    </div>
+                </div>
+
+                <div id="variantStockPanel" class="stock-panel">
+                    <div style="display:flex; justify-content:space-between; gap:12px; align-items:center;">
+                        <div>
+                            <strong style="display:block; margin-bottom:4px;">Variation Stock Matrix</strong>
+                            <span class="sub-label" style="margin:0;">Create only the exact variation combinations you really sell.</span>
+                        </div>
+                    </div>
+                    <div class="variant-stock-actions">
+                        <button type="button" class="btn-soft" onclick="generateVariantCombinations()">Generate Selected Combinations</button>
+                        <button type="button" class="btn-soft btn-soft-danger" onclick="clearVariantCombinations()">Clear Matrix</button>
+                    </div>
+                    <table class="variant-stock-table">
+                        <thead>
+                            <tr>
+                                <th>Combination</th>
+                                <th>SKU</th>
+                                <th>Mode</th>
+                                <th>Qty</th>
+                                <th>Low Stock</th>
+                                <th>Status</th>
+                                <th>Active</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="variantStockTableBody">
+                            <tr id="variantStockEmptyState">
+                                <td colspan="8" style="color:#777;">No exact combinations yet. Select variation values, then generate the combinations you actually sell.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
                 <div style="margin-top: 30px;">
                     <button type="button" class="btn-yellow" onclick="openVarModal()">Add Variations</button>
                     <button type="submit" class="btn-blue" onclick="showGlobalLoader()">Publish</button>
@@ -491,6 +643,8 @@
 
             <!-- Variations Hidden Inputs container -->
             <div id="hiddenVars"></div>
+            <input type="hidden" name="variant_stocks_json" id="variantStocksJson"
+                value='<?= htmlspecialchars(json_encode($product["variant_stocks"] ?? [], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES) ?>'>
 
             <!-- Variations Modal -->
             <div class="modal-overlay" id="varModal">
@@ -560,6 +714,180 @@
     </form>
 
     <script>
+        const initialVariantStockRows = <?= json_encode($product['variant_stocks'] ?? [], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
+        let variantStockRows = Array.isArray(initialVariantStockRows) ? initialVariantStockRows : [];
+
+        function normalizeVariantKey(values) {
+            return values
+                .slice()
+                .sort((a, b) => Number(a.variation_id) - Number(b.variation_id))
+                .map(v => `${v.variation_id}:${v.variation_value_id}`)
+                .join('|');
+        }
+
+        function renderVariantStockRows() {
+            const tbody = document.getElementById('variantStockTableBody');
+            if (!tbody) return;
+
+            if (!variantStockRows.length) {
+                tbody.innerHTML = `<tr id="variantStockEmptyState"><td colspan="8" style="color:#777;">No exact combinations yet. Select variation values, then generate the combinations you actually sell.</td></tr>`;
+                syncVariantStocksJson();
+                return;
+            }
+
+            tbody.innerHTML = variantStockRows.map((row, index) => `
+                <tr>
+                    <td>
+                        <div style="font-weight:700; color:#111;">${row.combination_label || row.combination_key}</div>
+                        <div style="font-size:11px; color:#888; margin-top:4px;">${row.combination_key}</div>
+                    </td>
+                    <td><input type="text" value="${escapeHtml(row.sku || '')}" onchange="updateVariantRow(${index}, 'sku', this.value)"></td>
+                    <td>
+                        <select onchange="updateVariantRow(${index}, 'stock_mode', this.value)">
+                            <option value="always_in_stock" ${row.stock_mode === 'always_in_stock' ? 'selected' : ''}>Always In Stock</option>
+                            <option value="track_stock" ${row.stock_mode === 'track_stock' ? 'selected' : ''}>Track Stock</option>
+                            <option value="manual_out_of_stock" ${row.stock_mode === 'manual_out_of_stock' ? 'selected' : ''}>Manual Status</option>
+                        </select>
+                    </td>
+                    <td><input type="number" min="0" step="1" value="${Number(row.stock_qty || 0)}" onchange="updateVariantRow(${index}, 'stock_qty', this.value)"></td>
+                    <td><input type="number" min="0" step="1" value="${Number(row.low_stock_threshold || 5)}" onchange="updateVariantRow(${index}, 'low_stock_threshold', this.value)"></td>
+                    <td>
+                        <select onchange="updateVariantRow(${index}, 'manual_stock_status', this.value)">
+                            <option value="in_stock" ${(row.manual_stock_status || 'in_stock') === 'in_stock' ? 'selected' : ''}>In Stock</option>
+                            <option value="out_of_stock" ${(row.manual_stock_status || 'in_stock') === 'out_of_stock' ? 'selected' : ''}>Out of Stock</option>
+                        </select>
+                    </td>
+                    <td style="text-align:center;">
+                        <input type="checkbox" ${row.is_active ? 'checked' : ''} onchange="updateVariantRow(${index}, 'is_active', this.checked)">
+                    </td>
+                    <td>
+                        <button type="button" class="btn-soft btn-soft-danger" onclick="removeVariantRow(${index})">Remove</button>
+                    </td>
+                </tr>
+            `).join('');
+            syncVariantStocksJson();
+        }
+
+        function escapeHtml(value) {
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function updateVariantRow(index, key, value) {
+            if (!variantStockRows[index]) return;
+            variantStockRows[index][key] = (key === 'stock_qty' || key === 'low_stock_threshold') ? Number(value || 0) : value;
+            if (key === 'is_active') {
+                variantStockRows[index][key] = !!value;
+            }
+            syncVariantStocksJson();
+        }
+
+        function removeVariantRow(index) {
+            variantStockRows.splice(index, 1);
+            renderVariantStockRows();
+        }
+
+        function clearVariantCombinations() {
+            variantStockRows = [];
+            renderVariantStockRows();
+        }
+
+        function getSelectedVariationGroups() {
+            const grouped = {};
+            document.querySelectorAll('.var-opt.selected').forEach(el => {
+                const [variationId, variationValueId] = (el.dataset.id || '').split('_');
+                const variationName = el.closest('.var-group')?.querySelector('.var-title')?.textContent?.trim() || 'Variation';
+                if (!grouped[variationId]) {
+                    grouped[variationId] = {
+                        variation_id: Number(variationId),
+                        variation_name: variationName,
+                        values: []
+                    };
+                }
+                grouped[variationId].values.push({
+                    variation_id: Number(variationId),
+                    variation_value_id: Number(variationValueId),
+                    variation_name: variationName,
+                    variation_value: el.textContent.trim()
+                });
+            });
+
+            return Object.values(grouped).filter(group => group.values.length > 0);
+        }
+
+        function cartesianProduct(groups, index = 0, current = [], result = []) {
+            if (index >= groups.length) {
+                result.push(current.slice());
+                return result;
+            }
+
+            groups[index].values.forEach(value => {
+                current.push(value);
+                cartesianProduct(groups, index + 1, current, result);
+                current.pop();
+            });
+            return result;
+        }
+
+        function generateVariantCombinations() {
+            const groups = getSelectedVariationGroups();
+            if (!groups.length) {
+                alert('Select variation values first to generate exact combinations.');
+                return;
+            }
+
+            const combos = cartesianProduct(groups);
+            const existingKeys = new Set(variantStockRows.map(row => row.combination_key));
+
+            combos.forEach(combo => {
+                const combinationKey = normalizeVariantKey(combo);
+                if (existingKeys.has(combinationKey)) {
+                    return;
+                }
+
+                variantStockRows.push({
+                    combination_key: combinationKey,
+                    combination_label: combo.map(item => `${item.variation_name}: ${item.variation_value}`).join(' / '),
+                    sku: '',
+                    stock_mode: 'track_stock',
+                    stock_qty: 0,
+                    low_stock_threshold: 5,
+                    manual_stock_status: 'in_stock',
+                    is_active: true,
+                    values: combo
+                });
+                existingKeys.add(combinationKey);
+            });
+
+            renderVariantStockRows();
+        }
+
+        function syncVariantStocksJson() {
+            const input = document.getElementById('variantStocksJson');
+            if (input) {
+                input.value = JSON.stringify(variantStockRows);
+            }
+        }
+
+        function toggleStockPanels() {
+            const stockMode = document.getElementById('stockModeInput')?.value || 'always_in_stock';
+            const simplePanel = document.getElementById('simpleStockPanel');
+            const variantPanel = document.getElementById('variantStockPanel');
+            const selectedGroups = getSelectedVariationGroups();
+            const hasMultipleGroups = selectedGroups.length > 0;
+
+            if (simplePanel) {
+                simplePanel.style.display = stockMode === 'track_stock' ? 'block' : 'none';
+            }
+            if (variantPanel) {
+                variantPanel.style.display = hasMultipleGroups ? 'block' : 'none';
+            }
+        }
+
                 // Auto-Refresh Logic (Added for Shop Owner Auto Updates)
             window.refreshCategories = function() {
             fetch('<?= BASE_URL ?>category/get_json')
@@ -715,6 +1043,7 @@
 
         function toggleVar(el) {
             el.classList.toggle('selected');
+            toggleStockPanels();
         }
 
                 // Universal Modal Logic (Fixed Glitch + Loader)
@@ -784,6 +1113,8 @@
         window.addEventListener('load', function () {
             populateHiddenVars();
             updatePrimaryCat(); // Set initial label state
+            renderVariantStockRows();
+            toggleStockPanels();
         });
     </script>
 </body>

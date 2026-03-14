@@ -16,6 +16,11 @@ class Product extends BaseModel
     {
         $this->ensureColumnExists('products', 'weight_grams', "ALTER TABLE products ADD COLUMN weight_grams INT NOT NULL DEFAULT 0 AFTER sale_price");
         $this->ensureColumnExists('products', 'free_shipping', "ALTER TABLE products ADD COLUMN free_shipping TINYINT(1) NOT NULL DEFAULT 0 AFTER weight_grams");
+        $this->ensureColumnExists('products', 'stock_mode', "ALTER TABLE products ADD COLUMN stock_mode VARCHAR(30) NOT NULL DEFAULT 'always_in_stock' AFTER free_shipping");
+        $this->ensureColumnExists('products', 'stock_qty', "ALTER TABLE products ADD COLUMN stock_qty INT NOT NULL DEFAULT 0 AFTER stock_mode");
+        $this->ensureColumnExists('products', 'low_stock_threshold', "ALTER TABLE products ADD COLUMN low_stock_threshold INT NOT NULL DEFAULT 5 AFTER stock_qty");
+        $this->ensureColumnExists('products', 'manual_stock_status', "ALTER TABLE products ADD COLUMN manual_stock_status VARCHAR(20) NOT NULL DEFAULT 'in_stock' AFTER low_stock_threshold");
+        $this->ensureVariantStockTables();
     }
 
     private function ensureColumnExists($table, $column, $alterSql)
@@ -25,6 +30,141 @@ class Product extends BaseModel
 
         if (!$stmt->fetch(PDO::FETCH_ASSOC)) {
             $this->conn->exec($alterSql);
+        }
+    }
+
+    private function ensureTableExists($table, $createSql)
+    {
+        $stmt = $this->conn->prepare("SHOW TABLES LIKE :table_name");
+        $stmt->execute([':table_name' => $table]);
+        if (!$stmt->fetchColumn()) {
+            $this->conn->exec($createSql);
+        }
+    }
+
+    private function ensureVariantStockTables()
+    {
+        $this->ensureTableExists('product_variant_stock', "CREATE TABLE product_variant_stock (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            product_id INT NOT NULL,
+            combination_key VARCHAR(255) NOT NULL,
+            combination_label VARCHAR(255) NOT NULL,
+            sku VARCHAR(120) DEFAULT NULL,
+            stock_mode VARCHAR(30) NOT NULL DEFAULT 'track_stock',
+            stock_qty INT NOT NULL DEFAULT 0,
+            low_stock_threshold INT NOT NULL DEFAULT 5,
+            manual_stock_status VARCHAR(20) NOT NULL DEFAULT 'in_stock',
+            is_active TINYINT(1) NOT NULL DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY uniq_product_combination (product_id, combination_key),
+            KEY idx_variant_stock_product (product_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        $this->ensureTableExists('product_variant_stock_values', "CREATE TABLE product_variant_stock_values (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            variant_stock_id INT NOT NULL,
+            variation_id INT NOT NULL,
+            variation_value_id INT NOT NULL,
+            KEY idx_variant_stock_values_variant (variant_stock_id),
+            KEY idx_variant_stock_values_variation (variation_id, variation_value_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    }
+
+    private function normalizeStockMode($mode)
+    {
+        $mode = trim((string) $mode);
+        return in_array($mode, ['always_in_stock', 'track_stock', 'manual_out_of_stock'], true)
+            ? $mode
+            : 'always_in_stock';
+    }
+
+    private function normalizeManualStockStatus($status)
+    {
+        $status = trim((string) $status);
+        return $status === 'out_of_stock' ? 'out_of_stock' : 'in_stock';
+    }
+
+    private function normalizeVariantCombinationKey(array $rows)
+    {
+        usort($rows, function ($a, $b) {
+            return ((int) ($a['variation_id'] ?? 0)) <=> ((int) ($b['variation_id'] ?? 0));
+        });
+
+        $parts = [];
+        foreach ($rows as $row) {
+            $parts[] = ((int) ($row['variation_id'] ?? 0)) . ':' . ((int) ($row['variation_value_id'] ?? 0));
+        }
+        return implode('|', $parts);
+    }
+
+    private function saveVariantStocks($productId, array $variantStocks)
+    {
+        $deleteValues = $this->conn->prepare("DELETE psv FROM product_variant_stock_values psv
+            INNER JOIN product_variant_stock pvs ON psv.variant_stock_id = pvs.id
+            WHERE pvs.product_id = :product_id");
+        $deleteValues->execute([':product_id' => $productId]);
+
+        $deleteStocks = $this->conn->prepare("DELETE FROM product_variant_stock WHERE product_id = :product_id");
+        $deleteStocks->execute([':product_id' => $productId]);
+
+        if (empty($variantStocks)) {
+            return;
+        }
+
+        $insertStock = $this->conn->prepare("INSERT INTO product_variant_stock
+            (product_id, combination_key, combination_label, sku, stock_mode, stock_qty, low_stock_threshold, manual_stock_status, is_active)
+            VALUES
+            (:product_id, :combination_key, :combination_label, :sku, :stock_mode, :stock_qty, :low_stock_threshold, :manual_stock_status, :is_active)");
+        $insertValue = $this->conn->prepare("INSERT INTO product_variant_stock_values
+            (variant_stock_id, variation_id, variation_value_id)
+            VALUES
+            (:variant_stock_id, :variation_id, :variation_value_id)");
+
+        foreach ($variantStocks as $variantStock) {
+            $values = $variantStock['values'] ?? [];
+            if (empty($values) || !is_array($values)) {
+                continue;
+            }
+
+            $normalizedValues = [];
+            foreach ($values as $valueRow) {
+                $variationId = (int) ($valueRow['variation_id'] ?? 0);
+                $variationValueId = (int) ($valueRow['variation_value_id'] ?? 0);
+                if ($variationId <= 0 || $variationValueId <= 0) {
+                    continue;
+                }
+                $normalizedValues[] = [
+                    'variation_id' => $variationId,
+                    'variation_value_id' => $variationValueId
+                ];
+            }
+
+            if (empty($normalizedValues)) {
+                continue;
+            }
+
+            $combinationKey = $this->normalizeVariantCombinationKey($normalizedValues);
+            $insertStock->execute([
+                ':product_id' => $productId,
+                ':combination_key' => $combinationKey,
+                ':combination_label' => trim((string) ($variantStock['combination_label'] ?? $combinationKey)),
+                ':sku' => trim((string) ($variantStock['sku'] ?? '')) ?: null,
+                ':stock_mode' => $this->normalizeStockMode($variantStock['stock_mode'] ?? 'track_stock'),
+                ':stock_qty' => max(0, (int) ($variantStock['stock_qty'] ?? 0)),
+                ':low_stock_threshold' => max(0, (int) ($variantStock['low_stock_threshold'] ?? 5)),
+                ':manual_stock_status' => $this->normalizeManualStockStatus($variantStock['manual_stock_status'] ?? 'in_stock'),
+                ':is_active' => !empty($variantStock['is_active']) ? 1 : 0
+            ]);
+
+            $variantStockId = (int) $this->conn->lastInsertId();
+            foreach ($normalizedValues as $valueRow) {
+                $insertValue->execute([
+                    ':variant_stock_id' => $variantStockId,
+                    ':variation_id' => $valueRow['variation_id'],
+                    ':variation_value_id' => $valueRow['variation_value_id']
+                ]);
+            }
         }
     }
 
@@ -60,10 +200,10 @@ class Product extends BaseModel
 
             // 1. Insert Core Product
             $sql = "INSERT INTO products (
-                title, slug, sku, price, sale_price, weight_grams, free_shipping, description, 
+                title, slug, sku, price, sale_price, weight_grams, free_shipping, stock_mode, stock_qty, low_stock_threshold, manual_stock_status, description, 
                 main_image, is_featured, category_id, size_guide_id
             ) VALUES (
-                :title, :slug, :sku, :price, :sale_price, :weight_grams, :free_shipping, :description, 
+                :title, :slug, :sku, :price, :sale_price, :weight_grams, :free_shipping, :stock_mode, :stock_qty, :low_stock_threshold, :manual_stock_status, :description, 
                 :main_image, :is_featured, :category_id, :size_guide_id
             )";
 
@@ -85,6 +225,14 @@ class Product extends BaseModel
             $stmt->bindParam(':weight_grams', $weightGrams);
             $freeShipping = !empty($data['free_shipping']) ? 1 : 0;
             $stmt->bindParam(':free_shipping', $freeShipping);
+            $stockMode = $this->normalizeStockMode($data['stock_mode'] ?? 'always_in_stock');
+            $stockQty = max(0, (int) ($data['stock_qty'] ?? 0));
+            $lowStockThreshold = max(0, (int) ($data['low_stock_threshold'] ?? 5));
+            $manualStockStatus = $this->normalizeManualStockStatus($data['manual_stock_status'] ?? 'in_stock');
+            $stmt->bindParam(':stock_mode', $stockMode);
+            $stmt->bindParam(':stock_qty', $stockQty);
+            $stmt->bindParam(':low_stock_threshold', $lowStockThreshold);
+            $stmt->bindParam(':manual_stock_status', $manualStockStatus);
 
             $stmt->bindParam(':description', $data['description']);
             $stmt->bindParam(':main_image', $data['main_image']);
@@ -139,6 +287,10 @@ class Product extends BaseModel
                 }
             }
 
+            if (isset($data['variant_stocks']) && is_array($data['variant_stocks'])) {
+                $this->saveVariantStocks($productId, $data['variant_stocks']);
+            }
+
             $this->conn->commit();
 
             return $productId;
@@ -164,6 +316,10 @@ class Product extends BaseModel
                     sale_price = :sale_price, 
                     weight_grams = :weight_grams,
                     free_shipping = :free_shipping,
+                    stock_mode = :stock_mode,
+                    stock_qty = :stock_qty,
+                    low_stock_threshold = :low_stock_threshold,
+                    manual_stock_status = :manual_stock_status,
                     description = :description, 
                     is_featured = :is_featured, 
                     category_id = :category_id, 
@@ -180,6 +336,10 @@ class Product extends BaseModel
                         sale_price = :sale_price, 
                         weight_grams = :weight_grams,
                         free_shipping = :free_shipping,
+                        stock_mode = :stock_mode,
+                        stock_qty = :stock_qty,
+                        low_stock_threshold = :low_stock_threshold,
+                        manual_stock_status = :manual_stock_status,
                         description = :description, 
                         main_image = :main_image,
                         is_featured = :is_featured, 
@@ -204,6 +364,14 @@ class Product extends BaseModel
             $stmt->bindParam(':weight_grams', $weightGrams);
             $freeShipping = !empty($data['free_shipping']) ? 1 : 0;
             $stmt->bindParam(':free_shipping', $freeShipping);
+            $stockMode = $this->normalizeStockMode($data['stock_mode'] ?? 'always_in_stock');
+            $stockQty = max(0, (int) ($data['stock_qty'] ?? 0));
+            $lowStockThreshold = max(0, (int) ($data['low_stock_threshold'] ?? 5));
+            $manualStockStatus = $this->normalizeManualStockStatus($data['manual_stock_status'] ?? 'in_stock');
+            $stmt->bindParam(':stock_mode', $stockMode);
+            $stmt->bindParam(':stock_qty', $stockQty);
+            $stmt->bindParam(':low_stock_threshold', $lowStockThreshold);
+            $stmt->bindParam(':manual_stock_status', $manualStockStatus);
 
             $stmt->bindParam(':description', $data['description']);
 
@@ -295,6 +463,13 @@ class Product extends BaseModel
                         $stmtCat->execute();
                         $mainUpdateSuccess = true;
                     }
+                }
+            }
+
+            if (isset($data['variant_stocks']) && is_array($data['variant_stocks'])) {
+                $this->saveVariantStocks((int) $data['id'], $data['variant_stocks']);
+                if (!empty($data['variant_stocks'])) {
+                    $mainUpdateSuccess = true;
                 }
             }
 
@@ -480,7 +655,7 @@ class Product extends BaseModel
     public function getVariations($productId)
     {
         // Join product_variations -> variations, variation_values
-        $sql = "SELECT v.name as var_name, vv.id as val_id, vv.value as val_name, vv.color_hex
+        $sql = "SELECT v.id as variation_id, v.name as var_name, vv.id as val_id, vv.value as val_name, vv.color_hex
                 FROM product_variations pv
                 JOIN variations v ON pv.variation_id = v.id
                 JOIN variation_values vv ON pv.variation_value_id = vv.id
@@ -500,12 +675,249 @@ class Product extends BaseModel
                 $grouped[$name] = [];
             }
             $grouped[$name][] = [
+                'variation_id' => (int) $row['variation_id'],
                 'id' => $row['val_id'],
                 'value' => $row['val_name'],
                 'hex' => $row['color_hex']
             ];
         }
         return $grouped;
+    }
+
+    public function getVariantStockRows($productId)
+    {
+        $sql = "SELECT pvs.*, pvsv.variation_id, pvsv.variation_value_id, v.name AS variation_name, vv.value AS variation_value
+                FROM product_variant_stock pvs
+                LEFT JOIN product_variant_stock_values pvsv ON pvs.id = pvsv.variant_stock_id
+                LEFT JOIN variations v ON pvsv.variation_id = v.id
+                LEFT JOIN variation_values vv ON pvsv.variation_value_id = vv.id
+                WHERE pvs.product_id = :product_id
+                ORDER BY pvs.id ASC, pvsv.variation_id ASC";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute([':product_id' => $productId]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $grouped = [];
+        foreach ($rows as $row) {
+            $variantId = (int) $row['id'];
+            if (!isset($grouped[$variantId])) {
+                $grouped[$variantId] = [
+                    'id' => $variantId,
+                    'product_id' => (int) $row['product_id'],
+                    'combination_key' => (string) $row['combination_key'],
+                    'combination_label' => (string) $row['combination_label'],
+                    'sku' => (string) ($row['sku'] ?? ''),
+                    'stock_mode' => (string) $row['stock_mode'],
+                    'stock_qty' => (int) $row['stock_qty'],
+                    'low_stock_threshold' => (int) $row['low_stock_threshold'],
+                    'manual_stock_status' => (string) $row['manual_stock_status'],
+                    'is_active' => !empty($row['is_active']),
+                    'values' => []
+                ];
+            }
+
+            if (!empty($row['variation_name']) && !empty($row['variation_value'])) {
+                $grouped[$variantId]['values'][] = [
+                    'variation_id' => (int) $row['variation_id'],
+                    'variation_value_id' => (int) $row['variation_value_id'],
+                    'variation_name' => (string) $row['variation_name'],
+                    'variation_value' => (string) $row['variation_value']
+                ];
+            }
+        }
+
+        return array_values($grouped);
+    }
+
+    public function getVariantStockMap($productId)
+    {
+        $rows = $this->getVariantStockRows($productId);
+        $map = [];
+        foreach ($rows as $row) {
+            $map[$row['combination_key']] = $row;
+        }
+        return $map;
+    }
+
+    public function getStockSnapshot(array $product)
+    {
+        $mode = $this->normalizeStockMode($product['stock_mode'] ?? 'always_in_stock');
+        $qty = max(0, (int) ($product['stock_qty'] ?? 0));
+        $threshold = max(0, (int) ($product['low_stock_threshold'] ?? 5));
+        $manualStatus = $this->normalizeManualStockStatus($product['manual_stock_status'] ?? 'in_stock');
+        $variantRows = $this->getVariantStockRows((int) ($product['id'] ?? 0));
+
+        $hasVariantStock = !empty($variantRows);
+        $inStock = true;
+        $availableQty = null;
+        $status = 'in_stock';
+
+        if ($hasVariantStock) {
+            $totalQty = 0;
+            $hasAvailableVariant = false;
+            foreach ($variantRows as $row) {
+                if (!$row['is_active']) {
+                    continue;
+                }
+                if ($row['stock_mode'] === 'always_in_stock') {
+                    $hasAvailableVariant = true;
+                    $availableQty = null;
+                    break;
+                }
+                if ($row['stock_mode'] === 'track_stock' && (int) $row['stock_qty'] > 0) {
+                    $hasAvailableVariant = true;
+                    $totalQty += (int) $row['stock_qty'];
+                }
+                if ($row['stock_mode'] === 'manual_out_of_stock') {
+                    continue;
+                }
+                if ($row['manual_stock_status'] === 'in_stock' && $row['stock_mode'] !== 'track_stock') {
+                    $hasAvailableVariant = true;
+                }
+            }
+            $inStock = $hasAvailableVariant;
+            $availableQty = $availableQty === null && $hasAvailableVariant && $totalQty > 0 ? $totalQty : $availableQty;
+        } elseif ($mode === 'track_stock') {
+            $inStock = $qty > 0;
+            $availableQty = $qty;
+        } elseif ($mode === 'manual_out_of_stock') {
+            $inStock = $manualStatus === 'in_stock';
+            $availableQty = $inStock ? null : 0;
+        } else {
+            $inStock = true;
+            $availableQty = null;
+        }
+
+        if (!$inStock) {
+            $status = 'out_of_stock';
+        } elseif ($availableQty !== null && $availableQty <= $threshold) {
+            $status = 'low_stock';
+        }
+
+        return [
+            'has_variant_stock' => $hasVariantStock,
+            'variant_rows' => $variantRows,
+            'stock_mode' => $mode,
+            'stock_qty' => $qty,
+            'low_stock_threshold' => $threshold,
+            'manual_stock_status' => $manualStatus,
+            'in_stock' => $inStock,
+            'status' => $status,
+            'available_qty' => $availableQty
+        ];
+    }
+
+    public function validatePurchase($productId, $qty, $variantKey = '')
+    {
+        $product = $this->getById($productId);
+        if (!$product || empty($product['is_active'])) {
+            return ['ok' => false, 'message' => 'This product is no longer available.'];
+        }
+
+        $qty = max(1, (int) $qty);
+        $snapshot = $this->getStockSnapshot($product);
+        if ($snapshot['has_variant_stock']) {
+            $variantKey = trim((string) $variantKey);
+            if ($variantKey === '') {
+                return ['ok' => false, 'message' => 'Please choose a valid product variation.'];
+            }
+
+            $variantMap = $this->getVariantStockMap($productId);
+            $variant = $variantMap[$variantKey] ?? null;
+            if (!$variant || empty($variant['is_active'])) {
+                return ['ok' => false, 'message' => 'That variation is not available.'];
+            }
+
+            if ($variant['stock_mode'] === 'track_stock' && (int) $variant['stock_qty'] < $qty) {
+                return ['ok' => false, 'message' => 'Only ' . (int) $variant['stock_qty'] . ' items available for this variation.'];
+            }
+
+            if ($variant['stock_mode'] === 'manual_out_of_stock' && $variant['manual_stock_status'] !== 'in_stock') {
+                return ['ok' => false, 'message' => 'This variation is out of stock.'];
+            }
+        } else {
+            if ($snapshot['stock_mode'] === 'track_stock' && (int) $snapshot['stock_qty'] < $qty) {
+                return ['ok' => false, 'message' => 'Only ' . (int) $snapshot['stock_qty'] . ' items available in stock.'];
+            }
+
+            if ($snapshot['stock_mode'] === 'manual_out_of_stock' && !$snapshot['in_stock']) {
+                return ['ok' => false, 'message' => 'This product is out of stock.'];
+            }
+        }
+
+        return ['ok' => true, 'product' => $product, 'snapshot' => $snapshot];
+    }
+
+    public function reduceStockForLineItem($productId, $qty, $variantKey = '')
+    {
+        $qty = max(1, (int) $qty);
+        $product = $this->getById($productId);
+        if (!$product) {
+            return false;
+        }
+
+        $snapshot = $this->getStockSnapshot($product);
+        if ($snapshot['has_variant_stock']) {
+            $variantMap = $this->getVariantStockMap($productId);
+            $variant = $variantMap[trim((string) $variantKey)] ?? null;
+            if (!$variant) {
+                return false;
+            }
+
+            if ($variant['stock_mode'] === 'track_stock') {
+                $stmt = $this->conn->prepare("UPDATE product_variant_stock
+                    SET stock_qty = GREATEST(stock_qty - :qty, 0)
+                    WHERE id = :id");
+                return $stmt->execute([
+                    ':qty' => $qty,
+                    ':id' => $variant['id']
+                ]);
+            }
+
+            return true;
+        }
+
+        if ($snapshot['stock_mode'] === 'track_stock') {
+            $stmt = $this->conn->prepare("UPDATE products
+                SET stock_qty = GREATEST(stock_qty - :qty, 0)
+                WHERE id = :id");
+            return $stmt->execute([
+                ':qty' => $qty,
+                ':id' => $productId
+            ]);
+        }
+
+        return true;
+    }
+
+    public function getStockOverview()
+    {
+        $products = $this->getAll();
+        $summary = [
+            'tracked_products' => 0,
+            'low_stock' => 0,
+            'out_of_stock' => 0,
+            'variant_products' => 0
+        ];
+
+        foreach ($products as &$product) {
+            $snapshot = $this->getStockSnapshot($product);
+            $product['stock_snapshot'] = $snapshot;
+            if ($snapshot['stock_mode'] === 'track_stock' || $snapshot['has_variant_stock']) {
+                $summary['tracked_products']++;
+            }
+            if ($snapshot['has_variant_stock']) {
+                $summary['variant_products']++;
+            }
+            if ($snapshot['status'] === 'low_stock') {
+                $summary['low_stock']++;
+            }
+            if ($snapshot['status'] === 'out_of_stock') {
+                $summary['out_of_stock']++;
+            }
+        }
+
+        return ['summary' => $summary, 'products' => $products];
     }
 
     /**

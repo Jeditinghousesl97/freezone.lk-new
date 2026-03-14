@@ -23,6 +23,17 @@ class ProductController extends BaseController
         $this->variationModel = new Variation();
     }
 
+    private function parseVariantStocksFromRequest()
+    {
+        $raw = trim((string) ($_POST['variant_stocks_json'] ?? ''));
+        if ($raw === '') {
+            return [];
+        }
+
+        $decoded = json_decode($raw, true);
+        return is_array($decoded) ? $decoded : [];
+    }
+
     public function index()
     {
         $search = $_GET['search'] ?? null;
@@ -79,7 +90,14 @@ class ProductController extends BaseController
             'title' => 'Add Product',
             'categories' => $categories,
             'sizeGuides' => $sizeGuides,
-            'variations' => $variations
+            'variations' => $variations,
+            'product' => [
+                'stock_mode' => 'always_in_stock',
+                'stock_qty' => 0,
+                'low_stock_threshold' => 5,
+                'manual_stock_status' => 'in_stock',
+                'variant_stocks' => []
+            ]
         ]);
     }
 
@@ -185,6 +203,10 @@ class ProductController extends BaseController
                 'sale_price' => !empty($_POST['sale_price']) ? $_POST['sale_price'] : null,
                 'weight_grams' => max(0, (int) ($_POST['weight_grams'] ?? 0)),
                 'free_shipping' => isset($_POST['free_shipping']),
+                'stock_mode' => $_POST['stock_mode'] ?? 'always_in_stock',
+                'stock_qty' => max(0, (int) ($_POST['stock_qty'] ?? 0)),
+                'low_stock_threshold' => max(0, (int) ($_POST['low_stock_threshold'] ?? 5)),
+                'manual_stock_status' => $_POST['manual_stock_status'] ?? 'in_stock',
                 'description' => $_POST['description'] ?? '',
                 'category_id' => $categoryId,
                 'size_guide_id' => !empty($_POST['size_guide_id']) ? $_POST['size_guide_id'] : null,
@@ -192,7 +214,8 @@ class ProductController extends BaseController
                 'main_image' => $mainImagePath,
                 'gallery_images' => $galleryPaths,
                 'variations' => $formattedVars,
-                'categories' => $_POST['categories'] ?? [] // Capture array
+                'categories' => $_POST['categories'] ?? [], // Capture array
+                'variant_stocks' => $this->parseVariantStocksFromRequest()
             ];
 
 
@@ -226,6 +249,7 @@ class ProductController extends BaseController
         // Get existing images and variations
         $product['gallery_images'] = $this->productModel->getGalleryImages($id);
         $product['variations'] = $this->productModel->getVariations($id); // This returns grouped vars
+        $product['variant_stocks'] = $this->productModel->getVariantStockRows($id);
         // We might need raw variation lines to pre-select, but let's see how the form expects it.
                 // The form writes to hidden inputs 'selected_variations[]' as 'varId_valId'.
         // We need to reconstruct that list.
@@ -358,6 +382,10 @@ class ProductController extends BaseController
                 'sale_price' => !empty($_POST['sale_price']) ? $_POST['sale_price'] : null,
                 'weight_grams' => max(0, (int) ($_POST['weight_grams'] ?? 0)),
                 'free_shipping' => isset($_POST['free_shipping']),
+                'stock_mode' => $_POST['stock_mode'] ?? 'always_in_stock',
+                'stock_qty' => max(0, (int) ($_POST['stock_qty'] ?? 0)),
+                'low_stock_threshold' => max(0, (int) ($_POST['low_stock_threshold'] ?? 5)),
+                'manual_stock_status' => $_POST['manual_stock_status'] ?? 'in_stock',
                 'description' => $_POST['description'] ?? '',
                 'category_id' => $categoryId,
                 'size_guide_id' => !empty($_POST['size_guide_id']) ? $_POST['size_guide_id'] : null,
@@ -365,7 +393,8 @@ class ProductController extends BaseController
                 'main_image' => $mainImagePath,
                 'new_gallery_images' => $galleryPaths, // array of new paths to ADD
                 'variations' => $formattedVars,
-                'categories' => $_POST['categories'] ?? []
+                'categories' => $_POST['categories'] ?? [],
+                'variant_stocks' => $this->parseVariantStocksFromRequest()
             ];
 
 

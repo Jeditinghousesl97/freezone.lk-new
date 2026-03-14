@@ -270,6 +270,7 @@ class OrderController extends BaseController
                 : (float) $product['price'];
             $item['weight_grams'] = max(0, (int) ($product['weight_grams'] ?? 0));
             $item['is_free_shipping'] = !empty($product['free_shipping']) ? 1 : 0;
+            $item['variant_key'] = trim((string) ($item['variant_key'] ?? ''));
 
             if (empty($item['img']) && !empty($product['main_image'])) {
                 $imagePath = 'assets/uploads/' . $product['main_image'];
@@ -282,7 +283,34 @@ class OrderController extends BaseController
         return $cart;
     }
 
-    private function buildSingleProductItem(array $product, $qty, $variantText)
+    private function validateCartStockOrRedirect(array $cart, $redirectTarget = 'cart')
+    {
+        foreach ($cart as $item) {
+            $validation = $this->productModel->validatePurchase(
+                (int) ($item['id'] ?? 0),
+                max(1, (int) ($item['qty'] ?? 1)),
+                trim((string) ($item['variant_key'] ?? ''))
+            );
+
+            if (empty($validation['ok'])) {
+                $_SESSION['order_error'] = $validation['message'] ?? 'Some items are no longer available.';
+                $this->redirect($redirectTarget);
+            }
+        }
+    }
+
+    private function deductStockForItems(array $items)
+    {
+        foreach ($items as $item) {
+            $this->productModel->reduceStockForLineItem(
+                (int) ($item['id'] ?? 0),
+                max(1, (int) ($item['qty'] ?? 1)),
+                trim((string) ($item['variant_key'] ?? ''))
+            );
+        }
+    }
+
+    private function buildSingleProductItem(array $product, $qty, $variantText, $variantKey = '')
     {
         $unitPrice = (!empty($product['sale_price']) && (float) $product['sale_price'] < (float) $product['price'])
             ? (float) $product['sale_price']
@@ -303,6 +331,7 @@ class OrderController extends BaseController
             'qty' => max(1, (int) $qty),
             'img' => $imageUrl,
             'variants' => $variantText,
+            'variant_key' => trim((string) $variantKey),
             'weight_grams' => max(0, (int) ($product['weight_grams'] ?? 0)),
             'is_free_shipping' => !empty($product['free_shipping']) ? 1 : 0
         ]];
@@ -336,7 +365,7 @@ class OrderController extends BaseController
         return $url . $separator . 'secret=' . urlencode($secret);
     }
 
-    private function buildSingleProductItems($productId, $qty, $variantText)
+    private function buildSingleProductItems($productId, $qty, $variantText, $variantKey = '')
     {
         $product = $this->productModel->getById($productId);
         if (!$product) {
@@ -362,6 +391,7 @@ class OrderController extends BaseController
             'qty' => $qty,
             'img' => $imageUrl,
             'variants' => $variantText,
+            'variant_key' => trim((string) $variantKey),
             'weight_grams' => max(0, (int) ($product['weight_grams'] ?? 0)),
             'is_free_shipping' => !empty($product['free_shipping']) ? 1 : 0
         ]]];
@@ -679,6 +709,9 @@ class OrderController extends BaseController
             $_SESSION['order_error'] = 'Your cart is empty.';
             $this->redirect('cart');
         }
+        $this->validateCartStockOrRedirect($cart, 'cart');
+        $this->validateCartStockOrRedirect($cart, 'cart');
+        $this->validateCartStockOrRedirect($cart, 'cart');
 
         if (empty($settings['payhere_enabled']) || empty($settings['payhere_merchant_id']) || empty($settings['payhere_merchant_secret'])) {
             $_SESSION['order_error'] = 'PayHere is not configured for this shop yet.';
@@ -706,6 +739,8 @@ class OrderController extends BaseController
             $_SESSION['order_error'] = 'Unable to create your order right now.';
             $this->redirect('cart');
         }
+        $this->deductStockForItems($cart);
+        $this->deductStockForItems($cart);
 
         $_SESSION['pending_order_number'] = $order['order_number'];
         $fullOrder = $this->orderModel->getByOrderNumberWithItems($order['order_number']);
@@ -914,6 +949,7 @@ class OrderController extends BaseController
             $_SESSION['order_error'] = 'Unable to place your order right now.';
             $this->redirect('cart');
         }
+        $this->deductStockForItems($cart);
 
         $_SESSION['cod_order_number'] = $order['order_number'];
         $_SESSION['cart'] = [];
@@ -940,11 +976,17 @@ class OrderController extends BaseController
         $productId = (int) ($_POST['product_id'] ?? 0);
         $qty = max(1, (int) ($_POST['quantity'] ?? 1));
         $variantText = trim((string) ($_POST['variants'] ?? ''));
+        $variantKey = trim((string) ($_POST['variant_key'] ?? ''));
 
         $product = $this->productModel->getById($productId);
         if (!$product) {
             $_SESSION['order_error'] = 'The selected product could not be found.';
             $this->redirect('cart');
+        }
+        $validation = $this->productModel->validatePurchase($productId, $qty, $variantKey);
+        if (empty($validation['ok'])) {
+            $_SESSION['order_error'] = $validation['message'] ?? 'This product is not available.';
+            $this->redirect('shop/product/' . $productId);
         }
 
         $customer = $this->buildCustomerFromRequest();
@@ -953,7 +995,7 @@ class OrderController extends BaseController
             $this->redirect('shop/product/' . $productId);
         }
 
-        $items = $this->buildSingleProductItem($product, $qty, $variantText);
+        $items = $this->buildSingleProductItem($product, $qty, $variantText, $variantKey);
         $shippingQuote = $this->buildShippingQuote($items, $settings, $customer['district']);
         if (!$shippingQuote['has_rate']) {
             $_SESSION['order_error'] = 'Please select a valid district to calculate delivery.';
@@ -969,6 +1011,7 @@ class OrderController extends BaseController
             $_SESSION['order_error'] = 'Unable to create your order right now.';
             $this->redirect('shop/product/' . $productId);
         }
+        $this->deductStockForItems($items);
 
         $_SESSION['pending_order_number'] = $order['order_number'];
         $fullOrder = $this->orderModel->getByOrderNumberWithItems($order['order_number']);
@@ -1029,8 +1072,15 @@ class OrderController extends BaseController
         $productId = (int) ($_POST['product_id'] ?? 0);
         $qty = max(1, (int) ($_POST['quantity'] ?? 1));
         $variantText = trim((string) ($_POST['variants'] ?? ''));
+        $variantKey = trim((string) ($_POST['variant_key'] ?? ''));
 
-        [$product, $items] = $this->buildSingleProductItems($productId, $qty, $variantText);
+        $validation = $this->productModel->validatePurchase($productId, $qty, $variantKey);
+        if (empty($validation['ok'])) {
+            $_SESSION['order_error'] = $validation['message'] ?? 'This product is not available.';
+            $this->redirect('shop/product/' . $productId);
+        }
+
+        [$product, $items] = $this->buildSingleProductItems($productId, $qty, $variantText, $variantKey);
         if (!$product || !$items) {
             $_SESSION['order_error'] = 'The selected product could not be found.';
             $this->redirect('cart');
@@ -1069,6 +1119,7 @@ class OrderController extends BaseController
             $_SESSION['order_error'] = 'Unable to create your order right now.';
             $this->redirect('shop/product/' . $productId);
         }
+        $this->deductStockForItems($items);
 
         $_SESSION['pending_order_number'] = $order['order_number'];
         $fullOrder = $this->orderModel->getByOrderNumberWithItems($order['order_number']);
@@ -1100,11 +1151,17 @@ class OrderController extends BaseController
         $productId = (int) ($_POST['product_id'] ?? 0);
         $qty = max(1, (int) ($_POST['quantity'] ?? 1));
         $variantText = trim((string) ($_POST['variants'] ?? ''));
+        $variantKey = trim((string) ($_POST['variant_key'] ?? ''));
 
         $product = $this->productModel->getById($productId);
         if (!$product) {
             $_SESSION['order_error'] = 'The selected product could not be found.';
             $this->redirect('cart');
+        }
+        $validation = $this->productModel->validatePurchase($productId, $qty, $variantKey);
+        if (empty($validation['ok'])) {
+            $_SESSION['order_error'] = $validation['message'] ?? 'This product is not available.';
+            $this->redirect('shop/product/' . $productId);
         }
 
         $customer = $this->buildCustomerFromRequest();
@@ -1113,7 +1170,7 @@ class OrderController extends BaseController
             $this->redirect('shop/product/' . $productId);
         }
 
-        $items = $this->buildSingleProductItem($product, $qty, $variantText);
+        $items = $this->buildSingleProductItem($product, $qty, $variantText, $variantKey);
         $shippingQuote = $this->buildShippingQuote($items, $settings, $customer['district']);
         if (!$shippingQuote['has_rate']) {
             $_SESSION['order_error'] = 'Please select a valid district to calculate delivery.';
@@ -1141,6 +1198,7 @@ class OrderController extends BaseController
             $_SESSION['order_error'] = 'Unable to place your order right now.';
             $this->redirect('shop/product/' . $productId);
         }
+        $this->deductStockForItems($items);
 
         $_SESSION['cod_order_number'] = $order['order_number'];
         $fullOrder = $this->orderModel->getByOrderNumberWithItems($order['order_number']);

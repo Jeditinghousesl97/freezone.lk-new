@@ -143,7 +143,11 @@ $productUnitPrice = (!empty($product['sale_price']) && (float) $product['sale_pr
                             <div class="var-pills">
                                 <?php foreach ($values as $val): ?>
                                     <div class="var-pill"
-                                        onclick="selectVariation(this, '<?= $varName ?>', '<?= htmlspecialchars($val['value']) ?>')">
+                                        data-variation-id="<?= (int) ($val['variation_id'] ?? 0) ?>"
+                                        data-variation-name="<?= htmlspecialchars($varName, ENT_QUOTES) ?>"
+                                        data-value-id="<?= (int) $val['id'] ?>"
+                                        data-value-label="<?= htmlspecialchars($val['value'], ENT_QUOTES) ?>"
+                                        onclick="selectVariation(this)">
                                         <?= htmlspecialchars($val['value']) ?>
                                     </div>
                                 <?php endforeach; ?>
@@ -151,6 +155,7 @@ $productUnitPrice = (!empty($product['sale_price']) && (float) $product['sale_pr
                         </div>
                     <?php endforeach; ?>
                 <?php endif; ?>
+                <div id="productStockNotice" style="display:none; margin: 0 0 18px; padding: 12px 14px; border-radius: 12px; font-size: 13px; font-weight: 700;"></div>
 
 
                 <!-- Quantity Selector  -->
@@ -580,10 +585,12 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
     }
 
     // Variation Selection Logic
-    let selectedVariations = {}; // Store selected variations: { 'Color': 'Red', 'Size': 'M' }
+    let selectedVariations = {};
     let orderMode = 'cod';
     const shopWhatsappNumber = '<?= htmlspecialchars($shopWhatsappTarget, ENT_QUOTES) ?>';
     const currencySymbol = <?= json_encode($currency) ?>;
+    const productStockSnapshot = <?= json_encode($stock_snapshot ?? [], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
+    const variantStockRows = <?= json_encode($variant_stock_rows ?? [], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
     const deliveryDistricts = <?= json_encode(array_values($deliveryDistricts ?? [])) ?>;
     const deliveryRates = <?= json_encode($deliveryRatesMap ?? new stdClass()) ?>;
     const deliverySettings = {
@@ -666,15 +673,139 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
         return quote;
     }
 
-    function selectVariation(el, name, value) {
-        // Toggle active class in this group
+    function getSelectedVariantKey() {
+        const pairs = Object.values(selectedVariations)
+            .map(item => `${item.variation_id}:${item.variation_value_id}`)
+            .sort();
+        return pairs.join('|');
+    }
+
+    function getVariantText() {
+        return Object.values(selectedVariations)
+            .sort((a, b) => String(a.variation_name).localeCompare(String(b.variation_name)))
+            .map(item => item.variation_name + ': ' + item.variation_value)
+            .join(', ');
+    }
+
+    function getActiveVariantRow() {
+        const variantKey = getSelectedVariantKey();
+        return variantStockRows.find(row => row.combination_key === variantKey && row.is_active) || null;
+    }
+
+    function updateProductStockNotice(message, type) {
+        const notice = document.getElementById('productStockNotice');
+        if (!notice) return;
+        if (!message) {
+            notice.style.display = 'none';
+            notice.textContent = '';
+            return;
+        }
+        notice.style.display = 'block';
+        notice.textContent = message;
+        if (type === 'error') {
+            notice.style.background = '#fff1f0';
+            notice.style.color = '#c54132';
+        } else if (type === 'warning') {
+            notice.style.background = '#fff7e6';
+            notice.style.color = '#9a6a11';
+        } else {
+            notice.style.background = '#edf7f0';
+            notice.style.color = '#1d7a40';
+        }
+    }
+
+    function refreshVariantAvailability() {
+        if (!Array.isArray(variantStockRows) || !variantStockRows.length) {
+            if (productStockSnapshot && productStockSnapshot.status === 'out_of_stock') {
+                updateProductStockNotice('This product is currently out of stock.', 'error');
+            } else {
+                updateProductStockNotice('', '');
+            }
+            return;
+        }
+
+        const pills = document.querySelectorAll('.var-pill');
+        pills.forEach(pill => {
+            const nextSelection = { ...selectedVariations };
+            const variationName = pill.dataset.variationName;
+            nextSelection[variationName] = {
+                variation_id: Number(pill.dataset.variationId || 0),
+                variation_name: variationName,
+                variation_value_id: Number(pill.dataset.valueId || 0),
+                variation_value: pill.dataset.valueLabel || pill.textContent.trim()
+            };
+
+            const nextKey = Object.values(nextSelection)
+                .map(item => `${item.variation_id}:${item.variation_value_id}`)
+                .sort();
+
+            const isPossible = variantStockRows.some(row => {
+                if (!row.is_active) {
+                    return false;
+                }
+                return nextKey.every(pair => String(row.combination_key || '').split('|').includes(pair));
+            });
+            pill.style.opacity = isPossible ? '1' : '0.35';
+            pill.style.pointerEvents = isPossible ? 'auto' : 'none';
+        });
+
+        const activeVariant = getActiveVariantRow();
+        if (activeVariant) {
+            if (activeVariant.stock_mode === 'track_stock' && Number(activeVariant.stock_qty || 0) <= 0) {
+                updateProductStockNotice('Selected variation is out of stock.', 'error');
+            } else if (activeVariant.stock_mode === 'track_stock' && Number(activeVariant.stock_qty || 0) <= Number(activeVariant.low_stock_threshold || 0)) {
+                updateProductStockNotice(`Only ${Number(activeVariant.stock_qty || 0)} left for this variation.`, 'warning');
+            } else {
+                updateProductStockNotice('Selected variation is available.', 'success');
+            }
+        } else if (Object.keys(selectedVariations).length > 0) {
+            updateProductStockNotice('This variation combination is not available.', 'error');
+        } else {
+            updateProductStockNotice('', '');
+        }
+    }
+
+    function validateCurrentSelection(qty) {
+        qty = qty || (parseInt(document.getElementById('qtyInput').value) || 1);
+        if (Array.isArray(variantStockRows) && variantStockRows.length) {
+            if (!getSelectedVariantKey()) {
+                return { ok: false, message: 'Please choose a valid product variation.' };
+            }
+
+            const activeVariant = getActiveVariantRow();
+            if (!activeVariant) {
+                return { ok: false, message: 'This variation combination is not available.' };
+            }
+
+            if (activeVariant.stock_mode === 'manual_out_of_stock' && activeVariant.manual_stock_status !== 'in_stock') {
+                return { ok: false, message: 'Selected variation is out of stock.' };
+            }
+
+            if (activeVariant.stock_mode === 'track_stock' && Number(activeVariant.stock_qty || 0) < qty) {
+                return { ok: false, message: `Only ${Number(activeVariant.stock_qty || 0)} items available for this variation.` };
+            }
+        } else if (productStockSnapshot && productStockSnapshot.stock_mode === 'track_stock' && Number(productStockSnapshot.stock_qty || 0) < qty) {
+            return { ok: false, message: `Only ${Number(productStockSnapshot.stock_qty || 0)} items available in stock.` };
+        } else if (productStockSnapshot && productStockSnapshot.status === 'out_of_stock') {
+            return { ok: false, message: 'This product is currently out of stock.' };
+        }
+
+        return { ok: true };
+    }
+
+    function selectVariation(el) {
         let siblings = el.parentElement.querySelectorAll('.var-pill');
         siblings.forEach(s => s.classList.remove('active'));
         el.classList.add('active');
 
-        // Store selection
-        selectedVariations[name] = value;
-        console.log("Selected:", selectedVariations);
+        const variationName = el.dataset.variationName;
+        selectedVariations[variationName] = {
+            variation_id: Number(el.dataset.variationId || 0),
+            variation_name: variationName,
+            variation_value_id: Number(el.dataset.valueId || 0),
+            variation_value: el.dataset.valueLabel || el.textContent.trim()
+        };
+        refreshVariantAvailability();
     }
 
     function openPaymentMethodSheet() {
@@ -727,17 +858,6 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
         document.getElementById('orderModal').style.display = 'none';
     }
 
-    function getVariantText() {
-        let variantStr = "";
-        if (Object.keys(selectedVariations).length > 0) {
-            for (const [key, val] of Object.entries(selectedVariations)) {
-                variantStr += key + ": " + val + ", ";
-            }
-            variantStr = variantStr.slice(0, -2);
-        }
-        return variantStr;
-    }
-
     function submitOrder() {
         const name = document.getElementById('ordName').value.trim();
         const email = document.getElementById('ordEmail').value.trim();
@@ -747,9 +867,14 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
         const phone1 = document.getElementById('ordPhone1').value.trim();
         const phone2 = document.getElementById('ordPhone2').value.trim();
         const note = document.getElementById('ordNote').value.trim();
+        const selectionCheck = validateCurrentSelection();
 
         if (!name || !email || !address || !city || !phone1 || !district) {
             alert("Please fill in all required fields.");
+            return;
+        }
+        if (!selectionCheck.ok) {
+            alert(selectionCheck.message);
             return;
         }
 
@@ -818,6 +943,7 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
     function submitOrderToPayHere(data) {
         const qty = parseInt(document.getElementById('qtyInput').value) || 1;
         const variantStr = getVariantText();
+        const variantKey = getSelectedVariantKey();
 
         const form = document.createElement('form');
         form.method = 'POST';
@@ -828,6 +954,7 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
             product_id: '<?= (int) $product['id'] ?>',
             quantity: qty,
             variants: variantStr,
+            variant_key: variantKey,
             customer_name: data.name,
             email: data.email,
             address: data.address,
@@ -854,6 +981,7 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
     function submitOrderToCod(data) {
         const qty = parseInt(document.getElementById('qtyInput').value) || 1;
         const variantStr = getVariantText();
+        const variantKey = getSelectedVariantKey();
 
         const form = document.createElement('form');
         form.method = 'POST';
@@ -864,6 +992,7 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
             product_id: '<?= (int) $product['id'] ?>',
             quantity: qty,
             variants: variantStr,
+            variant_key: variantKey,
             customer_name: data.name,
             email: data.email,
             address: data.address,
@@ -890,6 +1019,7 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
     function submitOrderToKoko(data) {
         const qty = parseInt(document.getElementById('qtyInput').value) || 1;
         const variantStr = getVariantText();
+        const variantKey = getSelectedVariantKey();
 
         const form = document.createElement('form');
         form.method = 'POST';
@@ -900,6 +1030,7 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
             product_id: '<?= (int) $product['id'] ?>',
             quantity: qty,
             variants: variantStr,
+            variant_key: variantKey,
             customer_name: data.name,
             email: data.email,
             address: data.address,
@@ -1003,6 +1134,12 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
         const title = "<?= addslashes($product['title']) ?>";
         const price = <?= $product['sale_price'] ?: $product['price'] ?>;
         const qty = parseInt(document.getElementById('qtyInput').value) || 1;
+        const selectionCheck = validateCurrentSelection(qty);
+        if (!selectionCheck.ok) {
+            if (typeof hideGlobalLoader === 'function') hideGlobalLoader();
+            alert(selectionCheck.message);
+            return;
+        }
 
         <?php
         $img = 'assets/uploads/' . $product['main_image'];
@@ -1016,6 +1153,7 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
 
         // Format Variations String
         let variantStr = getVariantText();
+        let variantKey = getSelectedVariantKey();
 
         //  Prepare Data
         const payload = {
@@ -1024,7 +1162,8 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
             price: price,
             quantity: qty,
             img: img,
-            variants: variantStr
+            variants: variantStr,
+            variant_key: variantKey
         };
 
         // Send AJAX Request
@@ -1067,13 +1206,7 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
     }
 
 
-    // Adjust selectVariation to store text value
-    // In PHP: selectVariation(this, 'Color', 'Red') -> I need to make sure PHP passes the VALUE not ID.
-    // The PHP code says: selectVariation(this, '<?= $varName ?>', '<?= $val['id'] ?>')
-    // I will UPDATE the PHP loop in a separate replacement chunk to pass VALUE.
-
-    // Simple Gallery Slider (for now just manual logic or relying on CSS scroll snap if implemented)
-    // We will assume CSS scroll snap for gallery-slider in css
+    refreshVariantAvailability();
 </script>
 
 <?php require_once 'views/layouts/customer_footer.php'; ?>

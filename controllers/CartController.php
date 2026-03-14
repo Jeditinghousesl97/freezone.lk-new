@@ -26,6 +26,7 @@ class CartController extends BaseController
             $item['title'] = $product['title'] ?? ($item['title'] ?? 'Product');
             $item['weight_grams'] = max(0, (int) ($product['weight_grams'] ?? 0));
             $item['is_free_shipping'] = !empty($product['free_shipping']) ? 1 : 0;
+            $item['variant_key'] = (string) ($item['variant_key'] ?? '');
 
             if (empty($item['img']) && !empty($product['main_image'])) {
                 $imagePath = 'assets/uploads/' . $product['main_image'];
@@ -106,19 +107,33 @@ class CartController extends BaseController
             exit;
         }
 
+        $variantKey = trim((string) ($input['variant_key'] ?? ''));
+        $qtyToAdd = isset($input['quantity']) ? (int) $input['quantity'] : 1;
+        if ($qtyToAdd < 1) {
+            $qtyToAdd = 1;
+        }
+        $validation = $productModel->validatePurchase((int) $input['id'], $qtyToAdd, $variantKey);
+        if (empty($validation['ok'])) {
+            echo json_encode(['success' => false, 'message' => $validation['message'] ?? 'This item is not available.']);
+            exit;
+        }
+
         if (!isset($_SESSION['cart'])) {
             $_SESSION['cart'] = [];
         }
 
         // Check for existing item (Same ID + Same Variations)
         $found = false;
-        $qtyToAdd = isset($input['quantity']) ? (int) $input['quantity'] : 1;
-        if ($qtyToAdd < 1)
-            $qtyToAdd = 1;
 
         foreach ($_SESSION['cart'] as &$item) {
-            if ($item['id'] == $input['id'] && $item['variants'] == $input['variants']) {
-                $item['qty'] += $qtyToAdd;
+            if ($item['id'] == $input['id'] && $item['variants'] == $input['variants'] && ($item['variant_key'] ?? '') === $variantKey) {
+                $newQty = (int) $item['qty'] + $qtyToAdd;
+                $validation = $productModel->validatePurchase((int) $input['id'], $newQty, $variantKey);
+                if (empty($validation['ok'])) {
+                    echo json_encode(['success' => false, 'message' => $validation['message'] ?? 'Not enough stock available.']);
+                    exit;
+                }
+                $item['qty'] = $newQty;
                 $found = true;
                 break;
             }
@@ -144,8 +159,8 @@ class CartController extends BaseController
                 'price' => $livePrice,
                 'img' => $imageUrl,
                 'variants' => $input['variants'] ?? '',
-                'qty' => $qtyToAdd
-                ,
+                'variant_key' => $variantKey,
+                'qty' => $qtyToAdd,
                 'weight_grams' => max(0, (int) ($product['weight_grams'] ?? 0)),
                 'is_free_shipping' => !empty($product['free_shipping']) ? 1 : 0
             ];
@@ -189,6 +204,16 @@ class CartController extends BaseController
         if ($index === null || !isset($_SESSION['cart'][$index])) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => 'Cart item not found.']);
+            exit;
+        }
+
+        require_once 'models/Product.php';
+        $productModel = new Product();
+        $variantKey = (string) ($_SESSION['cart'][$index]['variant_key'] ?? '');
+        $validation = $productModel->validatePurchase((int) ($_SESSION['cart'][$index]['id'] ?? 0), max(1, $qty), $variantKey);
+        if (empty($validation['ok'])) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $validation['message'] ?? 'Not enough stock available.']);
             exit;
         }
 

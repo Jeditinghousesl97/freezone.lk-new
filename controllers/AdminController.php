@@ -21,7 +21,10 @@ class AdminController extends BaseController
         // Connect to DB to get stats
         $db = (new Database())->getConnection();
         require_once 'models/Order.php';
+        require_once 'models/Product.php';
         $orderModel = new Order();
+        $productModel = new Product();
+        $stockOverview = $productModel->getStockOverview();
 
         // 1. Get Counts
         $stats = [
@@ -29,7 +32,8 @@ class AdminController extends BaseController
             'categories' => $db->query("SELECT COUNT(*) FROM categories")->fetchColumn(),
             'feedbacks' => $db->query("SELECT COUNT(*) FROM reviews")->fetchColumn(),
             'size_guides' => $db->query("SELECT COUNT(*) FROM size_guides")->fetchColumn(),
-            'orders' => $orderModel->countAll()
+            'orders' => $orderModel->countAll(),
+            'low_stock' => (int) ($stockOverview['summary']['low_stock'] ?? 0)
         ];
         $finance = $orderModel->getFinanceSummary([]);
         $chartRows = array_reverse($orderModel->getReportRows([], 14));
