@@ -767,8 +767,10 @@
         <!-- Secondary Nav Links -->
         <div class="desktop-nav-links">
             <a href="<?= BASE_URL ?>">Home Page</a>
+            <a href="<?= BASE_URL ?>shop">All Products</a>
             <a href="<?= BASE_URL ?>shop/new_arrivals">Recent Items</a>
             <a href="<?= BASE_URL ?>shop/featured">Featured Products</a>
+            <a href="<?= BASE_URL ?>shop/free_shipping">Free Shipping</a>
             <a href="<?= BASE_URL ?>shop/sales">Discounts!</a>
             <a href="<?= BASE_URL ?>order/myOrders">My Orders</a>
         </div>
