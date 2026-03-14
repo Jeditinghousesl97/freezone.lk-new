@@ -433,7 +433,7 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
 
         if (slider) {
             slider.style.webkitOverflowScrolling = 'touch';
-            slider.style.touchAction = 'pan-x pinch-zoom';
+            slider.style.touchAction = 'auto';
         }
 
         if (modalSlider) {

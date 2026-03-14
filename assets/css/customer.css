@@ -2147,7 +2147,9 @@ p {
         order: 1;
         /* Image First */
         border-radius: 22px !important;
-        overflow: hidden !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        -webkit-overflow-scrolling: touch;
         background: #fff;
     }
 
