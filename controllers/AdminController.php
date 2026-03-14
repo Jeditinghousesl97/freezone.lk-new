@@ -86,5 +86,49 @@ class AdminController extends BaseController
             $this->view('admin/settings_gatekeeper', ['title' => 'Settings - Authenticate']);
         }
     }
+
+    public function serverCheck()
+    {
+        if (!isset($_SESSION['user_id'])) {
+            $this->redirect('auth/login');
+            return;
+        }
+
+        require_once 'models/Setting.php';
+        $settingModel = new Setting();
+        $settings = $settingModel->getMultiple(['shop_name', 'shop_logo', 'currency_symbol']);
+
+        $checks = [
+            'php_version' => PHP_VERSION,
+            'server_software' => $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown',
+            'gd_enabled' => extension_loaded('gd'),
+            'imagick_enabled' => extension_loaded('imagick'),
+            'webp_support' => function_exists('imagewebp'),
+            'avif_support' => function_exists('imageavif'),
+            'fileinfo_enabled' => extension_loaded('fileinfo'),
+            'upload_max_filesize' => ini_get('upload_max_filesize'),
+            'post_max_size' => ini_get('post_max_size'),
+            'memory_limit' => ini_get('memory_limit'),
+            'max_execution_time' => ini_get('max_execution_time')
+        ];
+
+        $recommendations = [];
+        if (!$checks['gd_enabled'] && !$checks['imagick_enabled']) {
+            $recommendations[] = 'Enable GD or Imagick in your hosting control panel before we build automatic image resize and WebP generation.';
+        }
+        if ($checks['gd_enabled'] && !$checks['webp_support']) {
+            $recommendations[] = 'GD is enabled, but WebP support is missing. Ask hosting support whether WebP was compiled into GD.';
+        }
+        if (empty($recommendations)) {
+            $recommendations[] = 'Your server has the minimum image-processing capability needed for same-server optimized image delivery.';
+        }
+
+        $this->view('admin/server_check', [
+            'title' => 'Server Check',
+            'settings' => $settings,
+            'checks' => $checks,
+            'recommendations' => $recommendations
+        ]);
+    }
 }
 ?>
