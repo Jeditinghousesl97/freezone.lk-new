@@ -925,9 +925,10 @@ class Product extends BaseModel
      */
     public function getRelated($categoryId, $excludeId, $limit = 4)
     {
-        $sql = "SELECT p.*, c.name as category_name 
+        $sql = "SELECT p.*, c.name as category_name, pc.name as parent_category_name
                 FROM products p
                 LEFT JOIN categories c ON p.category_id = c.id
+                LEFT JOIN categories pc ON c.parent_id = pc.id
                 WHERE p.category_id = :catId AND p.id != :excludeId AND p.is_active = 1
                 ORDER BY RAND() LIMIT :limit";
         $stmt = $this->conn->prepare($sql);
@@ -935,7 +936,44 @@ class Product extends BaseModel
         $stmt->bindParam(':excludeId', $excludeId);
         $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
         $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $related = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        if (count($related) >= $limit) {
+            return $related;
+        }
+
+        $excludeIds = array_map('intval', array_column($related, 'id'));
+        $excludeIds[] = (int) $excludeId;
+        $excludeIds = array_values(array_unique($excludeIds));
+
+        $remaining = max(0, (int) $limit - count($related));
+        if ($remaining === 0) {
+            return $related;
+        }
+
+        $placeholders = [];
+        $params = [];
+        foreach ($excludeIds as $index => $id) {
+            $placeholder = ':exclude_' . $index;
+            $placeholders[] = $placeholder;
+            $params[$placeholder] = $id;
+        }
+
+        $fallbackSql = "SELECT p.*, c.name as category_name, pc.name as parent_category_name
+                        FROM products p
+                        LEFT JOIN categories c ON p.category_id = c.id
+                        LEFT JOIN categories pc ON c.parent_id = pc.id
+                        WHERE p.is_active = 1 AND p.id NOT IN (" . implode(', ', $placeholders) . ")
+                        ORDER BY p.created_at DESC, p.id DESC
+                        LIMIT :limit";
+        $fallbackStmt = $this->conn->prepare($fallbackSql);
+        foreach ($params as $placeholder => $id) {
+            $fallbackStmt->bindValue($placeholder, $id, PDO::PARAM_INT);
+        }
+        $fallbackStmt->bindValue(':limit', $remaining, PDO::PARAM_INT);
+        $fallbackStmt->execute();
+
+        return array_merge($related, $fallbackStmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
     /**
