@@ -101,27 +101,27 @@ require_once 'views/layouts/customer_header.php';
                         $whatsappEnabled = !empty($settings['whatsapp_ordering_enabled']) && $shopWhatsappTarget !== '';
                         ?>
                         <?php if ($whatsappEnabled): ?>
-                            <button onclick="openOrderModal('whatsapp')" style="width: 100%; background: #25D366; color: white; border: none; padding: 15px; border-radius: 30px; font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; box-shadow: 0 4px 10px rgba(37, 211, 102, 0.22);">
+                            <button onclick="openOrderModal('whatsapp')" class="cart-payment-btn cart-payment-btn-whatsapp">
                                 <i class="fab fa-whatsapp" style="font-size: 18px;"></i>
                                 Order via WhatsApp
                             </button>
                         <?php endif; ?>
                         <?php if ($codEnabled): ?>
-                            <button onclick="openOrderModal('cod')" style="width: 100%; background: #111; color: white; border: none; padding: 15px; border-radius: 30px; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; box-shadow: 0 4px 10px rgba(17, 17, 17, 0.22);">
+                            <button onclick="openOrderModal('cod')" class="cart-payment-btn cart-payment-btn-cod">
                                 <i class="fas fa-box" style="font-size: 18px;"></i>
                                 Order with Cash on Delivery
                             </button>
                         <?php endif; ?>
 
                         <?php if (!empty($settings['payhere_enabled'])): ?>
-                            <button onclick="openOrderModal('payhere')" class="btn-payhere-standalone" style="width: 100%; padding: 15px;">
+                            <button onclick="openOrderModal('payhere')" class="btn-payhere-standalone cart-payment-btn cart-payment-btn-payhere">
                                 <i class="fas fa-credit-card" style="font-size: 18px;"></i>
                                 Pay Online with PayHere
                             </button>
                         <?php endif; ?>
 
                         <?php if (!empty($settings['koko_enabled'])): ?>
-                            <button onclick="openOrderModal('koko')" style="width: 100%; background: #fff3dc; color: #111; border: 1px solid #f1d28a; padding: 15px; border-radius: 30px; font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer;">
+                            <button onclick="openOrderModal('koko')" class="cart-payment-btn cart-payment-btn-koko">
                                 <i class="fas fa-wallet" style="font-size: 18px;"></i>
                                 Pay in 3 with KOKO
                             </button>

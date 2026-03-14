@@ -214,6 +214,78 @@
 
         <?php endif; ?>
 
+        <?php if (!empty($settings['btn_cart_whatsapp_bg'])): ?>
+            .cart-payment-btn-whatsapp {
+                background:
+                    <?= $settings['btn_cart_whatsapp_bg'] ?>
+                    !important;
+                background-image: none !important;
+            }
+
+        <?php endif; ?>
+        <?php if (!empty($settings['btn_cart_whatsapp_text'])): ?>
+            .cart-payment-btn-whatsapp {
+                color:
+                    <?= $settings['btn_cart_whatsapp_text'] ?>
+                    !important;
+            }
+
+        <?php endif; ?>
+
+        <?php if (!empty($settings['btn_cart_cod_bg'])): ?>
+            .cart-payment-btn-cod {
+                background:
+                    <?= $settings['btn_cart_cod_bg'] ?>
+                    !important;
+                background-image: none !important;
+            }
+
+        <?php endif; ?>
+        <?php if (!empty($settings['btn_cart_cod_text'])): ?>
+            .cart-payment-btn-cod {
+                color:
+                    <?= $settings['btn_cart_cod_text'] ?>
+                    !important;
+            }
+
+        <?php endif; ?>
+
+        <?php if (!empty($settings['btn_cart_payhere_bg'])): ?>
+            .cart-payment-btn-payhere {
+                background:
+                    <?= $settings['btn_cart_payhere_bg'] ?>
+                    !important;
+                background-image: none !important;
+            }
+
+        <?php endif; ?>
+        <?php if (!empty($settings['btn_cart_payhere_text'])): ?>
+            .cart-payment-btn-payhere {
+                color:
+                    <?= $settings['btn_cart_payhere_text'] ?>
+                    !important;
+            }
+
+        <?php endif; ?>
+
+        <?php if (!empty($settings['btn_cart_koko_bg'])): ?>
+            .cart-payment-btn-koko {
+                background:
+                    <?= $settings['btn_cart_koko_bg'] ?>
+                    !important;
+                background-image: none !important;
+            }
+
+        <?php endif; ?>
+        <?php if (!empty($settings['btn_cart_koko_text'])): ?>
+            .cart-payment-btn-koko {
+                color:
+                    <?= $settings['btn_cart_koko_text'] ?>
+                    !important;
+            }
+
+        <?php endif; ?>
+
         /* 2. Apply Filter */
         <?php if (!empty($settings['btn_apply_bg'])): ?>
             .btn-apply-filter {

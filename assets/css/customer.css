@@ -781,6 +781,43 @@ p {
     color: #fff !important;
 }
 
+.cart-payment-btn {
+    width: 100%;
+    border: none;
+    padding: 15px;
+    border-radius: 30px;
+    font-size: 15px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    cursor: pointer;
+}
+
+.cart-payment-btn-whatsapp {
+    background: #25d366;
+    color: #fff;
+    box-shadow: 0 4px 10px rgba(37, 211, 102, 0.22);
+}
+
+.cart-payment-btn-cod {
+    background: #111;
+    color: #fff;
+    box-shadow: 0 4px 10px rgba(17, 17, 17, 0.22);
+}
+
+.cart-payment-btn-payhere {
+    background: #111;
+    color: #fff;
+}
+
+.cart-payment-btn-koko {
+    background: #fff3dc;
+    color: #111;
+    border: 1px solid #f1d28a;
+}
+
 .btn-action-label {
     display: inline-block;
 }

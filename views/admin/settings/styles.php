@@ -315,7 +315,77 @@
 
                 </div>
                 <div style="margin-top:15px; font-size:11px; color:#777; font-style:italic;">
-                    * WhatsApp and payment-method cards keep their own branded colors.
+                    * Cart page payment buttons can be customized below.
+                </div>
+            </div>
+
+            <div class="style-card">
+                <div class="card-header">Cart Page Payment Buttons</div>
+                <div style="display:flex; flex-wrap:wrap; gap:20px;">
+
+                    <div style="flex:1; min-width:200px;">
+                        <h4 style="font-size:12px; color:#555; margin-bottom:5px;">WhatsApp Button</h4>
+                        <div class="control-group">
+                            <div class="color-picker-row">
+                                <span style="font-size:10px; width:30px;">BG:</span>
+                                <input type="color" name="btn_cart_whatsapp_bg" class="color-input" value="<?= $styles['btn_cart_whatsapp_bg'] ?? '#25d366' ?>">
+                            </div>
+                        </div>
+                        <div class="control-group">
+                            <div class="color-picker-row">
+                                <span style="font-size:10px; width:30px;">Txt:</span>
+                                <input type="color" name="btn_cart_whatsapp_text" class="color-input" value="<?= $styles['btn_cart_whatsapp_text'] ?? '#ffffff' ?>">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="flex:1; min-width:200px;">
+                        <h4 style="font-size:12px; color:#555; margin-bottom:5px;">COD Button</h4>
+                        <div class="control-group">
+                            <div class="color-picker-row">
+                                <span style="font-size:10px; width:30px;">BG:</span>
+                                <input type="color" name="btn_cart_cod_bg" class="color-input" value="<?= $styles['btn_cart_cod_bg'] ?? '#111111' ?>">
+                            </div>
+                        </div>
+                        <div class="control-group">
+                            <div class="color-picker-row">
+                                <span style="font-size:10px; width:30px;">Txt:</span>
+                                <input type="color" name="btn_cart_cod_text" class="color-input" value="<?= $styles['btn_cart_cod_text'] ?? '#ffffff' ?>">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="flex:1; min-width:200px;">
+                        <h4 style="font-size:12px; color:#555; margin-bottom:5px;">PayHere Button</h4>
+                        <div class="control-group">
+                            <div class="color-picker-row">
+                                <span style="font-size:10px; width:30px;">BG:</span>
+                                <input type="color" name="btn_cart_payhere_bg" class="color-input" value="<?= $styles['btn_cart_payhere_bg'] ?? '#111111' ?>">
+                            </div>
+                        </div>
+                        <div class="control-group">
+                            <div class="color-picker-row">
+                                <span style="font-size:10px; width:30px;">Txt:</span>
+                                <input type="color" name="btn_cart_payhere_text" class="color-input" value="<?= $styles['btn_cart_payhere_text'] ?? '#ffffff' ?>">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="flex:1; min-width:200px;">
+                        <h4 style="font-size:12px; color:#555; margin-bottom:5px;">KOKO Button</h4>
+                        <div class="control-group">
+                            <div class="color-picker-row">
+                                <span style="font-size:10px; width:30px;">BG:</span>
+                                <input type="color" name="btn_cart_koko_bg" class="color-input" value="<?= $styles['btn_cart_koko_bg'] ?? '#fff3dc' ?>">
+                            </div>
+                        </div>
+                        <div class="control-group">
+                            <div class="color-picker-row">
+                                <span style="font-size:10px; width:30px;">Txt:</span>
+                                <input type="color" name="btn_cart_koko_text" class="color-input" value="<?= $styles['btn_cart_koko_text'] ?? '#111111' ?>">
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 <!-- Floating Elements -->
