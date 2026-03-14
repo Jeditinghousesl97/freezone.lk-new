@@ -211,6 +211,7 @@
 </head>
 
 <body>
+    <?php require_once ROOT_PATH . 'helpers/ImageHelper.php'; ?>
 
     <!-- Global Loader Injection -->
     <?php include 'views/admin/partials/loader.php'; ?>
@@ -228,7 +229,22 @@
                 <span class="asset-label">My shop QR Code</span>
                 <div class="asset-box">
                     <?php if ($settings['shop_qr']): ?>
-                        <img src="<?= $settings['shop_qr'] ?>" class="asset-img" alt="QR">
+                        <?php
+                        $shopQrUrl = ImageHelper::settingsImageUrl($settings['shop_qr'] ?? '', '');
+                        $shopQrFile = basename((string) parse_url($shopQrUrl, PHP_URL_PATH));
+                        ?>
+                        <?= ImageHelper::renderResponsivePicture(
+                            $shopQrFile,
+                            $shopQrUrl,
+                            [
+                                'class' => 'asset-img',
+                                'alt' => 'QR',
+                                'loading' => 'lazy',
+                                'decoding' => 'async',
+                                'fetchpriority' => 'low'
+                            ],
+                            'logo'
+                        ) ?>
                     <?php else: ?>
                         <span style="color:#ccc; font-size:40px;">🔳</span>
                     <?php endif; ?>
@@ -243,7 +259,22 @@
                 <span class="asset-label">My shop Logo</span>
                 <div class="asset-box">
                     <?php if ($settings['shop_logo']): ?>
-                        <img src="<?= $settings['shop_logo'] ?>" class="asset-img" alt="Logo">
+                        <?php
+                        $shopLogoUrl = ImageHelper::settingsImageUrl($settings['shop_logo'] ?? '', '');
+                        $shopLogoFile = basename((string) parse_url($shopLogoUrl, PHP_URL_PATH));
+                        ?>
+                        <?= ImageHelper::renderResponsivePicture(
+                            $shopLogoFile,
+                            $shopLogoUrl,
+                            [
+                                'class' => 'asset-img',
+                                'alt' => 'Logo',
+                                'loading' => 'lazy',
+                                'decoding' => 'async',
+                                'fetchpriority' => 'low'
+                            ],
+                            'logo'
+                        ) ?>
                     <?php else: ?>
                         <span style="color:#ccc; font-size:40px;">🌸</span>
                     <?php endif; ?>
@@ -336,7 +367,21 @@
 
                             <div class="slider-preview-box">
                                 <?php if (!empty($imageValue)): ?>
-                                    <img src="<?= htmlspecialchars($imageValue) ?>" alt="Slide <?= $i ?> preview">
+                                    <?php
+                                    $heroPreviewUrl = ImageHelper::settingsImageUrl($imageValue, '');
+                                    $heroPreviewFile = basename((string) parse_url($heroPreviewUrl, PHP_URL_PATH));
+                                    ?>
+                                    <?= ImageHelper::renderResponsivePicture(
+                                        $heroPreviewFile,
+                                        $heroPreviewUrl,
+                                        [
+                                            'alt' => 'Slide ' . $i . ' preview',
+                                            'loading' => 'lazy',
+                                            'decoding' => 'async',
+                                            'fetchpriority' => 'low'
+                                        ],
+                                        'hero'
+                                    ) ?>
                                 <?php else: ?>
                                     <span class="slider-placeholder">No image uploaded</span>
                                 <?php endif; ?>

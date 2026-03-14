@@ -7,6 +7,7 @@ if ($isSubCategoryView) {
     $hide_mobile_welcome = true;
 }
 
+require_once ROOT_PATH . 'helpers/ImageHelper.php';
 require_once 'views/layouts/customer_header.php';
 ?>
 
@@ -80,20 +81,21 @@ require_once 'views/layouts/customer_header.php';
 
                         <!-- Shop Avatar -->
                         <?php
-                        $logoUrl = $settings['shop_logo'] ?? '';
-                        $logoUrl = str_replace('/Ecom-CMS/', BASE_URL, $logoUrl);
-                        $physicalPath = $_SERVER['DOCUMENT_ROOT'] . $logoUrl;
-                        $logo = (!empty($logoUrl) && file_exists($physicalPath))
-                            ? $logoUrl
-                            : 'https://via.placeholder.com/40';
+                        $logoUrl = ImageHelper::settingsImageUrl($settings['shop_logo'] ?? '', 'https://via.placeholder.com/40');
+                        $logoFile = basename((string) parse_url($logoUrl, PHP_URL_PATH));
                         ?>
-                        <img src="<?= $logo ?>" alt="Shop" style="
-                        width: 40px; 
-                        height: 40px; 
-                        border-radius: 50%; 
-                        object-fit: cover;
-                        border: 1px solid #eee;
-                    ">
+                        <?= ImageHelper::renderResponsivePicture(
+                            $logoFile,
+                            $logoUrl,
+                            [
+                                'alt' => 'Shop',
+                                'loading' => 'eager',
+                                'decoding' => 'async',
+                                'fetchpriority' => 'high',
+                                'style' => 'width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid #eee;'
+                            ],
+                            'logo'
+                        ) ?>
                     </div>
 
                 </div>

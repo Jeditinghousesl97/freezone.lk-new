@@ -151,8 +151,22 @@
             <div class="welcome-section" style="margin-bottom: 0; display:flex; align-items:center; gap:15px;">
                 <!-- Shop Logo Injection -->
                 <?php if (!empty($settings['shop_logo'])): ?>
-                    <img src="<?= htmlspecialchars($settings['shop_logo']) ?>" alt="Shop Logo"
-                        style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 1px solid #ddd;">
+                    <?php
+                    $dashboardLogo = ImageHelper::settingsImageUrl($settings['shop_logo'] ?? '', '');
+                    $dashboardLogoFile = basename((string) parse_url($dashboardLogo, PHP_URL_PATH));
+                    ?>
+                    <?= ImageHelper::renderResponsivePicture(
+                        $dashboardLogoFile,
+                        $dashboardLogo,
+                        [
+                            'alt' => 'Shop Logo',
+                            'loading' => 'eager',
+                            'decoding' => 'async',
+                            'fetchpriority' => 'high',
+                            'style' => 'width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 1px solid #ddd;'
+                        ],
+                        'logo'
+                    ) ?>
                 <?php endif; ?>
 
                 <div>

@@ -152,6 +152,7 @@
 </head>
 
 <body>
+    <?php require_once ROOT_PATH . 'helpers/ImageHelper.php'; ?>
 
     <form action="<?= BASE_URL ?>settings/update" method="POST" enctype="multipart/form-data">
         <div class="container" style="padding-bottom:100px;">
@@ -247,7 +248,22 @@
                     <span class="label">Shop Logo</span>
                     <div class="img-upload-box" onclick="document.getElementById('logoInput').click()">
                         <?php if (!empty($settings['shop_logo'])): ?>
-                            <img src="<?= $settings['shop_logo'] ?>" class="preview-thumb">
+                            <?php
+                            $settingsLogoUrl = ImageHelper::settingsImageUrl($settings['shop_logo'] ?? '', '');
+                            $settingsLogoFile = basename((string) parse_url($settingsLogoUrl, PHP_URL_PATH));
+                            ?>
+                            <?= ImageHelper::renderResponsivePicture(
+                                $settingsLogoFile,
+                                $settingsLogoUrl,
+                                [
+                                    'class' => 'preview-thumb',
+                                    'alt' => 'Shop logo',
+                                    'loading' => 'lazy',
+                                    'decoding' => 'async',
+                                    'fetchpriority' => 'low'
+                                ],
+                                'logo'
+                            ) ?>
                         <?php endif; ?>
                         <div style="font-size:20px;">📷</div>
                         <p style="font-size:10px; color:#999;">Tap here to<br>upload a photo</p>
@@ -259,7 +275,22 @@
                     <span class="label">Shop QR</span>
                     <div class="img-upload-box" onclick="document.getElementById('qrInput').click()">
                         <?php if (!empty($settings['shop_qr'])): ?>
-                            <img src="<?= $settings['shop_qr'] ?>" class="preview-thumb">
+                            <?php
+                            $settingsQrUrl = ImageHelper::settingsImageUrl($settings['shop_qr'] ?? '', '');
+                            $settingsQrFile = basename((string) parse_url($settingsQrUrl, PHP_URL_PATH));
+                            ?>
+                            <?= ImageHelper::renderResponsivePicture(
+                                $settingsQrFile,
+                                $settingsQrUrl,
+                                [
+                                    'class' => 'preview-thumb',
+                                    'alt' => 'Shop QR',
+                                    'loading' => 'lazy',
+                                    'decoding' => 'async',
+                                    'fetchpriority' => 'low'
+                                ],
+                                'logo'
+                            ) ?>
                         <?php endif; ?>
                         <div style="font-size:20px;">📷</div>
                         <p style="font-size:10px; color:#999;">Tap here to<br>upload a photo</p>
@@ -274,7 +305,22 @@
                     <span class="label">Shop Favicon</span>
                     <div class="img-upload-box" onclick="document.getElementById('favInput').click()">
                         <?php if (!empty($settings['shop_favicon'])): ?>
-                            <img src="<?= $settings['shop_favicon'] ?>" class="preview-thumb">
+                            <?php
+                            $settingsFaviconUrl = ImageHelper::settingsImageUrl($settings['shop_favicon'] ?? '', '');
+                            $settingsFaviconFile = basename((string) parse_url($settingsFaviconUrl, PHP_URL_PATH));
+                            ?>
+                            <?= ImageHelper::renderResponsivePicture(
+                                $settingsFaviconFile,
+                                $settingsFaviconUrl,
+                                [
+                                    'class' => 'preview-thumb',
+                                    'alt' => 'Shop favicon',
+                                    'loading' => 'lazy',
+                                    'decoding' => 'async',
+                                    'fetchpriority' => 'low'
+                                ],
+                                'logo'
+                            ) ?>
                         <?php endif; ?>
                         <div style="font-size:20px;">📷</div>
                         <p style="font-size:10px; color:#999;">Tap here to<br>upload a photo</p>
