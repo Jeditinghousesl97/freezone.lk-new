@@ -344,10 +344,25 @@
         box-shadow: var(--desktop-shadow-soft);
     }
 
+    .shop-social-block {
+        margin-top: 16px;
+        padding-top: 14px;
+        border-top: 1px solid rgba(82, 58, 32, 0.08);
+    }
+
+    .shop-social-title {
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--desktop-muted);
+        margin-bottom: 10px;
+    }
+
     .social-icons {
         display: flex !important;
         gap: 12px !important;
-        margin-top: 12px;
+        margin-top: 0;
         flex-wrap: wrap;
     }
 

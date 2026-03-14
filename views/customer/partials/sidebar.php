@@ -90,6 +90,8 @@
         ?>
         <a href="<?= $reviewUrl ?>" class="btn-review" target="_blank" style="text-decoration: none; display: block; text-align: center;">Give us a Review!</a>
 
+        <div class="shop-social-block">
+            <div class="shop-social-title">Follow Us</div>
         <div class="social-icons">
             <?php
             // Helper to ensure links have http/https prefix
@@ -111,6 +113,7 @@
             <a href="<?= ensureUrl($settings['social_youtube'] ?? '') ?>" target="_blank">
                 <img src="<?= BASE_URL ?>assets/icons/youtube.png" alt="YT" class="social-icon-img">
             </a>
+        </div>
         </div>
     </div>
 </aside>
