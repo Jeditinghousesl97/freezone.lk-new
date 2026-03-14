@@ -149,6 +149,86 @@
         </div>
     <?php endif; ?>
 
+    <div class="imgopt-panel" style="margin-bottom:16px;">
+        <h3 style="margin:0 0 12px;">Inspect One Image</h3>
+        <form method="POST" class="imgopt-form">
+            <div class="imgopt-field">
+                <label for="inspect_image">Paste Image URL or Filename</label>
+                <input
+                    type="text"
+                    name="inspect_image"
+                    id="inspect_image"
+                    value="<?= htmlspecialchars((string) (($inspect_report['input'] ?? ''))) ?>"
+                    placeholder="https://freezone.lk/assets/uploads/1773501416_main_af.jpg">
+            </div>
+            <div class="imgopt-actions" style="margin-bottom:0;">
+                <button type="submit" class="imgopt-btn primary">Inspect Image</button>
+            </div>
+        </form>
+
+        <?php if (!empty($inspect_report['input'])): ?>
+            <div class="imgopt-list" style="margin-top:14px;">
+                <div class="imgopt-item">
+                    <strong>Filename:</strong> <?= htmlspecialchars((string) ($inspect_report['filename'] ?? '')) ?><br>
+                    <strong>Original Found:</strong> <?= !empty($inspect_report['exists']) ? 'Yes' : 'No' ?>
+                </div>
+
+                <?php if (!empty($inspect_report['exists'])): ?>
+                    <div class="imgopt-item">
+                        <strong>Original URL:</strong><br>
+                        <a href="<?= htmlspecialchars((string) ($inspect_report['original_url'] ?? '')) ?>" target="_blank" rel="noopener noreferrer">
+                            <?= htmlspecialchars((string) ($inspect_report['original_url'] ?? '')) ?>
+                        </a>
+                    </div>
+
+                    <div class="imgopt-item">
+                        <strong>Browser Delivery Sources</strong><br>
+                        <?php if (!empty($inspect_report['delivery']['sources'])): ?>
+                            <?php foreach ($inspect_report['delivery']['sources'] as $source): ?>
+                                <div style="margin-top:8px;">
+                                    <strong><?= htmlspecialchars((string) ($source['type'] ?? '')) ?></strong><br>
+                                    <span style="word-break:break-all;"><?= htmlspecialchars((string) ($source['srcset'] ?? '')) ?></span>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <span>No responsive source files detected yet for this image.</span>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="imgopt-item">
+                        <strong>Generated Files:</strong> <?= count($inspect_report['derived_existing'] ?? []) ?><br>
+                        <strong>Missing Files:</strong> <?= count($inspect_report['derived_missing'] ?? []) ?>
+                    </div>
+
+                    <?php if (!empty($inspect_report['derived_existing'])): ?>
+                        <div class="imgopt-item">
+                            <strong>Existing Derived Files</strong>
+                            <?php foreach (($inspect_report['derived_existing'] ?? []) as $file): ?>
+                                <div style="margin-top:8px; word-break:break-all;">
+                                    <?= htmlspecialchars(strtoupper((string) ($file['format'] ?? ''))) ?> <?= (int) ($file['width'] ?? 0) ?>w<br>
+                                    <a href="<?= htmlspecialchars((string) ($file['url'] ?? '')) ?>" target="_blank" rel="noopener noreferrer">
+                                        <?= htmlspecialchars((string) ($file['url'] ?? '')) ?>
+                                    </a>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if (!empty($inspect_report['derived_missing'])): ?>
+                        <div class="imgopt-item">
+                            <strong>Missing Derived Files</strong>
+                            <?php foreach (($inspect_report['derived_missing'] ?? []) as $file): ?>
+                                <div style="margin-top:8px;">
+                                    <?= htmlspecialchars(strtoupper((string) ($file['format'] ?? ''))) ?> <?= (int) ($file['width'] ?? 0) ?>w
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
+    </div>
+
     <div class="imgopt-panel">
         <h3 style="margin:0 0 12px;">How To Use This</h3>
         <div class="imgopt-list">

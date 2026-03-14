@@ -150,6 +150,7 @@ class AdminController extends BaseController
         $settings = $settingModel->getMultiple(['shop_name', 'shop_logo', 'currency_symbol']);
 
         $runSummary = null;
+        $inspectReport = null;
         $mode = 'scan';
         $batchLimit = 25;
         $optimizationSummary = [];
@@ -157,12 +158,16 @@ class AdminController extends BaseController
         $optimizationSummary = ImageHelper::getUploadOptimizationSummary();
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $mode = ($_POST['run_mode'] ?? 'missing') === 'rebuild' ? 'rebuild' : 'missing';
-            $force = $mode === 'rebuild';
-            $batchLimit = max(1, (int) ($_POST['limit'] ?? 25));
-            $offset = max(0, (int) ($_POST['offset'] ?? 0));
-            $runSummary = ImageHelper::optimizeExistingUploadsBatch($force, $batchLimit, $offset);
-            $optimizationSummary = ImageHelper::getUploadOptimizationSummary();
+            if (isset($_POST['inspect_image'])) {
+                $inspectReport = ImageHelper::inspectImageSet((string) ($_POST['inspect_image'] ?? ''));
+            } else {
+                $mode = ($_POST['run_mode'] ?? 'missing') === 'rebuild' ? 'rebuild' : 'missing';
+                $force = $mode === 'rebuild';
+                $batchLimit = max(1, (int) ($_POST['limit'] ?? 25));
+                $offset = max(0, (int) ($_POST['offset'] ?? 0));
+                $runSummary = ImageHelper::optimizeExistingUploadsBatch($force, $batchLimit, $offset);
+                $optimizationSummary = ImageHelper::getUploadOptimizationSummary();
+            }
         }
 
         $uploadDir = ROOT_PATH . 'assets/uploads/';
@@ -198,6 +203,7 @@ class AdminController extends BaseController
             'upload_count' => $uploadCount,
             'derived_count' => $derivedCount,
             'run_summary' => $runSummary,
+            'inspect_report' => $inspectReport,
             'mode' => $mode,
             'batch_limit' => $batchLimit,
             'optimization_summary' => $optimizationSummary

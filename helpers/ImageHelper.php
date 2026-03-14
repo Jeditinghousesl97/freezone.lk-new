@@ -214,6 +214,63 @@ class ImageHelper
         return $summary;
     }
 
+    public static function inspectImageSet($input, $profile = 'product_gallery')
+    {
+        $input = trim((string) $input);
+        if ($input === '') {
+            return [
+                'input' => '',
+                'filename' => '',
+                'exists' => false,
+                'original_url' => '',
+                'derived_existing' => [],
+                'derived_missing' => [],
+                'delivery' => [
+                    'src' => '',
+                    'sources' => []
+                ]
+            ];
+        }
+
+        $path = parse_url($input, PHP_URL_PATH);
+        $filename = basename($path ?: $input);
+        $filename = basename(trim($filename));
+        $originalPath = ROOT_PATH . self::ORIGINAL_DIR . $filename;
+        $exists = $filename !== '' && is_file($originalPath);
+
+        $delivery = self::imageDelivery($filename, '', $profile);
+        $expected = $exists ? self::expectedDerivedFiles($filename) : [];
+        $derivedExisting = [];
+        $derivedMissing = [];
+        $baseName = pathinfo($filename, PATHINFO_FILENAME);
+
+        foreach ($expected as $expectedFile) {
+            $relative = self::DERIVED_DIR . $baseName . '__' . $expectedFile['width'] . '.' . $expectedFile['format'];
+            $absolute = ROOT_PATH . $relative;
+            $item = [
+                'format' => $expectedFile['format'],
+                'width' => $expectedFile['width'],
+                'url' => BASE_URL . $relative
+            ];
+
+            if (is_file($absolute)) {
+                $derivedExisting[] = $item;
+            } else {
+                $derivedMissing[] = $item;
+            }
+        }
+
+        return [
+            'input' => $input,
+            'filename' => $filename,
+            'exists' => $exists,
+            'original_url' => $exists ? (BASE_URL . self::ORIGINAL_DIR . $filename) : '',
+            'derived_existing' => $derivedExisting,
+            'derived_missing' => $derivedMissing,
+            'delivery' => $delivery
+        ];
+    }
+
     public static function optimizeExistingUploadsBatch($force = false, $limit = 25, $offset = 0)
     {
         self::ensureDirectory(ROOT_PATH . self::DERIVED_DIR);
