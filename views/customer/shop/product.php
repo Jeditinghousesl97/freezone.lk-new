@@ -22,9 +22,9 @@ $productUnitPrice = (!empty($product['sale_price']) && (float) $product['sale_pr
     }
 
     .stock-clear-btn {
-        border: 1px solid #d9d9d9;
-        background: #fff;
-        color: #444;
+        border: 1px solid #f2b26b;
+        background: #ff9f43;
+        color: #fff;
         border-radius: 999px;
         padding: 8px 14px;
         font-size: 12px;
@@ -33,8 +33,9 @@ $productUnitPrice = (!empty($product['sale_price']) && (float) $product['sale_pr
     }
 
     .stock-clear-btn:hover {
-        border-color: #111;
-        color: #111;
+        border-color: #e28928;
+        background: #f08f2e;
+        color: #fff;
     }
 </style>
 
@@ -835,7 +836,7 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
         } else if (Object.keys(selectedVariations).length > 0) {
             updateProductStockNotice('Out of stock', 'error');
         } else {
-            updateProductStockNotice('In stock', 'success');
+            updateProductStockNotice('', '');
         }
     }
 
@@ -894,6 +895,11 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
     }
 
     function openPaymentMethodSheet() {
+        const selectionCheck = validateCurrentSelection();
+        if (!selectionCheck.ok) {
+            alert(selectionCheck.message);
+            return;
+        }
         document.getElementById('paymentMethodSheet').style.display = 'flex';
     }
 
