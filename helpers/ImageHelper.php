@@ -131,25 +131,15 @@ class ImageHelper
         }
     }
 
-    public static function optimizeExistingUploads($force = false, $limit = 0)
+    public static function getOptimizableUploads()
     {
         $originalDir = ROOT_PATH . self::ORIGINAL_DIR;
-        self::ensureDirectory(ROOT_PATH . self::DERIVED_DIR);
-
-        $result = [
-            'scanned' => 0,
-            'optimized' => 0,
-            'skipped' => 0,
-            'failed' => 0,
-            'formats' => [],
-            'files' => []
-        ];
-
         if (!is_dir($originalDir)) {
-            return $result;
+            return [];
         }
 
         $entries = scandir($originalDir) ?: [];
+        $files = [];
         foreach ($entries as $entry) {
             if ($entry === '.' || $entry === '..') {
                 continue;
@@ -161,17 +151,40 @@ class ImageHelper
             }
 
             if (!self::isOptimizableImage($entry)) {
-                $result['skipped']++;
                 continue;
             }
 
-            $result['scanned']++;
+            $files[] = $entry;
+        }
 
-            if ($limit > 0 && $result['scanned'] > $limit) {
-                $result['scanned']--;
-                break;
-            }
+        sort($files, SORT_NATURAL | SORT_FLAG_CASE);
+        return $files;
+    }
 
+    public static function optimizeExistingUploadsBatch($force = false, $limit = 25, $offset = 0)
+    {
+        self::ensureDirectory(ROOT_PATH . self::DERIVED_DIR);
+        $files = self::getOptimizableUploads();
+        $total = count($files);
+        $offset = max(0, (int) $offset);
+        $limit = max(1, (int) $limit);
+
+        $batchFiles = array_slice($files, $offset, $limit);
+        $result = [
+            'scanned' => count($batchFiles),
+            'optimized' => 0,
+            'skipped' => 0,
+            'failed' => 0,
+            'formats' => [],
+            'files' => [],
+            'offset' => $offset,
+            'next_offset' => min($offset + count($batchFiles), $total),
+            'limit' => $limit,
+            'total' => $total,
+            'complete' => ($offset + count($batchFiles)) >= $total
+        ];
+
+        foreach ($batchFiles as $entry) {
             $beforeFiles = self::derivedFilesFor($entry);
             $beforeCount = count($beforeFiles);
 

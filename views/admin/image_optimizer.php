@@ -54,8 +54,8 @@
         </div>
         <div class="imgopt-card">
             <div class="imgopt-label">Recommended Run</div>
-            <div class="imgopt-value" style="font-size:18px; line-height:1.4;">Create Missing Files</div>
-            <div class="imgopt-note">Safe option for first run. It only generates files that are not already there.</div>
+            <div class="imgopt-value" style="font-size:18px; line-height:1.4;"><?= (int) ($total_optimizable ?? 0) ?> Optimizable</div>
+            <div class="imgopt-note">Safe option for first run is batch processing. It avoids server timeouts.</div>
         </div>
     </div>
 
@@ -70,10 +70,11 @@
                 </select>
             </div>
             <div class="imgopt-field">
-                <label for="limit">Limit Files Per Run</label>
-                <input type="number" min="0" step="1" name="limit" id="limit" value="0" placeholder="0 = all files">
+                <label for="limit">Files Per Batch</label>
+                <input type="number" min="1" step="1" name="limit" id="limit" value="<?= (int) ($batch_limit ?? 25) ?>" placeholder="25">
             </div>
-            <div class="imgopt-note">Use a small limit like 50 if you want to test first. Leave it as 0 to process all uploads.</div>
+            <input type="hidden" name="offset" value="0">
+            <div class="imgopt-note">Start with 20 or 25 files per batch. Bigger numbers can still timeout on shared hosting.</div>
             <div class="imgopt-actions" style="margin-bottom:0;">
                 <button type="submit" class="imgopt-btn primary">Run Optimizer</button>
                 <button type="submit" name="run_mode" value="rebuild" class="imgopt-btn warn" onclick="return confirm('Rebuild all optimized images? This will delete old derived files and generate them again.')">Rebuild All</button>
@@ -86,7 +87,7 @@
             <h3 style="margin:0 0 12px;">Last Run Result</h3>
             <div class="imgopt-grid" style="margin-bottom:12px;">
                 <div class="imgopt-card">
-                    <div class="imgopt-label">Scanned</div>
+                    <div class="imgopt-label">Batch Scanned</div>
                     <div class="imgopt-value"><?= (int) ($run_summary['scanned'] ?? 0) ?></div>
                 </div>
                 <div class="imgopt-card">
@@ -103,12 +104,31 @@
                 </div>
             </div>
 
+            <div class="imgopt-item" style="margin-bottom:12px;">
+                <strong>Progress:</strong>
+                <?= (int) ($run_summary['next_offset'] ?? 0) ?> / <?= (int) ($run_summary['total'] ?? 0) ?> files processed
+                <?php if (!empty($run_summary['complete'])): ?>
+                    <span style="color:#1d7a40; font-weight:800;"> - Completed</span>
+                <?php endif; ?>
+            </div>
+
             <?php if (!empty($run_summary['formats'])): ?>
                 <div class="imgopt-badges">
                     <?php foreach ($run_summary['formats'] as $format => $count): ?>
                         <span class="imgopt-badge"><?= htmlspecialchars(strtoupper((string) $format)) ?>: <?= (int) $count ?></span>
                     <?php endforeach; ?>
                 </div>
+            <?php endif; ?>
+
+            <?php if (empty($run_summary['complete']) && (int) ($run_summary['next_offset'] ?? 0) < (int) ($run_summary['total'] ?? 0)): ?>
+                <form method="POST" class="imgopt-form" style="margin-top:14px;">
+                    <input type="hidden" name="run_mode" value="<?= htmlspecialchars((string) ($mode ?? 'missing')) ?>">
+                    <input type="hidden" name="limit" value="<?= (int) ($run_summary['limit'] ?? ($batch_limit ?? 25)) ?>">
+                    <input type="hidden" name="offset" value="<?= (int) ($run_summary['next_offset'] ?? 0) ?>">
+                    <div class="imgopt-actions" style="margin-bottom:0;">
+                        <button type="submit" class="imgopt-btn primary">Continue Next Batch</button>
+                    </div>
+                </form>
             <?php endif; ?>
 
             <?php if (!empty($run_summary['files'])): ?>
@@ -126,8 +146,8 @@
         <h3 style="margin:0 0 12px;">How To Use This</h3>
         <div class="imgopt-list">
             <div class="imgopt-item">Start with <strong>Create Missing Files</strong>. That is the safest first run for your live site.</div>
-            <div class="imgopt-item">If you have many old uploads, you can test with a small limit like <strong>50</strong> first.</div>
-            <div class="imgopt-item">After that looks good, run again with <strong>0</strong> to optimize all old uploads.</div>
+            <div class="imgopt-item">Use a small batch like <strong>20</strong> or <strong>25</strong> files. This is much safer on shared hosting.</div>
+            <div class="imgopt-item">After each run, click <strong>Continue Next Batch</strong> until the progress says completed.</div>
             <div class="imgopt-item">Use <strong>Rebuild Everything</strong> only if you later change the optimization rules and want a fresh full rebuild.</div>
         </div>
     </div>
