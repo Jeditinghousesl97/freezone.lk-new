@@ -723,6 +723,19 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
             .join(', ');
     }
 
+    function getRequiredVariationCount() {
+        return document.querySelectorAll('.var-section').length;
+    }
+
+    function hasCompletedVariationSelection() {
+        const requiredCount = getRequiredVariationCount();
+        if (!requiredCount) {
+            return true;
+        }
+
+        return Object.keys(selectedVariations).length >= requiredCount;
+    }
+
     function getActiveVariantRow() {
         const variantKey = getSelectedVariantKey();
         return variantStockRows.find(row => row.combination_key === variantKey && Number(row.is_active)) || null;
@@ -833,7 +846,7 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
             } else {
                 updateProductStockNotice('In stock', 'success');
             }
-        } else if (Object.keys(selectedVariations).length > 0) {
+        } else if (Object.keys(selectedVariations).length > 0 && hasCompletedVariationSelection()) {
             updateProductStockNotice('Out of stock', 'error');
         } else {
             updateProductStockNotice('', '');
