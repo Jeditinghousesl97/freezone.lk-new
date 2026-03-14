@@ -558,6 +558,14 @@ p {
     /* Center image if aspect ratio differs */
 }
 
+.gallery-slider picture {
+    display: block;
+    min-width: 100%;
+    width: 100%;
+    flex: 0 0 100%;
+    scroll-snap-align: center;
+}
+
 .gallery-slider img {
     width: 100%;
     aspect-ratio: 1 / 1.2;
@@ -2153,9 +2161,17 @@ p {
         background: #fff;
     }
 
+    .gallery-slider picture {
+        min-width: 100%;
+        width: 100%;
+        flex: 0 0 100%;
+    }
+
     .gallery-slider .gallery-img,
     .gallery-slider img {
         border-radius: 22px !important;
+        width: 100% !important;
+        display: block;
     }
 
     .gallery-dots {

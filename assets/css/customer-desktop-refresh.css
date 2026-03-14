@@ -644,10 +644,20 @@
         background: linear-gradient(180deg, #faf5ed 0%, #f3ede3 100%) !important;
     }
 
+    .gallery-slider picture {
+        display: block;
+        min-width: 100%;
+        width: 100%;
+        flex: 0 0 100%;
+        scroll-snap-align: center;
+    }
+
     .gallery-slider img {
         aspect-ratio: 1 / 1 !important;
         object-fit: cover !important;
         border-radius: 24px !important;
+        width: 100% !important;
+        display: block;
     }
 
     .product-info-container {
