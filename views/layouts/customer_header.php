@@ -608,6 +608,13 @@
         </div>
     <?php endif; ?>
 
+    <?php
+    require_once 'models/Product.php';
+    $headerProductModel = new Product();
+    $hasSaleProducts = !empty($headerProductModel->getOnSale(1));
+    $hasFreeShippingProducts = !empty($headerProductModel->getFreeShippingProducts(1));
+    ?>
+
     <!-- Desktop Header (Visible only on Desktop) -->
     <header class="desktop-header display-desktop-only">
         <div class="header-inner">
@@ -760,7 +767,9 @@
                     </span>
                     <span style="font-size: 14px; margin-left: 5px;">Cart</span>
                 </a>
-                <a href="<?= BASE_URL ?>shop/sales" class="btn-red" style="text-decoration:none;">Sale Items</a>
+                <?php if ($hasSaleProducts): ?>
+                    <a href="<?= BASE_URL ?>shop/sales" class="btn-red" style="text-decoration:none;">Sale Items</a>
+                <?php endif; ?>
             </div>
         </div>
 
@@ -770,8 +779,12 @@
             <a href="<?= BASE_URL ?>shop">All Products</a>
             <a href="<?= BASE_URL ?>shop/new_arrivals">Recent Items</a>
             <a href="<?= BASE_URL ?>shop/featured">Featured Products</a>
-            <a href="<?= BASE_URL ?>shop/free_shipping">Free Shipping</a>
-            <a href="<?= BASE_URL ?>shop/sales">Discounts!</a>
+            <?php if ($hasFreeShippingProducts): ?>
+                <a href="<?= BASE_URL ?>shop/free_shipping" class="desktop-nav-free-shipping">Free Shipping</a>
+            <?php endif; ?>
+            <?php if ($hasSaleProducts): ?>
+                <a href="<?= BASE_URL ?>shop/sales" class="desktop-nav-discounts">Discounts!</a>
+            <?php endif; ?>
             <a href="<?= BASE_URL ?>order/myOrders">My Orders</a>
         </div>
     </header>

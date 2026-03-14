@@ -218,9 +218,31 @@
         opacity: 1 !important;
     }
 
+    .desktop-nav-links .desktop-nav-free-shipping {
+        background: linear-gradient(135deg, #e9f9ee 0%, #d4f2dd 100%) !important;
+        color: #1d7a40 !important;
+        border-color: rgba(29, 122, 64, 0.16) !important;
+    }
+
+    .desktop-nav-links .desktop-nav-discounts {
+        background: linear-gradient(135deg, #fff1eb 0%, #ffe0d1 100%) !important;
+        color: #b34a22 !important;
+        border-color: rgba(179, 74, 34, 0.16) !important;
+    }
+
     .desktop-nav-links a:hover {
         color: var(--desktop-accent) !important;
         background: rgba(255, 255, 255, 0.95);
+    }
+
+    .desktop-nav-links .desktop-nav-free-shipping:hover {
+        color: #165f31 !important;
+        background: linear-gradient(135deg, #eefcf2 0%, #dbf7e4 100%) !important;
+    }
+
+    .desktop-nav-links .desktop-nav-discounts:hover {
+        color: #993815 !important;
+        background: linear-gradient(135deg, #fff5ef 0%, #ffe6da 100%) !important;
     }
 
     .home-layout {
