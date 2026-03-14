@@ -94,9 +94,14 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
                             <?= htmlspecialchars($currency) ?> <?= number_format($subtotal ?? 0, 0) ?>
                         </span>
                     </div>
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px;">
                         <span style="font-size: 14px; font-weight: 700; color: #888;">Shipping Fee</span>
-                        <span style="font-size: 15px; font-weight: 700; color: #444;" id="cartShippingDisplay">Select district</span>
+                        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+                            <button type="button" id="selectDistrictButton" onclick="openDistrictSelector()" style="border:1px solid #d9d9d9; background:#fff; color:#222; border-radius:999px; padding:6px 10px; font-size:11px; font-weight:700; cursor:pointer;">
+                                Select District
+                            </button>
+                            <span style="font-size: 15px; font-weight: 700; color: #444;" id="cartShippingDisplay">Select district</span>
+                        </div>
                     </div>
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; padding-top:12px; border-top:1px dashed #e3e3e3;">
                         <span style="font-size: 16px; font-weight: 800; color: #444;">Order Total</span>
@@ -333,6 +338,11 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
         cartGrandTotalEl.textContent = formatMoney(quote.hasRate || quote.chargeableWeight === 0 ? quote.total : quote.subtotal);
         modalGrandTotalEl.textContent = formatMoney(quote.hasRate || quote.chargeableWeight === 0 ? quote.total : quote.subtotal);
 
+        const selectDistrictButton = document.getElementById('selectDistrictButton');
+        if (selectDistrictButton) {
+            selectDistrictButton.style.display = quote.chargeableWeight === 0 ? 'none' : 'inline-flex';
+        }
+
         return quote;
     }
 
@@ -430,6 +440,16 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
 
     function closeOrderModal() {
         document.getElementById('orderModal').style.display = 'none';
+    }
+
+    function openDistrictSelector() {
+        openOrderModal(orderMode || 'cod');
+
+        const districtInput = document.getElementById('ordDistrict');
+        if (districtInput) {
+            districtInput.focus();
+            districtInput.click();
+        }
     }
 
     function saveCustomerDetails(data) {
