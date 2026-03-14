@@ -1,6 +1,7 @@
 <?php
 $hide_mobile_welcome = true;
 require_once 'views/layouts/customer_header.php';
+$currency = $settings['currency_symbol'] ?? 'LKR';
 ?>
 
 <div class="home-layout">
@@ -48,17 +49,20 @@ require_once 'views/layouts/customer_header.php';
                     <p style="text-align: center; color: #999; margin-top: 50px;">Your cart is empty.</p>
                 <?php else: ?>
                     <?php
-                    $total = 0;
+                    $subtotal = 0;
                     foreach ($cart as $index => $item):
                         $itemTotal = $item['price'] * $item['qty'];
-                        $total += $itemTotal;
+                        $subtotal += $itemTotal;
                     ?>
                         <div class="cart-item" style="display: flex; align-items: center; gap: 15px; background: #fff; padding: 15px; border-radius: 20px; position: relative; margin-bottom: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.03);">
                             <img src="<?= htmlspecialchars($item['img']) ?>" style="width: 70px; height: 70px; border-radius: 12px; object-fit: cover; background: #f0f0f0;">
                             <div style="flex: 1;">
                                 <h4 style="font-size: 14px; font-weight: 700; margin: 0 0 5px 0;"><?= htmlspecialchars($item['title']) ?></h4>
+                                <?php if (!empty($item['is_free_shipping'])): ?>
+                                    <div class="free-shipping-badge" style="margin-bottom:6px;">Free Shipping</div>
+                                <?php endif; ?>
                                 <div style="font-size: 13px; font-weight: 700; color: #E4405F; margin-bottom: 3px;">
-                                    LKR <?= number_format($item['price'], 0) ?>
+                                    <?= htmlspecialchars($currency) ?> <?= number_format($item['price'], 0) ?>
                                 </div>
                                 <div style="font-size: 11px; color: #666; font-weight: 500;"><?= htmlspecialchars($item['variants']) ?></div>
                                 <div style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
@@ -85,10 +89,23 @@ require_once 'views/layouts/customer_header.php';
             <?php if (!empty($cart)): ?>
                 <div id="cartFooter" style="padding: 20px; border-top: 1px solid #f9f9f9;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                        <span style="font-size: 16px; font-weight: 700; color: #888;">Cart Total</span>
-                        <span style="font-size: 20px; font-weight: 800; color: #444;" id="cartTotalDisplay">
-                            LKR <?= number_format($total ?? 0, 0) ?>
+                        <span style="font-size: 16px; font-weight: 700; color: #888;">Subtotal</span>
+                        <span style="font-size: 20px; font-weight: 800; color: #444;" id="cartSubTotalDisplay">
+                            <?= htmlspecialchars($currency) ?> <?= number_format($subtotal ?? 0, 0) ?>
                         </span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                        <span style="font-size: 14px; font-weight: 700; color: #888;">Shipping Fee</span>
+                        <span style="font-size: 15px; font-weight: 700; color: #444;" id="cartShippingDisplay">Select district</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; padding-top:12px; border-top:1px dashed #e3e3e3;">
+                        <span style="font-size: 16px; font-weight: 800; color: #444;">Order Total</span>
+                        <span style="font-size: 22px; font-weight: 800; color: #111;" id="cartGrandTotalDisplay">
+                            <?= htmlspecialchars($currency) ?> <?= number_format($subtotal ?? 0, 0) ?>
+                        </span>
+                    </div>
+                    <div style="font-size:12px; color:#777; margin-bottom:20px;">
+                        Delivery fee updates when you choose your district in the order form.
                     </div>
 
                     <div style="display:grid; gap:12px;">
@@ -160,8 +177,8 @@ require_once 'views/layouts/customer_header.php';
                     <input type="text" id="ordCity" class="form-control" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
                 </div>
                 <div class="form-group" style="margin-bottom: 15px; flex: 1;">
-                    <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px;">District</label>
-                    <input type="text" id="ordDistrict" class="form-control" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                    <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px;">District <span style="color:red">*</span></label>
+                    <input type="text" id="ordDistrict" class="form-control" list="districtListCart" placeholder="Search district" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
                 </div>
             </div>
 
@@ -180,18 +197,144 @@ require_once 'views/layouts/customer_header.php';
                 <textarea id="ordNote" class="form-control" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; height: 60px;"></textarea>
             </div>
 
+            <div style="background:#fafafa; border:1px solid #ededed; border-radius:12px; padding:14px; margin-bottom:20px;">
+                <div style="display:flex; justify-content:space-between; gap:12px; margin-bottom:8px;">
+                    <span style="font-size:13px; color:#777; font-weight:600;">Subtotal</span>
+                    <span id="modalSubTotalDisplay" style="font-size:13px; color:#222; font-weight:700;"><?= htmlspecialchars($currency) ?> <?= number_format($subtotal ?? 0, 0) ?></span>
+                </div>
+                <div style="display:flex; justify-content:space-between; gap:12px; margin-bottom:8px;">
+                    <span style="font-size:13px; color:#777; font-weight:600;">Shipping Fee</span>
+                    <span id="modalShippingDisplay" style="font-size:13px; color:#222; font-weight:700;">Select district</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; gap:12px; padding-top:8px; border-top:1px dashed #e1e1e1;">
+                    <span style="font-size:14px; color:#111; font-weight:800;">Order Total</span>
+                    <span id="modalGrandTotalDisplay" style="font-size:16px; color:#111; font-weight:800;"><?= htmlspecialchars($currency) ?> <?= number_format($subtotal ?? 0, 0) ?></span>
+                </div>
+            </div>
+
             <div style="display: flex; gap: 10px;">
                 <button type="button" onclick="closeOrderModal()" style="flex: 1; padding: 12px; border: 1px solid #ddd; background: #f5f5f5; border-radius: 8px; font-weight: 600; cursor: pointer;">Cancel</button>
                 <button type="submit" id="orderSubmitButton" style="flex: 2; padding: 12px; border: none; background: #111; color: white; border-radius: 8px; font-weight: 600; cursor: pointer;">Place COD Order</button>
             </div>
         </form>
+
+        <datalist id="districtListCart">
+            <?php foreach (($deliveryDistricts ?? []) as $districtName): ?>
+                <option value="<?= htmlspecialchars($districtName) ?>"></option>
+            <?php endforeach; ?>
+        </datalist>
     </div>
 </div>
 
 <script>
     const cartData = <?= json_encode($cart ?? []) ?>;
+    const currencySymbol = <?= json_encode($currency) ?>;
+    const deliveryDistricts = <?= json_encode(array_values($deliveryDistricts ?? [])) ?>;
+    const deliveryRates = <?= json_encode($deliveryRatesMap ?? new stdClass()) ?>;
+    const deliverySettings = {
+        applyAll: <?= !empty($settings['delivery_apply_all_districts']) ? 'true' : 'false' ?>,
+        firstKg: <?= json_encode((float) ($settings['delivery_all_first_kg'] ?? 0)) ?>,
+        additionalKg: <?= json_encode((float) ($settings['delivery_all_additional_kg'] ?? 0)) ?>
+    };
     let orderMode = 'cod';
     const shopWhatsappNumber = '<?= htmlspecialchars($shopWhatsappTarget ?? '', ENT_QUOTES) ?>';
+
+    function formatMoney(amount) {
+        return currencySymbol + ' ' + Number(amount || 0).toLocaleString(undefined, { maximumFractionDigits: 0 });
+    }
+
+    function normalizeDistrict(value) {
+        const needle = (value || '').trim().toLowerCase();
+        if (!needle) {
+            return '';
+        }
+
+        for (const district of deliveryDistricts) {
+            if (district.toLowerCase() === needle) {
+                return district;
+            }
+        }
+
+        return '';
+    }
+
+    function calculateShippingQuote(items, districtValue) {
+        const district = normalizeDistrict(districtValue);
+        let subtotal = 0;
+        let chargeableWeight = 0;
+
+        items.forEach(function (item) {
+            const qty = Math.max(1, parseInt(item.qty || 1, 10));
+            const price = Number(item.price || 0);
+            subtotal += (price * qty);
+
+            if (!item.is_free_shipping) {
+                const weight = Math.max(0, parseInt(item.weight_grams || 0, 10));
+                chargeableWeight += (weight * qty);
+            }
+        });
+
+        let firstKg = Number(deliverySettings.firstKg || 0);
+        let additionalKg = Number(deliverySettings.additionalKg || 0);
+        let hasRate = true;
+
+        if (!deliverySettings.applyAll) {
+            if (!district || !deliveryRates[district]) {
+                hasRate = false;
+            } else {
+                firstKg = Number(deliveryRates[district].first_kg_price || 0);
+                additionalKg = Number(deliveryRates[district].additional_kg_price || 0);
+            }
+        }
+
+        let shipping = 0;
+        if (chargeableWeight > 0 && hasRate) {
+            shipping = firstKg;
+            if (chargeableWeight > 1000) {
+                shipping += Math.ceil((chargeableWeight - 1000) / 1000) * additionalKg;
+            }
+        }
+
+        return {
+            subtotal: subtotal,
+            shipping: shipping,
+            total: subtotal + shipping,
+            chargeableWeight: chargeableWeight,
+            hasRate: hasRate,
+            district: district
+        };
+    }
+
+    function updateShippingDisplays() {
+        const cartSubtotalEl = document.getElementById('cartSubTotalDisplay');
+        const modalSubtotalEl = document.getElementById('modalSubTotalDisplay');
+        const cartShippingEl = document.getElementById('cartShippingDisplay');
+        const modalShippingEl = document.getElementById('modalShippingDisplay');
+        const cartGrandTotalEl = document.getElementById('cartGrandTotalDisplay');
+        const modalGrandTotalEl = document.getElementById('modalGrandTotalDisplay');
+
+        if (!cartSubtotalEl || !modalSubtotalEl || !cartShippingEl || !modalShippingEl || !cartGrandTotalEl || !modalGrandTotalEl) {
+            return calculateShippingQuote(cartData, '');
+        }
+
+        const districtInput = document.getElementById('ordDistrict');
+        const activeDistrict = districtInput ? districtInput.value : (localStorage.getItem('cus_district') || '');
+        const quote = calculateShippingQuote(cartData, activeDistrict);
+
+        cartSubtotalEl.textContent = formatMoney(quote.subtotal);
+        modalSubtotalEl.textContent = formatMoney(quote.subtotal);
+
+        const shippingText = quote.chargeableWeight === 0
+            ? 'Free'
+            : (quote.hasRate ? formatMoney(quote.shipping) : 'Select district');
+
+        cartShippingEl.textContent = shippingText;
+        modalShippingEl.textContent = shippingText;
+        cartGrandTotalEl.textContent = formatMoney(quote.hasRate || quote.chargeableWeight === 0 ? quote.total : quote.subtotal);
+        modalGrandTotalEl.textContent = formatMoney(quote.hasRate || quote.chargeableWeight === 0 ? quote.total : quote.subtotal);
+
+        return quote;
+    }
 
     function removeFromCart(index) {
         fetch('<?= BASE_URL ?>cart/remove', {
@@ -262,6 +405,7 @@ require_once 'views/layouts/customer_header.php';
         if (localStorage.getItem('cus_district')) document.getElementById('ordDistrict').value = localStorage.getItem('cus_district');
         if (localStorage.getItem('cus_phone1')) document.getElementById('ordPhone1').value = localStorage.getItem('cus_phone1');
         if (localStorage.getItem('cus_phone2')) document.getElementById('ordPhone2').value = localStorage.getItem('cus_phone2');
+        updateShippingDisplays();
 
         const submitButton = document.getElementById('orderSubmitButton');
         if (orderMode === 'payhere') {
@@ -304,13 +448,13 @@ require_once 'views/layouts/customer_header.php';
             email: document.getElementById('ordEmail').value.trim(),
             address: document.getElementById('ordAddress').value.trim(),
             city: document.getElementById('ordCity').value.trim(),
-            district: document.getElementById('ordDistrict').value.trim(),
+            district: normalizeDistrict(document.getElementById('ordDistrict').value),
             phone1: document.getElementById('ordPhone1').value.trim(),
             phone2: document.getElementById('ordPhone2').value.trim(),
             note: document.getElementById('ordNote').value.trim()
         };
 
-        if (!data.name || !data.email || !data.address || !data.city || !data.phone1) {
+        if (!data.name || !data.email || !data.address || !data.city || !data.phone1 || !data.district) {
             alert('Please fill in required fields.');
             return;
         }
@@ -451,6 +595,8 @@ require_once 'views/layouts/customer_header.php';
             '*Phone:* ' + data.phone1
         );
 
+        const quote = calculateShippingQuote(cartData, data.district);
+
         if (data.phone2) {
             lines.push('*Alt Phone:* ' + data.phone2);
         }
@@ -468,9 +614,32 @@ require_once 'views/layouts/customer_header.php';
             lines.push('*Note:* ' + data.note);
         }
 
+        lines.push(
+            '',
+            '*Subtotal:* ' + formatMoney(quote.subtotal),
+            '*Shipping Fee:* ' + (quote.chargeableWeight === 0 ? 'Free' : formatMoney(quote.shipping)),
+            '*Order Total:* ' + formatMoney(quote.total)
+        );
+
         if (typeof showGlobalLoader === 'function') showGlobalLoader();
         window.location.href = 'https://wa.me/' + shopWhatsappNumber + '?text=' + encodeURIComponent(lines.join("\n"));
     }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const districtInput = document.getElementById('ordDistrict');
+        if (districtInput) {
+            districtInput.addEventListener('input', updateShippingDisplays);
+            districtInput.addEventListener('change', function () {
+                const normalized = normalizeDistrict(districtInput.value);
+                if (normalized) {
+                    districtInput.value = normalized;
+                }
+                updateShippingDisplays();
+            });
+        }
+
+        updateShippingDisplays();
+    });
 </script>
 
 <?php require_once 'views/layouts/customer_footer.php'; ?>

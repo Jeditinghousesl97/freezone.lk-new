@@ -133,6 +133,21 @@
             border: none;
             font-size: 16px;
         }
+
+        .btn-delivery-settings {
+            display: block;
+            width: 100%;
+            background-color: #4a90a4;
+            color: white;
+            padding: 12px;
+            border-radius: 25px;
+            text-align: center;
+            text-decoration: none;
+            font-weight: bold;
+            margin-top: 14px;
+            border: none;
+            font-size: 16px;
+        }
     </style>
 </head>
 
@@ -553,6 +568,7 @@
 
             <!-- Global Styles Button -->
             <a href="<?= BASE_URL ?>settings/styles" class="btn-global-styles">Global Styles</a>
+            <a href="<?= BASE_URL ?>settings/delivery" class="btn-delivery-settings">Delivery Settings</a>
 
         </div>
     </form>

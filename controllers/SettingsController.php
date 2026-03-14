@@ -5,18 +5,22 @@
  */
 require_once 'models/Setting.php';
 require_once 'models/User.php';
+require_once 'models/DeliverySetting.php';
+require_once 'helpers/DeliveryHelper.php';
 
 class SettingsController extends BaseController
 {
 
     private $settingModel;
     private $userModel;
+    private $deliverySettingModel;
 
     public function __construct()
     {
         $this->settingModel = new Setting();
         require_once 'models/User.php';
         $this->userModel = new User();
+        $this->deliverySettingModel = new DeliverySetting();
     }
 
     // 1. Gatekeeper / Main Entry
@@ -414,6 +418,41 @@ class SettingsController extends BaseController
                 $this->settingModel->set($key, $val);
             }
             $this->redirect('settings/styles');
+        }
+    }
+
+    public function delivery()
+    {
+        $this->checkAuth();
+
+        $settings = $this->settingModel->getMultiple([
+            'delivery_apply_all_districts',
+            'delivery_all_first_kg',
+            'delivery_all_additional_kg'
+        ]);
+        $rates = $this->deliverySettingModel->getAllRates();
+
+        $this->view('admin/settings/delivery', [
+            'title' => 'Delivery Settings',
+            'settings' => $settings,
+            'rates' => $rates,
+            'districts' => DeliveryHelper::districtList()
+        ]);
+    }
+
+    public function updateDelivery()
+    {
+        $this->checkAuth();
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $this->settingModel->set('delivery_apply_all_districts', !empty($_POST['delivery_apply_all_districts']) ? '1' : '0');
+            $this->settingModel->set('delivery_all_first_kg', number_format((float) ($_POST['delivery_all_first_kg'] ?? 0), 2, '.', ''));
+            $this->settingModel->set('delivery_all_additional_kg', number_format((float) ($_POST['delivery_all_additional_kg'] ?? 0), 2, '.', ''));
+
+            $postedRates = $_POST['district_rates'] ?? [];
+            $this->deliverySettingModel->saveRates(is_array($postedRates) ? $postedRates : []);
+
+            $this->redirect('settings/delivery');
         }
     }
 

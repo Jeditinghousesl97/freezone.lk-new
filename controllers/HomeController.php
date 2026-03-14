@@ -33,6 +33,7 @@ class HomeController extends BaseController
         $featuredProducts = $this->productModel->getAllFeatured();
         $latestProducts = $this->productModel->getLatest(8);
         $saleProducts = $this->productModel->getAllOnSale();
+        $freeShippingProducts = $this->productModel->getFreeShippingProducts(12);
 
         $seo = SeoHelper::defaultSeo($settings, [
             'seo_title' => ($settings['shop_name'] ?? 'Shop') . ' | Online Store',
@@ -54,6 +55,7 @@ class HomeController extends BaseController
             'featuredProducts' => $featuredProducts,
             'latestProducts' => $latestProducts,
             'saleProducts' => $saleProducts,
+            'freeShippingProducts' => $freeShippingProducts,
             'seo_title' => $seo['seo_title'],
             'seo_description' => $seo['seo_description'],
             'seo_canonical' => $seo['seo_canonical'],

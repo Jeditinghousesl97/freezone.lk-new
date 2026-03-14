@@ -2,6 +2,8 @@
 require_once 'models/Order.php';
 require_once 'models/Setting.php';
 require_once 'models/Product.php';
+require_once 'models/DeliverySetting.php';
+require_once 'helpers/DeliveryHelper.php';
 require_once 'helpers/SeoHelper.php';
 require_once 'helpers/OrderEmailService.php';
 require_once 'helpers/OrderSmsService.php';
@@ -12,6 +14,7 @@ class OrderController extends BaseController
     private $orderModel;
     private $settingModel;
     private $productModel;
+    private $deliverySettingModel;
     private $orderEmailService;
     private $orderSmsService;
 
@@ -20,6 +23,7 @@ class OrderController extends BaseController
         $this->orderModel = new Order();
         $this->settingModel = new Setting();
         $this->productModel = new Product();
+        $this->deliverySettingModel = new DeliverySetting();
         $this->orderEmailService = new OrderEmailService();
         $this->orderSmsService = new OrderSmsService();
     }
@@ -223,8 +227,9 @@ class OrderController extends BaseController
         $phone = trim((string) ($_POST['phone'] ?? ''));
         $address = trim((string) ($_POST['address'] ?? ''));
         $city = trim((string) ($_POST['city'] ?? ''));
+        $district = trim((string) ($_POST['district'] ?? ''));
 
-        if ($customerName === '' || $email === '' || $phone === '' || $address === '' || $city === '') {
+        if ($customerName === '' || $email === '' || $phone === '' || $address === '' || $city === '' || $district === '') {
             return null;
         }
 
@@ -239,11 +244,78 @@ class OrderController extends BaseController
             'phone_alt' => trim((string) ($_POST['phone_alt'] ?? '')),
             'address' => $address,
             'city' => $city,
-            'district' => trim((string) ($_POST['district'] ?? '')),
+            'district' => $district,
             'postal_code' => '',
             'country' => 'Sri Lanka',
             'note' => trim((string) ($_POST['note'] ?? ''))
         ];
+    }
+
+    private function buildCartItemsWithDeliveryData(array $cart)
+    {
+        foreach ($cart as &$item) {
+            $productId = (int) ($item['id'] ?? 0);
+            if ($productId <= 0) {
+                continue;
+            }
+
+            $product = $this->productModel->getById($productId);
+            if (!$product) {
+                continue;
+            }
+
+            $item['title'] = $product['title'] ?? ($item['title'] ?? 'Product');
+            $item['price'] = (!empty($product['sale_price']) && (float) $product['sale_price'] < (float) $product['price'])
+                ? (float) $product['sale_price']
+                : (float) $product['price'];
+            $item['weight_grams'] = max(0, (int) ($product['weight_grams'] ?? 0));
+            $item['is_free_shipping'] = !empty($product['free_shipping']) ? 1 : 0;
+
+            if (empty($item['img']) && !empty($product['main_image'])) {
+                $imagePath = 'assets/uploads/' . $product['main_image'];
+                if (file_exists(ROOT_PATH . $imagePath)) {
+                    $item['img'] = BASE_URL . $imagePath;
+                }
+            }
+        }
+
+        return $cart;
+    }
+
+    private function buildSingleProductItem(array $product, $qty, $variantText)
+    {
+        $unitPrice = (!empty($product['sale_price']) && (float) $product['sale_price'] < (float) $product['price'])
+            ? (float) $product['sale_price']
+            : (float) $product['price'];
+
+        $imageUrl = '';
+        if (!empty($product['main_image'])) {
+            $imagePath = 'assets/uploads/' . $product['main_image'];
+            if (file_exists(ROOT_PATH . $imagePath)) {
+                $imageUrl = BASE_URL . $imagePath;
+            }
+        }
+
+        return [[
+            'id' => (int) $product['id'],
+            'title' => $product['title'] ?? 'Product',
+            'price' => $unitPrice,
+            'qty' => max(1, (int) $qty),
+            'img' => $imageUrl,
+            'variants' => $variantText,
+            'weight_grams' => max(0, (int) ($product['weight_grams'] ?? 0)),
+            'is_free_shipping' => !empty($product['free_shipping']) ? 1 : 0
+        ]];
+    }
+
+    private function buildShippingQuote(array $items, array $settings, $district)
+    {
+        return DeliveryHelper::calculateShipping(
+            $items,
+            $district,
+            $settings,
+            $this->deliverySettingModel->getRatesMap()
+        );
     }
 
     private function requireAdminSession()
@@ -289,7 +361,9 @@ class OrderController extends BaseController
             'price' => $unitPrice,
             'qty' => $qty,
             'img' => $imageUrl,
-            'variants' => $variantText
+            'variants' => $variantText,
+            'weight_grams' => max(0, (int) ($product['weight_grams'] ?? 0)),
+            'is_free_shipping' => !empty($product['free_shipping']) ? 1 : 0
         ]]];
     }
 
@@ -599,7 +673,7 @@ class OrderController extends BaseController
         }
 
         $settings = $this->settingModel->getAllPairs();
-        $cart = $_SESSION['cart'] ?? [];
+        $cart = $this->buildCartItemsWithDeliveryData($_SESSION['cart'] ?? []);
 
         if (empty($cart)) {
             $_SESSION['order_error'] = 'Your cart is empty.';
@@ -617,7 +691,17 @@ class OrderController extends BaseController
             $this->redirect('cart');
         }
 
-        $order = $this->orderModel->createFromCart($customer, $cart, $settings);
+        $shippingQuote = $this->buildShippingQuote($cart, $settings, $customer['district']);
+        if (!$shippingQuote['has_rate']) {
+            $_SESSION['order_error'] = 'Please select a valid district to calculate delivery.';
+            $this->redirect('cart');
+        }
+
+        $order = $this->orderModel->createFromCart($customer, $cart, $settings, [
+            'subtotal_amount' => $shippingQuote['subtotal'],
+            'shipping_fee' => $shippingQuote['shipping_fee'],
+            'chargeable_weight_grams' => $shippingQuote['chargeable_weight_grams']
+        ]);
         if (!$order) {
             $_SESSION['order_error'] = 'Unable to create your order right now.';
             $this->redirect('cart');
@@ -673,7 +757,7 @@ class OrderController extends BaseController
         }
 
         $settings = $this->settingModel->getAllPairs();
-        $cart = $_SESSION['cart'] ?? [];
+        $cart = $this->buildCartItemsWithDeliveryData($_SESSION['cart'] ?? []);
 
         if (empty($cart)) {
             $_SESSION['order_error'] = 'Your cart is empty.';
@@ -691,7 +775,16 @@ class OrderController extends BaseController
             $this->redirect('cart');
         }
 
+        $shippingQuote = $this->buildShippingQuote($cart, $settings, $customer['district']);
+        if (!$shippingQuote['has_rate']) {
+            $_SESSION['order_error'] = 'Please select a valid district to calculate delivery.';
+            $this->redirect('cart');
+        }
+
         $order = $this->orderModel->createFromCart($customer, $cart, $settings, [
+            'subtotal_amount' => $shippingQuote['subtotal'],
+            'shipping_fee' => $shippingQuote['shipping_fee'],
+            'chargeable_weight_grams' => $shippingQuote['chargeable_weight_grams'],
             'payment_method' => 'koko',
             'payment_gateway' => 'koko',
             'payment_status' => 'pending',
@@ -776,7 +869,7 @@ class OrderController extends BaseController
         }
 
         $settings = $this->settingModel->getAllPairs();
-        $cart = $_SESSION['cart'] ?? [];
+        $cart = $this->buildCartItemsWithDeliveryData($_SESSION['cart'] ?? []);
 
         if (empty($cart)) {
             $_SESSION['order_error'] = 'Your cart is empty.';
@@ -794,7 +887,16 @@ class OrderController extends BaseController
             $this->redirect('cart');
         }
 
+        $shippingQuote = $this->buildShippingQuote($cart, $settings, $customer['district']);
+        if (!$shippingQuote['has_rate']) {
+            $_SESSION['order_error'] = 'Please select a valid district to calculate delivery.';
+            $this->redirect('cart');
+        }
+
         $order = $this->orderModel->createFromCart($customer, $cart, $settings, [
+            'subtotal_amount' => $shippingQuote['subtotal'],
+            'shipping_fee' => $shippingQuote['shipping_fee'],
+            'chargeable_weight_grams' => $shippingQuote['chargeable_weight_grams'],
             'payment_method' => 'cod',
             'payment_gateway' => 'cod',
             'payment_status' => 'pending',
@@ -851,28 +953,18 @@ class OrderController extends BaseController
             $this->redirect('shop/product/' . $productId);
         }
 
-        $unitPrice = (!empty($product['sale_price']) && (float) $product['sale_price'] < (float) $product['price'])
-            ? (float) $product['sale_price']
-            : (float) $product['price'];
-
-        $imageUrl = '';
-        if (!empty($product['main_image'])) {
-            $imagePath = 'assets/uploads/' . $product['main_image'];
-            if (file_exists(ROOT_PATH . $imagePath)) {
-                $imageUrl = BASE_URL . $imagePath;
-            }
+        $items = $this->buildSingleProductItem($product, $qty, $variantText);
+        $shippingQuote = $this->buildShippingQuote($items, $settings, $customer['district']);
+        if (!$shippingQuote['has_rate']) {
+            $_SESSION['order_error'] = 'Please select a valid district to calculate delivery.';
+            $this->redirect('shop/product/' . $productId);
         }
 
-        $items = [[
-            'id' => (int) $product['id'],
-            'title' => $product['title'] ?? 'Product',
-            'price' => $unitPrice,
-            'qty' => $qty,
-            'img' => $imageUrl,
-            'variants' => $variantText
-        ]];
-
-        $order = $this->orderModel->createFromItems($customer, $items, $settings);
+        $order = $this->orderModel->createFromItems($customer, $items, $settings, [
+            'subtotal_amount' => $shippingQuote['subtotal'],
+            'shipping_fee' => $shippingQuote['shipping_fee'],
+            'chargeable_weight_grams' => $shippingQuote['chargeable_weight_grams']
+        ]);
         if (!$order) {
             $_SESSION['order_error'] = 'Unable to create your order right now.';
             $this->redirect('shop/product/' . $productId);
@@ -950,7 +1042,16 @@ class OrderController extends BaseController
             $this->redirect('shop/product/' . $productId);
         }
 
+        $shippingQuote = $this->buildShippingQuote($items, $settings, $customer['district']);
+        if (!$shippingQuote['has_rate']) {
+            $_SESSION['order_error'] = 'Please select a valid district to calculate delivery.';
+            $this->redirect('shop/product/' . $productId);
+        }
+
         $order = $this->orderModel->createFromItems($customer, $items, $settings, [
+            'subtotal_amount' => $shippingQuote['subtotal'],
+            'shipping_fee' => $shippingQuote['shipping_fee'],
+            'chargeable_weight_grams' => $shippingQuote['chargeable_weight_grams'],
             'payment_method' => 'koko',
             'payment_gateway' => 'koko',
             'payment_status' => 'pending',
@@ -1012,28 +1113,17 @@ class OrderController extends BaseController
             $this->redirect('shop/product/' . $productId);
         }
 
-        $unitPrice = (!empty($product['sale_price']) && (float) $product['sale_price'] < (float) $product['price'])
-            ? (float) $product['sale_price']
-            : (float) $product['price'];
-
-        $imageUrl = '';
-        if (!empty($product['main_image'])) {
-            $imagePath = 'assets/uploads/' . $product['main_image'];
-            if (file_exists(ROOT_PATH . $imagePath)) {
-                $imageUrl = BASE_URL . $imagePath;
-            }
+        $items = $this->buildSingleProductItem($product, $qty, $variantText);
+        $shippingQuote = $this->buildShippingQuote($items, $settings, $customer['district']);
+        if (!$shippingQuote['has_rate']) {
+            $_SESSION['order_error'] = 'Please select a valid district to calculate delivery.';
+            $this->redirect('shop/product/' . $productId);
         }
 
-        $items = [[
-            'id' => (int) $product['id'],
-            'title' => $product['title'] ?? 'Product',
-            'price' => $unitPrice,
-            'qty' => $qty,
-            'img' => $imageUrl,
-            'variants' => $variantText
-        ]];
-
         $order = $this->orderModel->createFromItems($customer, $items, $settings, [
+            'subtotal_amount' => $shippingQuote['subtotal'],
+            'shipping_fee' => $shippingQuote['shipping_fee'],
+            'chargeable_weight_grams' => $shippingQuote['chargeable_weight_grams'],
             'payment_method' => 'cod',
             'payment_gateway' => 'cod',
             'payment_status' => 'pending',

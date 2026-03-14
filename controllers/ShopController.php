@@ -7,6 +7,8 @@ require_once 'models/Product.php';
 require_once 'models/Category.php';
 require_once 'models/Variation.php';
 require_once 'models/Setting.php';
+require_once 'models/DeliverySetting.php';
+require_once 'helpers/DeliveryHelper.php';
 require_once 'helpers/SeoHelper.php';
 
 class ShopController extends BaseController
@@ -14,12 +16,14 @@ class ShopController extends BaseController
     private $productModel;
     private $categoryModel;
     private $settingModel;
+    private $deliverySettingModel;
 
     public function __construct()
     {
         $this->productModel = new Product();
         $this->categoryModel = new Category();
         $this->settingModel = new Setting();
+        $this->deliverySettingModel = new DeliverySetting();
     }
 
     // List all products (Shop Index / Search Results)
@@ -176,6 +180,8 @@ class ShopController extends BaseController
             'relatedProducts' => $relatedProducts,
             'categories' => $categories, // For sidebar
             'settings' => $settings,
+            'deliveryDistricts' => DeliveryHelper::districtList(),
+            'deliveryRatesMap' => $this->deliverySettingModel->getRatesMap(),
             'seo_title' => $seo['seo_title'],
             'seo_description' => $seo['seo_description'],
             'seo_canonical' => $seo['seo_canonical'],

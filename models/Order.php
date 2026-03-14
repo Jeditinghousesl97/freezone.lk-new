@@ -27,6 +27,9 @@ class Order extends BaseModel
                 postal_code VARCHAR(40) DEFAULT NULL,
                 country VARCHAR(100) NOT NULL DEFAULT 'Sri Lanka',
                 note TEXT DEFAULT NULL,
+                subtotal_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+                shipping_fee DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+                chargeable_weight_grams INT NOT NULL DEFAULT 0,
                 total_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
                 currency VARCHAR(10) NOT NULL DEFAULT 'LKR',
                 payment_method VARCHAR(50) NOT NULL DEFAULT 'payhere',
@@ -48,6 +51,9 @@ class Order extends BaseModel
         $this->ensureColumnExists('orders', 'courier_service', "ALTER TABLE orders ADD COLUMN courier_service VARCHAR(150) DEFAULT NULL AFTER order_status");
         $this->ensureColumnExists('orders', 'tracking_number', "ALTER TABLE orders ADD COLUMN tracking_number VARCHAR(150) DEFAULT NULL AFTER courier_service");
         $this->ensureColumnExists('orders', 'admin_seen_at', "ALTER TABLE orders ADD COLUMN admin_seen_at TIMESTAMP NULL DEFAULT NULL AFTER tracking_number");
+        $this->ensureColumnExists('orders', 'subtotal_amount', "ALTER TABLE orders ADD COLUMN subtotal_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER note");
+        $this->ensureColumnExists('orders', 'shipping_fee', "ALTER TABLE orders ADD COLUMN shipping_fee DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER subtotal_amount");
+        $this->ensureColumnExists('orders', 'chargeable_weight_grams', "ALTER TABLE orders ADD COLUMN chargeable_weight_grams INT NOT NULL DEFAULT 0 AFTER shipping_fee");
 
         $this->conn->exec("
             CREATE TABLE IF NOT EXISTS order_items (
@@ -118,22 +124,28 @@ class Order extends BaseModel
                 'customer' => $customer,
                 'items_count' => count($items)
             ];
-            $totalAmount = 0;
+            $subtotalAmount = isset($options['subtotal_amount']) ? (float) $options['subtotal_amount'] : 0.0;
+            $shippingFee = isset($options['shipping_fee']) ? (float) $options['shipping_fee'] : 0.0;
+            $chargeableWeightGrams = isset($options['chargeable_weight_grams']) ? (int) $options['chargeable_weight_grams'] : 0;
 
-            foreach ($items as $item) {
-                $qty = max(1, (int) ($item['qty'] ?? 1));
-                $price = (float) ($item['price'] ?? 0);
-                $totalAmount += ($price * $qty);
+            if ($subtotalAmount <= 0) {
+                foreach ($items as $item) {
+                    $qty = max(1, (int) ($item['qty'] ?? 1));
+                    $price = (float) ($item['price'] ?? 0);
+                    $subtotalAmount += ($price * $qty);
+                }
             }
+
+            $totalAmount = $subtotalAmount + $shippingFee;
 
             $stmt = $this->conn->prepare("
                 INSERT INTO orders (
                     order_number, customer_name, first_name, last_name, email, phone, phone_alt,
-                    address, city, district, postal_code, country, note, total_amount, currency,
+                    address, city, district, postal_code, country, note, subtotal_amount, shipping_fee, chargeable_weight_grams, total_amount, currency,
                     payment_method, payment_gateway, payment_status, order_status
                 ) VALUES (
                     :order_number, :customer_name, :first_name, :last_name, :email, :phone, :phone_alt,
-                    :address, :city, :district, :postal_code, :country, :note, :total_amount, :currency,
+                    :address, :city, :district, :postal_code, :country, :note, :subtotal_amount, :shipping_fee, :chargeable_weight_grams, :total_amount, :currency,
                     :payment_method, :payment_gateway, :payment_status, :order_status
                 )
             ");
@@ -152,6 +164,9 @@ class Order extends BaseModel
                 ':postal_code' => $customer['postal_code'],
                 ':country' => $customer['country'],
                 ':note' => $customer['note'],
+                ':subtotal_amount' => number_format($subtotalAmount, 2, '.', ''),
+                ':shipping_fee' => number_format($shippingFee, 2, '.', ''),
+                ':chargeable_weight_grams' => $chargeableWeightGrams,
                 ':total_amount' => number_format($totalAmount, 2, '.', ''),
                 ':currency' => $currency,
                 ':payment_method' => $paymentMethod,

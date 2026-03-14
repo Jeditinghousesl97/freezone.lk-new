@@ -2,6 +2,10 @@
 // Hide Default Mobile Header for Single Product Page (Task 3.1)
 $hide_mobile_welcome = true;
 require_once 'views/layouts/customer_header.php';
+$currency = $settings['currency_symbol'] ?? 'LKR';
+$productUnitPrice = (!empty($product['sale_price']) && (float) $product['sale_price'] < (float) $product['price'])
+    ? (float) $product['sale_price']
+    : (float) $product['price'];
 ?>
 
 <!-- Wrappers for Sidebar Layout -->
@@ -95,12 +99,14 @@ require_once 'views/layouts/customer_header.php';
                 <h1 class="pd-title" style="text-align: left;">
                     <?= htmlspecialchars($product['title']) ?>
                 </h1>
+                <?php if (!empty($product['free_shipping'])): ?>
+                    <div class="free-shipping-badge" style="margin: 0 0 10px 0; width: fit-content;">Free Shipping</div>
+                <?php endif; ?>
 
                 <!-- Price & Guide Row -->
                 <div class="pd-price-row" style="justify-content: flex-start; gap: 20px;">
                     <div class="pd-prices" style="font-weight: 700;">
                         <?php
-                        $currency = $settings['currency_symbol'] ?? 'LKR';
                         if (!empty($product['sale_price']) && $product['sale_price'] < $product['price']):
                             ?>
                             <span class="pd-old-price" style="font-weight: 400;">
@@ -496,8 +502,8 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
                 </div>
                 <div class="form-group" style="margin-bottom: 15px; flex: 1;">
                     <label
-                        style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px;">District</label>
-                    <input type="text" id="ordDistrict" class="form-control"
+                        style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px;">District <span style="color:red">*</span></label>
+                    <input type="text" id="ordDistrict" class="form-control" list="districtListProduct" placeholder="Search district"
                         style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
                 </div>
             </div>
@@ -523,6 +529,21 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
                     style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; height: 60px;"></textarea>
             </div>
 
+            <div style="background:#fafafa; border:1px solid #ededed; border-radius:12px; padding:14px; margin-bottom:20px;">
+                <div style="display:flex; justify-content:space-between; gap:12px; margin-bottom:8px;">
+                    <span style="font-size:13px; color:#777; font-weight:600;">Subtotal</span>
+                    <span id="modalSubTotalDisplay" style="font-size:13px; color:#222; font-weight:700;"><?= htmlspecialchars($currency) ?> <?= number_format($productUnitPrice, 0) ?></span>
+                </div>
+                <div style="display:flex; justify-content:space-between; gap:12px; margin-bottom:8px;">
+                    <span style="font-size:13px; color:#777; font-weight:600;">Shipping Fee</span>
+                    <span id="modalShippingDisplay" style="font-size:13px; color:#222; font-weight:700;">Select district</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; gap:12px; padding-top:8px; border-top:1px dashed #e1e1e1;">
+                    <span style="font-size:14px; color:#111; font-weight:800;">Order Total</span>
+                    <span id="modalGrandTotalDisplay" style="font-size:16px; color:#111; font-weight:800;"><?= htmlspecialchars($currency) ?> <?= number_format($productUnitPrice, 0) ?></span>
+                </div>
+            </div>
+
             <div style="display: flex; gap: 10px;">
                 <button type="button" onclick="closeOrderModal()"
                     style="flex: 1; padding: 12px; border: 1px solid #ddd; background: #f5f5f5; border-radius: 8px; font-weight: 600; cursor: pointer;">Cancel</button>
@@ -531,6 +552,11 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
                     via WhatsApp</button>
             </div>
         </form>
+        <datalist id="districtListProduct">
+            <?php foreach (($deliveryDistricts ?? []) as $districtName): ?>
+                <option value="<?= htmlspecialchars($districtName) ?>"></option>
+            <?php endforeach; ?>
+        </datalist>
     </div>
 </div>
 
@@ -542,12 +568,95 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
         val += change;
         if (val < 1) val = 1;
         input.value = val;
+        updateSingleOrderTotals();
     }
 
     // Variation Selection Logic
     let selectedVariations = {}; // Store selected variations: { 'Color': 'Red', 'Size': 'M' }
     let orderMode = 'cod';
     const shopWhatsappNumber = '<?= htmlspecialchars($shopWhatsappTarget, ENT_QUOTES) ?>';
+    const currencySymbol = <?= json_encode($currency) ?>;
+    const deliveryDistricts = <?= json_encode(array_values($deliveryDistricts ?? [])) ?>;
+    const deliveryRates = <?= json_encode($deliveryRatesMap ?? new stdClass()) ?>;
+    const deliverySettings = {
+        applyAll: <?= !empty($settings['delivery_apply_all_districts']) ? 'true' : 'false' ?>,
+        firstKg: <?= json_encode((float) ($settings['delivery_all_first_kg'] ?? 0)) ?>,
+        additionalKg: <?= json_encode((float) ($settings['delivery_all_additional_kg'] ?? 0)) ?>
+    };
+    const baseProductPrice = <?= json_encode((float) $productUnitPrice) ?>;
+    const baseProductWeight = <?= json_encode((int) ($product['weight_grams'] ?? 0)) ?>;
+    const productFreeShipping = <?= !empty($product['free_shipping']) ? 'true' : 'false' ?>;
+
+    function formatMoney(amount) {
+        return currencySymbol + ' ' + Number(amount || 0).toLocaleString(undefined, { maximumFractionDigits: 0 });
+    }
+
+    function normalizeDistrict(value) {
+        const needle = (value || '').trim().toLowerCase();
+        if (!needle) {
+            return '';
+        }
+
+        for (const district of deliveryDistricts) {
+            if (district.toLowerCase() === needle) {
+                return district;
+            }
+        }
+
+        return '';
+    }
+
+    function calculateSingleShippingQuote(districtValue) {
+        const qty = parseInt(document.getElementById('qtyInput').value, 10) || 1;
+        const district = normalizeDistrict(districtValue);
+        const subtotal = baseProductPrice * qty;
+        const chargeableWeight = productFreeShipping ? 0 : (Math.max(0, baseProductWeight) * qty);
+        let firstKg = Number(deliverySettings.firstKg || 0);
+        let additionalKg = Number(deliverySettings.additionalKg || 0);
+        let hasRate = true;
+
+        if (!deliverySettings.applyAll) {
+            if (!district || !deliveryRates[district]) {
+                hasRate = false;
+            } else {
+                firstKg = Number(deliveryRates[district].first_kg_price || 0);
+                additionalKg = Number(deliveryRates[district].additional_kg_price || 0);
+            }
+        }
+
+        let shipping = 0;
+        if (chargeableWeight > 0 && hasRate) {
+            shipping = firstKg;
+            if (chargeableWeight > 1000) {
+                shipping += Math.ceil((chargeableWeight - 1000) / 1000) * additionalKg;
+            }
+        }
+
+        return {
+            subtotal,
+            shipping,
+            total: subtotal + shipping,
+            chargeableWeight,
+            hasRate,
+            district
+        };
+    }
+
+    function updateSingleOrderTotals() {
+        const subtotalEl = document.getElementById('modalSubTotalDisplay');
+        const shippingEl = document.getElementById('modalShippingDisplay');
+        const totalEl = document.getElementById('modalGrandTotalDisplay');
+        if (!subtotalEl || !shippingEl || !totalEl) {
+            return calculateSingleShippingQuote('');
+        }
+
+        const districtInput = document.getElementById('ordDistrict');
+        const quote = calculateSingleShippingQuote(districtInput ? districtInput.value : (localStorage.getItem('cus_district') || ''));
+        subtotalEl.textContent = formatMoney(quote.subtotal);
+        shippingEl.textContent = quote.chargeableWeight === 0 ? 'Free' : (quote.hasRate ? formatMoney(quote.shipping) : 'Select district');
+        totalEl.textContent = formatMoney(quote.hasRate || quote.chargeableWeight === 0 ? quote.total : quote.subtotal);
+        return quote;
+    }
 
     function selectVariation(el, name, value) {
         // Toggle active class in this group
@@ -583,6 +692,7 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
         if (localStorage.getItem('cus_district')) document.getElementById('ordDistrict').value = localStorage.getItem('cus_district');
         if (localStorage.getItem('cus_phone1')) document.getElementById('ordPhone1').value = localStorage.getItem('cus_phone1');
         if (localStorage.getItem('cus_phone2')) document.getElementById('ordPhone2').value = localStorage.getItem('cus_phone2');
+        updateSingleOrderTotals();
 
         const submitButton = document.getElementById('orderSubmitButton');
         if (orderMode === 'payhere') {
@@ -625,12 +735,12 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
         const email = document.getElementById('ordEmail').value.trim();
         const address = document.getElementById('ordAddress').value.trim();
         const city = document.getElementById('ordCity').value.trim();
-        const district = document.getElementById('ordDistrict').value.trim();
+        const district = normalizeDistrict(document.getElementById('ordDistrict').value);
         const phone1 = document.getElementById('ordPhone1').value.trim();
         const phone2 = document.getElementById('ordPhone2').value.trim();
         const note = document.getElementById('ordNote').value.trim();
 
-        if (!name || !email || !address || !city || !phone1) {
+        if (!name || !email || !address || !city || !phone1 || !district) {
             alert("Please fill in all required fields.");
             return;
         }
@@ -847,9 +957,32 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
             lines.push('*Note:* ' + data.note);
         }
 
+        const quote = calculateSingleShippingQuote(data.district);
+        lines.push(
+            '*Subtotal:* ' + formatMoney(quote.subtotal),
+            '*Shipping Fee:* ' + (quote.chargeableWeight === 0 ? 'Free' : formatMoney(quote.shipping)),
+            '*Order Total:* ' + formatMoney(quote.total)
+        );
+
         if (typeof showGlobalLoader === 'function') showGlobalLoader();
         window.location.href = 'https://wa.me/' + shopWhatsappNumber + '?text=' + encodeURIComponent(lines.join("\n"));
     }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const districtInput = document.getElementById('ordDistrict');
+        if (districtInput) {
+            districtInput.addEventListener('input', updateSingleOrderTotals);
+            districtInput.addEventListener('change', function () {
+                const normalized = normalizeDistrict(districtInput.value);
+                if (normalized) {
+                    districtInput.value = normalized;
+                }
+                updateSingleOrderTotals();
+            });
+        }
+
+        updateSingleOrderTotals();
+    });
 
 
     // --- Add to Cart Logic (AJAX) ---

@@ -62,6 +62,9 @@
                     <div><strong>Order Type:</strong> <?= htmlspecialchars(strtoupper($order['payment_method'] ?? $order['payment_gateway'] ?? '-')) ?></div>
                     <div><strong>Order Status:</strong> <?= htmlspecialchars(ucfirst(str_replace('_', ' ', $order['order_status'] ?? 'pending'))) ?></div>
                     <div><strong>Gateway:</strong> <?= htmlspecialchars(strtoupper($order['payment_gateway'])) ?></div>
+                    <div><strong>Subtotal:</strong> <?= htmlspecialchars($order['currency']) ?> <?= number_format((float) ($order['subtotal_amount'] ?? 0), 2) ?></div>
+                    <div><strong>Shipping Fee:</strong> <?= htmlspecialchars($order['currency']) ?> <?= number_format((float) ($order['shipping_fee'] ?? 0), 2) ?></div>
+                    <div><strong>Chargeable Weight:</strong> <?= number_format(((float) ($order['chargeable_weight_grams'] ?? 0)) / 1000, 2) ?> Kg</div>
                     <div><strong>Amount:</strong> <?= htmlspecialchars($order['currency']) ?> <?= number_format((float) $order['total_amount'], 2) ?></div>
                     <div><strong>Payment ID:</strong> <?= htmlspecialchars($order['gateway_payment_id'] ?: '-') ?></div>
                     <div><strong>Message:</strong> <?= htmlspecialchars($order['gateway_message'] ?: '-') ?></div>

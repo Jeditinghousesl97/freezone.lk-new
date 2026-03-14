@@ -6,6 +6,27 @@ require_once 'models/BaseModel.php';
 
 class Product extends BaseModel
 {
+    public function __construct()
+    {
+        parent::__construct();
+        $this->ensureSchema();
+    }
+
+    private function ensureSchema()
+    {
+        $this->ensureColumnExists('products', 'weight_grams', "ALTER TABLE products ADD COLUMN weight_grams INT NOT NULL DEFAULT 0 AFTER sale_price");
+        $this->ensureColumnExists('products', 'free_shipping', "ALTER TABLE products ADD COLUMN free_shipping TINYINT(1) NOT NULL DEFAULT 0 AFTER weight_grams");
+    }
+
+    private function ensureColumnExists($table, $column, $alterSql)
+    {
+        $stmt = $this->conn->prepare("SHOW COLUMNS FROM `{$table}` LIKE :column");
+        $stmt->execute([':column' => $column]);
+
+        if (!$stmt->fetch(PDO::FETCH_ASSOC)) {
+            $this->conn->exec($alterSql);
+        }
+    }
 
     public function getAll($search = null)
     {
@@ -39,10 +60,10 @@ class Product extends BaseModel
 
             // 1. Insert Core Product
             $sql = "INSERT INTO products (
-                title, slug, sku, price, sale_price, description, 
+                title, slug, sku, price, sale_price, weight_grams, free_shipping, description, 
                 main_image, is_featured, category_id, size_guide_id
             ) VALUES (
-                :title, :slug, :sku, :price, :sale_price, :description, 
+                :title, :slug, :sku, :price, :sale_price, :weight_grams, :free_shipping, :description, 
                 :main_image, :is_featured, :category_id, :size_guide_id
             )";
 
@@ -60,6 +81,10 @@ class Product extends BaseModel
             // Handle optional fields
             $salePrice = !empty($data['sale_price']) ? $data['sale_price'] : null;
             $stmt->bindParam(':sale_price', $salePrice);
+            $weightGrams = max(0, (int) ($data['weight_grams'] ?? 0));
+            $stmt->bindParam(':weight_grams', $weightGrams);
+            $freeShipping = !empty($data['free_shipping']) ? 1 : 0;
+            $stmt->bindParam(':free_shipping', $freeShipping);
 
             $stmt->bindParam(':description', $data['description']);
             $stmt->bindParam(':main_image', $data['main_image']);
@@ -137,6 +162,8 @@ class Product extends BaseModel
                     sku = :sku, 
                     price = :price, 
                     sale_price = :sale_price, 
+                    weight_grams = :weight_grams,
+                    free_shipping = :free_shipping,
                     description = :description, 
                     is_featured = :is_featured, 
                     category_id = :category_id, 
@@ -151,6 +178,8 @@ class Product extends BaseModel
                         sku = :sku, 
                         price = :price, 
                         sale_price = :sale_price, 
+                        weight_grams = :weight_grams,
+                        free_shipping = :free_shipping,
                         description = :description, 
                         main_image = :main_image,
                         is_featured = :is_featured, 
@@ -171,6 +200,10 @@ class Product extends BaseModel
 
             $salePrice = !empty($data['sale_price']) ? $data['sale_price'] : null;
             $stmt->bindParam(':sale_price', $salePrice);
+            $weightGrams = max(0, (int) ($data['weight_grams'] ?? 0));
+            $stmt->bindParam(':weight_grams', $weightGrams);
+            $freeShipping = !empty($data['free_shipping']) ? 1 : 0;
+            $stmt->bindParam(':free_shipping', $freeShipping);
 
             $stmt->bindParam(':description', $data['description']);
 
@@ -374,6 +407,27 @@ class Product extends BaseModel
                 WHERE p.is_featured = 1 AND p.is_active = 1
                 ORDER BY p.created_at DESC";
         $stmt = $this->conn->prepare($sql);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function getFreeShippingProducts($limit = null)
+    {
+        $sql = "SELECT p.*, c.name as category_name, pc.name as parent_category_name
+                FROM products p
+                LEFT JOIN categories c ON p.category_id = c.id
+                LEFT JOIN categories pc ON c.parent_id = pc.id
+                WHERE p.free_shipping = 1 AND p.is_active = 1
+                ORDER BY p.created_at DESC";
+
+        if ($limit !== null) {
+            $sql .= " LIMIT :limit";
+        }
+
+        $stmt = $this->conn->prepare($sql);
+        if ($limit !== null) {
+            $stmt->bindValue(':limit', (int) $limit, PDO::PARAM_INT);
+        }
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }

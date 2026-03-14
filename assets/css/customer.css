@@ -431,6 +431,21 @@ p {
     line-height: 1.2;
 }
 
+.free-shipping-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #e8f8ec;
+    color: #17833d;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-top: 6px;
+}
+
 .product-price-box {
     margin-top: 5px;
     font-size: 13px;

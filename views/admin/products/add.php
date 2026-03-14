@@ -438,6 +438,11 @@
                         style="background:#ffeaea;" value="<?= $product['sale_price'] ?? '' ?>">
                 </div>
 
+                <span class="section-label">Product Weight (g)</span>
+                <input type="number" name="weight_grams" class="input-box" min="0" step="1"
+                    placeholder="Enter product weight in grams"
+                    value="<?= htmlspecialchars((string) ($product['weight_grams'] ?? '0')) ?>">
+
                 <span class="section-label">Product Description</span>
                 <textarea name="description" class="input-box" rows="4"
                     placeholder="You can use external links, emojis... 🌸"><?= htmlspecialchars($product['description'] ?? '') ?></textarea>
@@ -468,6 +473,12 @@
                 <span class="section-label">Featured Product</span>
                 <label class="toggle-switch">
                     <input type="checkbox" name="is_featured" <?= (isset($product['is_featured']) && $product['is_featured']) ? 'checked' : '' ?>>
+                    <span class="slider"></span>
+                </label>
+
+                <span class="section-label" style="margin-top:20px;">Free Shipping</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" name="free_shipping" <?= !empty($product['free_shipping']) ? 'checked' : '' ?>>
                     <span class="slider"></span>
                 </label>
 

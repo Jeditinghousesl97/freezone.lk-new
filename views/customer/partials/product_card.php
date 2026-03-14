@@ -49,6 +49,9 @@ $isOnSale = !empty($prod['sale_price']) && $prod['sale_price'] < $prod['price'];
                 <span class="current-price"><?= $currency ?>     <?= number_format($prod['price'], 0) ?></span>
             <?php endif; ?>
         </div>
+        <?php if (!empty($prod['free_shipping'])): ?>
+            <div class="free-shipping-badge">Free Shipping</div>
+        <?php endif; ?>
 
         <!-- Category Info (Parent | Child) -->
         <div class="product-category">

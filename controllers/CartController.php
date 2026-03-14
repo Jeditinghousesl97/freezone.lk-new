@@ -1,12 +1,58 @@
 <?php
 class CartController extends BaseController
 {
+    private function enrichCartItems(array $cart)
+    {
+        require_once 'models/Product.php';
+        $productModel = new Product();
+        $updated = false;
+
+        foreach ($cart as &$item) {
+            $productId = (int) ($item['id'] ?? 0);
+            if ($productId <= 0) {
+                continue;
+            }
+
+            $product = $productModel->getById($productId);
+            if (!$product) {
+                continue;
+            }
+
+            $livePrice = (!empty($product['sale_price']) && (float) $product['sale_price'] < (float) $product['price'])
+                ? (float) $product['sale_price']
+                : (float) $product['price'];
+
+            $item['price'] = $livePrice;
+            $item['title'] = $product['title'] ?? ($item['title'] ?? 'Product');
+            $item['weight_grams'] = max(0, (int) ($product['weight_grams'] ?? 0));
+            $item['is_free_shipping'] = !empty($product['free_shipping']) ? 1 : 0;
+
+            if (empty($item['img']) && !empty($product['main_image'])) {
+                $imagePath = 'assets/uploads/' . $product['main_image'];
+                if (file_exists(ROOT_PATH . $imagePath)) {
+                    $item['img'] = BASE_URL . $imagePath;
+                }
+            }
+
+            $updated = true;
+        }
+
+        if ($updated) {
+            $_SESSION['cart'] = $cart;
+        }
+
+        return $cart;
+    }
+
     public function index()
     {
         // 1. Fetch Settings
         require_once 'models/Setting.php';
+        require_once 'models/DeliverySetting.php';
+        require_once 'helpers/DeliveryHelper.php';
         require_once 'helpers/SeoHelper.php';
         $settingModel = new Setting();
+        $deliverySettingModel = new DeliverySetting();
         $settings = $settingModel->getAllPairs();
         $seo = SeoHelper::defaultSeo($settings, [
             'seo_title' => 'My Cart | ' . SeoHelper::shopName($settings),
@@ -21,12 +67,15 @@ class CartController extends BaseController
 
         // 2. Get Cart from Session
         $cart = isset($_SESSION['cart']) ? $_SESSION['cart'] : [];
+        $cart = $this->enrichCartItems($cart);
 
         // 3. Load View
         $this->view('customer/shop/cart', [
             'title' => 'My Cart',
             'settings' => $settings,
             'cart' => $cart,
+            'deliveryDistricts' => DeliveryHelper::districtList(),
+            'deliveryRatesMap' => $deliverySettingModel->getRatesMap(),
             'seo_title' => $seo['seo_title'],
             'seo_description' => $seo['seo_description'],
             'seo_canonical' => $seo['seo_canonical'],
@@ -40,11 +89,20 @@ class CartController extends BaseController
     // Add Item to Cart (AJAX)
     public function add()
     {
+        require_once 'models/Product.php';
+        $productModel = new Product();
+
         // Accept JSON Input
         $input = json_decode(file_get_contents('php://input'), true);
 
         if (!$input || empty($input['id'])) {
             echo json_encode(['success' => false, 'message' => 'Invalid data']);
+            exit;
+        }
+
+        $product = $productModel->getById((int) $input['id']);
+        if (!$product) {
+            echo json_encode(['success' => false, 'message' => 'Product not found']);
             exit;
         }
 
@@ -68,13 +126,28 @@ class CartController extends BaseController
 
         // Add new if not found
         if (!$found) {
+            $imageUrl = $input['img'] ?? '';
+            if (!empty($product['main_image'])) {
+                $imagePath = 'assets/uploads/' . $product['main_image'];
+                if (file_exists(ROOT_PATH . $imagePath)) {
+                    $imageUrl = BASE_URL . $imagePath;
+                }
+            }
+
+            $livePrice = (!empty($product['sale_price']) && (float) $product['sale_price'] < (float) $product['price'])
+                ? (float) $product['sale_price']
+                : (float) $product['price'];
+
             $_SESSION['cart'][] = [
-                'id' => $input['id'],
-                'title' => $input['title'],
-                'price' => $input['price'],
-                'img' => $input['img'], // URL passed from frontend 
-                'variants' => $input['variants'],
+                'id' => (int) $product['id'],
+                'title' => $product['title'] ?? ($input['title'] ?? 'Product'),
+                'price' => $livePrice,
+                'img' => $imageUrl,
+                'variants' => $input['variants'] ?? '',
                 'qty' => $qtyToAdd
+                ,
+                'weight_grams' => max(0, (int) ($product['weight_grams'] ?? 0)),
+                'is_free_shipping' => !empty($product['free_shipping']) ? 1 : 0
             ];
         }
 

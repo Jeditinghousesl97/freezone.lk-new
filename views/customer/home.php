@@ -221,6 +221,31 @@
             </div>
         <?php endif; ?>
 
+        <?php if (!empty($freeShippingProducts)): ?>
+            <div class="section-header">
+                <h2 class="section-title">Free Shipping Products</h2>
+            </div>
+            <div style="position: relative;">
+                <button class="scroll-btn left d-lg-flex" onclick="scrollSection(this, -1)" style="display: none; position: absolute; top: 50%; left: -15px; transform: translateY(-50%); z-index: 10; 
+                       width: 35px; height: 35px; border-radius: 50%; background: white; 
+                       box-shadow: 0 2px 5px rgba(0,0,0,0.1); border: 1px solid #eee; 
+                       cursor: pointer; align-items: center; justify-content: center;">
+                    <i class="fas fa-chevron-left" style="color: black; font-size: 14px;"></i>
+                </button>
+                <div class="products-scroll">
+                    <?php foreach ($freeShippingProducts as $prod): ?>
+                        <?php include 'views/customer/partials/product_card.php'; ?>
+                    <?php endforeach; ?>
+                </div>
+                <button class="scroll-btn right d-lg-flex" onclick="scrollSection(this, 1)" style="display: none; position: absolute; top: 50%; right: -15px; transform: translateY(-50%); z-index: 10; 
+                       width: 35px; height: 35px; border-radius: 50%; background: white; 
+                       box-shadow: 0 2px 5px rgba(0,0,0,0.1); border: 1px solid #eee; 
+                       cursor: pointer; align-items: center; justify-content: center;">
+                    <i class="fas fa-chevron-right" style="color: black; font-size: 14px;"></i>
+                </button>
+            </div>
+        <?php endif; ?>
+
     </main>
 
 </div>
