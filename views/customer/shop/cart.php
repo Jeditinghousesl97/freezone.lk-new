@@ -183,7 +183,12 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
                 </div>
                 <div class="form-group" style="margin-bottom: 15px; flex: 1;">
                     <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px;">District <span style="color:red">*</span></label>
-                    <input type="text" id="ordDistrict" class="form-control" list="districtListCart" placeholder="Search district" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                    <select id="ordDistrict" class="form-control" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background:#fff;">
+                        <option value="">Select district</option>
+                        <?php foreach (($deliveryDistricts ?? []) as $districtName): ?>
+                            <option value="<?= htmlspecialchars($districtName) ?>"><?= htmlspecialchars($districtName) ?></option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
             </div>
 
@@ -223,11 +228,6 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
             </div>
         </form>
 
-        <datalist id="districtListCart">
-            <?php foreach (($deliveryDistricts ?? []) as $districtName): ?>
-                <option value="<?= htmlspecialchars($districtName) ?>"></option>
-            <?php endforeach; ?>
-        </datalist>
     </div>
 </div>
 
@@ -243,7 +243,12 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
 
         <div class="form-group" style="margin-bottom: 16px;">
             <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px;">District</label>
-            <input type="text" id="estimateDistrictInput" class="form-control" list="districtListCart" placeholder="Search district" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+            <select id="estimateDistrictInput" class="form-control" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background:#fff;">
+                <option value="">Select district</option>
+                <?php foreach (($deliveryDistricts ?? []) as $districtName): ?>
+                    <option value="<?= htmlspecialchars($districtName) ?>"><?= htmlspecialchars($districtName) ?></option>
+                <?php endforeach; ?>
+            </select>
         </div>
 
         <div style="background:#fafafa; border:1px solid #ededed; border-radius:12px; padding:14px; margin-bottom:18px;">

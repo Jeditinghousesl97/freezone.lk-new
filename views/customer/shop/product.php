@@ -503,8 +503,13 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
                 <div class="form-group" style="margin-bottom: 15px; flex: 1;">
                     <label
                         style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px;">District <span style="color:red">*</span></label>
-                    <input type="text" id="ordDistrict" class="form-control" list="districtListProduct" placeholder="Search district"
-                        style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                    <select id="ordDistrict" class="form-control"
+                        style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background:#fff;">
+                        <option value="">Select district</option>
+                        <?php foreach (($deliveryDistricts ?? []) as $districtName): ?>
+                            <option value="<?= htmlspecialchars($districtName) ?>"><?= htmlspecialchars($districtName) ?></option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
             </div>
 
@@ -552,11 +557,6 @@ if (!empty($product['size_guide_image']) && file_exists(ROOT_PATH . $sgPath)):
                     via WhatsApp</button>
             </div>
         </form>
-        <datalist id="districtListProduct">
-            <?php foreach (($deliveryDistricts ?? []) as $districtName): ?>
-                <option value="<?= htmlspecialchars($districtName) ?>"></option>
-            <?php endforeach; ?>
-        </datalist>
     </div>
 </div>
 
