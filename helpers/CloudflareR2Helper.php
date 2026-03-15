@@ -67,6 +67,22 @@ class CloudflareR2Helper
         return !empty($response['ok']);
     }
 
+    public static function uploadLocalFile($absolutePath, $filename)
+    {
+        $absolutePath = (string) $absolutePath;
+        $filename = self::cleanFilename($filename);
+        if ($absolutePath === '' || $filename === '' || !is_file($absolutePath)) {
+            return false;
+        }
+
+        $contentType = function_exists('mime_content_type') ? (string) @mime_content_type($absolutePath) : '';
+        if ($contentType === '') {
+            $contentType = 'application/octet-stream';
+        }
+
+        return self::uploadTmpFile($absolutePath, $filename, $contentType);
+    }
+
     public static function deleteByFilename($filename)
     {
         $filename = self::cleanFilename($filename);
@@ -120,6 +136,79 @@ class CloudflareR2Helper
     public static function clearCache()
     {
         self::$settingsCache = null;
+    }
+
+    public static function statusSummary()
+    {
+        $settings = self::settings();
+        $enabled = !empty($settings['cloudflare_images_enabled']);
+        $hasCredentials = self::hasUploadCredentials();
+        $hasPublicBase = trim((string) ($settings['cloudflare_r2_public_base_url'] ?? '')) !== '';
+
+        if (!$enabled) {
+            return [
+                'state' => 'off',
+                'label' => 'Cloudflare Off',
+                'message' => 'Cloudflare image delivery is currently disabled. Local storage rules apply.'
+            ];
+        }
+
+        if (!$hasCredentials || !$hasPublicBase) {
+            return [
+                'state' => 'misconfigured',
+                'label' => 'Needs Setup',
+                'message' => 'Cloudflare is turned on, but account credentials or the public image base URL are incomplete.'
+            ];
+        }
+
+        return [
+            'state' => 'ready',
+            'label' => 'Ready To Test',
+            'message' => 'Cloudflare settings are filled in. Use Test Connection to verify R2 upload/delete access.'
+        ];
+    }
+
+    public static function testConnection()
+    {
+        if (!self::hasUploadCredentials()) {
+            return [
+                'ok' => false,
+                'message' => 'Missing Cloudflare R2 credentials.'
+            ];
+        }
+
+        $testName = '__cf_test_' . time() . '_' . bin2hex(random_bytes(4)) . '.txt';
+        $tempPath = tempnam(sys_get_temp_dir(), 'cfimg_');
+        if ($tempPath === false) {
+            return [
+                'ok' => false,
+                'message' => 'Could not create a temporary file for testing.'
+            ];
+        }
+
+        file_put_contents($tempPath, 'cloudflare-r2-test:' . date('c'));
+        $uploadOk = self::uploadTmpFile($tempPath, $testName, 'text/plain');
+        @unlink($tempPath);
+
+        if (!$uploadOk) {
+            return [
+                'ok' => false,
+                'message' => 'R2 upload test failed. Check Account ID, bucket name, Access Key ID, and Secret Access Key.'
+            ];
+        }
+
+        $deleteOk = self::deleteByFilename($testName);
+        if (!$deleteOk) {
+            return [
+                'ok' => false,
+                'message' => 'R2 upload worked, but delete test failed. Upload/delete permissions may be incomplete.'
+            ];
+        }
+
+        return [
+            'ok' => true,
+            'message' => 'Cloudflare R2 upload and delete test completed successfully.'
+        ];
     }
 
     private static function cleanFilename($filename)

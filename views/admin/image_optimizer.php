@@ -42,6 +42,7 @@
 
     <div class="imgopt-actions">
         <a href="<?= BASE_URL ?>admin/dashboard" class="imgopt-btn secondary">Back to Dashboard</a>
+        <a href="<?= BASE_URL ?>settings/edit" class="imgopt-btn secondary">Image Settings</a>
         <a href="<?= BASE_URL ?>admin/serverCheck" class="imgopt-btn secondary">Server Check</a>
         <form method="POST" style="display:inline-flex;">
             <input type="hidden" name="reset_opcache" value="1">
@@ -76,7 +77,94 @@
             <div class="imgopt-value" style="font-size:18px; line-height:1.4;"><?= (int) (($optimization_summary['missing_derivatives'] ?? 0)) ?> Files</div>
             <div class="imgopt-note"><?= (int) (($optimization_summary['fully_optimized'] ?? 0)) ?> files are already fully optimized.</div>
         </div>
+        <div class="imgopt-card">
+            <div class="imgopt-label">Local Files Ready For Cloudflare</div>
+            <div class="imgopt-value"><?= (int) ($migratable_count ?? 0) ?></div>
+            <div class="imgopt-note"><?= htmlspecialchars((string) ($cloudflare_status['label'] ?? 'Cloudflare Off')) ?>. Old local originals can be copied to Cloudflare in batches from this page.</div>
+        </div>
     </div>
+
+    <div class="imgopt-panel" style="margin-bottom:16px;">
+        <h3 style="margin:0 0 12px;">Move Existing Local Images To Cloudflare</h3>
+        <div class="imgopt-item" style="margin-bottom:12px;">
+            <strong>Status:</strong> <?= htmlspecialchars((string) ($cloudflare_status['label'] ?? 'Cloudflare Off')) ?><br>
+            <?= htmlspecialchars((string) ($cloudflare_status['message'] ?? '')) ?>
+        </div>
+        <form method="POST" class="imgopt-form">
+            <input type="hidden" name="migrate_cloudflare" value="1">
+            <div class="imgopt-field">
+                <label for="migration_limit">Files Per Batch</label>
+                <input type="number" min="1" step="1" name="migration_limit" id="migration_limit" value="<?= (int) ($migration_limit ?? 25) ?>" placeholder="25">
+            </div>
+            <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:#333;">
+                <input type="checkbox" name="delete_local_after_upload" value="1" <?= !empty($migration_delete_local) ? 'checked' : '' ?>>
+                Delete each local file immediately after its Cloudflare upload succeeds
+            </label>
+            <input type="hidden" name="migration_offset" value="0">
+            <div class="imgopt-note">Recommended order: first run without deletion, confirm storefront images work from Cloudflare, then run again with deletion if you want to free server storage.</div>
+            <div class="imgopt-actions" style="margin-bottom:0;">
+                <button type="submit" class="imgopt-btn primary">Start Cloudflare Migration</button>
+            </div>
+        </form>
+    </div>
+
+    <?php if (!empty($migration_summary)): ?>
+        <div class="imgopt-panel" style="margin-bottom:16px;">
+            <h3 style="margin:0 0 12px;">Cloudflare Migration Result</h3>
+            <?php if (!empty($migration_summary['message'])): ?>
+                <div class="imgopt-alert warn"><?= htmlspecialchars((string) $migration_summary['message']) ?></div>
+            <?php endif; ?>
+            <div class="imgopt-grid" style="margin-bottom:12px;">
+                <div class="imgopt-card">
+                    <div class="imgopt-label">Batch Scanned</div>
+                    <div class="imgopt-value"><?= (int) ($migration_summary['scanned'] ?? 0) ?></div>
+                </div>
+                <div class="imgopt-card">
+                    <div class="imgopt-label">Uploaded To Cloudflare</div>
+                    <div class="imgopt-value"><?= (int) ($migration_summary['uploaded'] ?? 0) ?></div>
+                </div>
+                <div class="imgopt-card">
+                    <div class="imgopt-label">Deleted Local</div>
+                    <div class="imgopt-value"><?= (int) ($migration_summary['deleted_local'] ?? 0) ?></div>
+                </div>
+                <div class="imgopt-card">
+                    <div class="imgopt-label">Failed</div>
+                    <div class="imgopt-value"><?= (int) ($migration_summary['failed'] ?? 0) ?></div>
+                </div>
+            </div>
+
+            <div class="imgopt-item" style="margin-bottom:12px;">
+                <strong>Progress:</strong>
+                <?= (int) ($migration_summary['next_offset'] ?? 0) ?> / <?= (int) ($migration_summary['total'] ?? 0) ?> local files processed
+                <?php if (!empty($migration_summary['complete'])): ?>
+                    <span style="color:#1d7a40; font-weight:800;"> - Completed</span>
+                <?php endif; ?>
+            </div>
+
+            <?php if (empty($migration_summary['complete']) && (int) ($migration_summary['next_offset'] ?? 0) < (int) ($migration_summary['total'] ?? 0)): ?>
+                <form method="POST" class="imgopt-form" style="margin-top:14px;">
+                    <input type="hidden" name="migrate_cloudflare" value="1">
+                    <input type="hidden" name="migration_limit" value="<?= (int) ($migration_summary['limit'] ?? ($migration_limit ?? 25)) ?>">
+                    <input type="hidden" name="migration_offset" value="<?= (int) ($migration_summary['next_offset'] ?? 0) ?>">
+                    <?php if (!empty($migration_delete_local)): ?>
+                        <input type="hidden" name="delete_local_after_upload" value="1">
+                    <?php endif; ?>
+                    <div class="imgopt-actions" style="margin-bottom:0;">
+                        <button type="submit" class="imgopt-btn primary">Continue Cloudflare Migration</button>
+                    </div>
+                </form>
+            <?php endif; ?>
+
+            <?php if (!empty($migration_summary['files'])): ?>
+                <div class="imgopt-note" style="margin:14px 0 8px;">Sample migrated files:</div>
+                <div class="imgopt-list">
+                    <?php foreach ($migration_summary['files'] as $fileName): ?>
+                        <div class="imgopt-item"><?= htmlspecialchars((string) $fileName) ?></div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
 
     <div class="imgopt-panel" style="margin-bottom:16px;">
         <h3 style="margin:0 0 12px;">Run Optimizer</h3>

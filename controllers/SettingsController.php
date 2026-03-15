@@ -76,6 +76,7 @@ class SettingsController extends BaseController
             'currency_symbol',
             'shop_whatsapp',
             'cloudflare_images_enabled',
+            'local_image_optimization_enabled',
             'cloudflare_r2_account_id',
             'cloudflare_r2_bucket',
             'cloudflare_r2_access_key_id',
@@ -131,6 +132,12 @@ class SettingsController extends BaseController
             'email_owner_template_order_cancelled'
         ];
         $settings = $this->settingModel->getMultiple($keys);
+        $cloudflareStatus = CloudflareR2Helper::statusSummary();
+        $testResult = null;
+        if (isset($_SESSION['cloudflare_test_result']) && is_array($_SESSION['cloudflare_test_result'])) {
+            $testResult = $_SESSION['cloudflare_test_result'];
+            unset($_SESSION['cloudflare_test_result']);
+        }
 
         // Get Shop Owner credentials
         // Use LIMIT 1 as we generally assume single tenant/owner for this setup
@@ -139,7 +146,9 @@ class SettingsController extends BaseController
         $this->view('admin/settings/form', [
             'title' => 'Shop Settings',
             'settings' => $settings,
-            'owner' => $owner
+            'owner' => $owner,
+            'cloudflare_status' => $cloudflareStatus,
+            'cloudflare_test_result' => $testResult
         ]);
     }
 
@@ -290,8 +299,10 @@ class SettingsController extends BaseController
             $this->settingModel->set('sms_enabled', !empty($_POST['sms_enabled']) ? '1' : '0');
             $this->settingModel->set('sms_owner_enabled', !empty($_POST['sms_owner_enabled']) ? '1' : '0');
             $this->settingModel->set('cloudflare_images_enabled', !empty($_POST['cloudflare_images_enabled']) ? '1' : '0');
+            $this->settingModel->set('local_image_optimization_enabled', !empty($_POST['local_image_optimization_enabled']) ? '1' : '0');
 
             CloudflareR2Helper::clearCache();
+            ImageHelper::clearConfigCache();
 
             // Owner Credentials Update / Create
             $ownerId = $_POST['owner_id'] ?? '';
@@ -324,6 +335,45 @@ class SettingsController extends BaseController
 
             $this->redirect('settings/edit');
         }
+    }
+
+    public function testCloudflare()
+    {
+        $this->checkAuth();
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('settings/edit');
+            return;
+        }
+
+        $textFields = [
+            'cloudflare_r2_account_id',
+            'cloudflare_r2_bucket',
+            'cloudflare_r2_public_base_url'
+        ];
+
+        foreach ($textFields as $field) {
+            if (isset($_POST[$field])) {
+                $this->settingModel->set($field, trim((string) $_POST[$field]));
+            }
+        }
+
+        if (isset($_POST['cloudflare_r2_access_key_id']) && trim((string) $_POST['cloudflare_r2_access_key_id']) !== '') {
+            $this->settingModel->set('cloudflare_r2_access_key_id', trim((string) $_POST['cloudflare_r2_access_key_id']));
+        }
+
+        if (isset($_POST['cloudflare_r2_secret_access_key']) && trim((string) $_POST['cloudflare_r2_secret_access_key']) !== '') {
+            $this->settingModel->set('cloudflare_r2_secret_access_key', trim((string) $_POST['cloudflare_r2_secret_access_key']));
+        }
+
+        $this->settingModel->set('cloudflare_images_enabled', !empty($_POST['cloudflare_images_enabled']) ? '1' : '0');
+        $this->settingModel->set('local_image_optimization_enabled', !empty($_POST['local_image_optimization_enabled']) ? '1' : '0');
+
+        CloudflareR2Helper::clearCache();
+        ImageHelper::clearConfigCache();
+
+        $_SESSION['cloudflare_test_result'] = CloudflareR2Helper::testConnection();
+        $this->redirect('settings/edit');
     }
 
     // 6. Global Styles Page

@@ -148,6 +148,51 @@
             border: none;
             font-size: 16px;
         }
+
+        .integration-box {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 16px;
+            background: #ffffff;
+            border: 1px solid #e9e9e9;
+        }
+
+        .integration-status {
+            display: inline-flex;
+            align-items: center;
+            padding: 8px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 800;
+            margin-bottom: 12px;
+        }
+
+        .integration-status.ready { background: #e9f8ef; color: #17663b; }
+        .integration-status.off { background: #f4f4f4; color: #555; }
+        .integration-status.misconfigured { background: #fff5e6; color: #9a5a0a; }
+        .integration-alert {
+            margin: 0 0 14px;
+            padding: 12px 14px;
+            border-radius: 12px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .integration-alert.success { background: #e9f8ef; color: #17663b; }
+        .integration-alert.error { background: #fff0f0; color: #a43838; }
+        .imgopt-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 800;
+            cursor: pointer;
+        }
+        .imgopt-btn.secondary {
+            background: #fff;
+            color: #333;
+            border: 1px solid #ececec;
+        }
     </style>
 </head>
 
@@ -345,14 +390,34 @@
             <input type="text" name="currency_symbol" class="input-box" placeholder="LKR"
                 value="<?= htmlspecialchars($settings['currency_symbol'] ?? '') ?>">
 
-            <div style="margin-top:20px; padding:20px; border-radius:16px; background:#ffffff; border:1px solid #e9e9e9;">
+            <div class="integration-box">
                 <h3 style="margin:0 0 14px;">Cloudflare Image Delivery</h3>
                 <p style="font-size:12px; color:#777; margin:0 0 16px;">Use Cloudflare R2 + Cloudflare edge delivery for new uploads. When enabled and configured correctly, new images stop generating many local optimized files on this server.</p>
+
+                <div class="integration-status <?= htmlspecialchars((string) ($cloudflare_status['state'] ?? 'off')) ?>">
+                    <?= htmlspecialchars((string) ($cloudflare_status['label'] ?? 'Cloudflare Off')) ?>
+                </div>
+                <div style="font-size:12px; color:#666; margin:-4px 0 16px;"><?= htmlspecialchars((string) ($cloudflare_status['message'] ?? '')) ?></div>
+
+                <?php if (!empty($cloudflare_test_result)): ?>
+                    <div class="integration-alert <?= !empty($cloudflare_test_result['ok']) ? 'success' : 'error' ?>">
+                        <?= htmlspecialchars((string) ($cloudflare_test_result['message'] ?? '')) ?>
+                    </div>
+                <?php endif; ?>
 
                 <label style="display:flex; align-items:center; gap:8px; margin-bottom:18px; font-size:14px; color:#333;">
                     <input type="checkbox" name="cloudflare_images_enabled" value="1" <?= !empty($settings['cloudflare_images_enabled']) ? 'checked' : '' ?>>
                     Enable Cloudflare image storage and delivery
                 </label>
+
+                <label style="display:flex; align-items:center; gap:8px; margin-bottom:18px; font-size:14px; color:#333;">
+                    <input type="checkbox" name="local_image_optimization_enabled" value="1" <?= (($settings['local_image_optimization_enabled'] ?? '1') !== '0') ? 'checked' : '' ?>>
+                    Enable local image optimization when Cloudflare is off
+                </label>
+
+                <div style="font-size:12px; color:#777; margin:-8px 0 16px;">
+                    If Cloudflare is on and working, local derivative generation stays off automatically. This switch controls local optimization only for local-storage mode.
+                </div>
 
                 <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px;">
                     <div>
@@ -381,6 +446,19 @@
 
                 <div style="font-size:12px; color:#777; margin-top:-8px;">
                     Recommended: point a proxied Cloudflare custom domain to your R2 bucket, then enter that URL here. Example object path will be <code>/uploads/your-file.jpg</code>.
+                </div>
+
+                <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;">
+                    <button type="submit"
+                        formaction="<?= BASE_URL ?>settings/testCloudflare"
+                        formmethod="POST"
+                        class="imgopt-btn secondary"
+                        style="padding:11px 15px; border:none;">
+                        Test Cloudflare Connection
+                    </button>
+                    <a href="<?= BASE_URL ?>admin/imageOptimizer" class="imgopt-btn secondary" style="padding:11px 15px; text-decoration:none;">
+                        Move Existing Local Images
+                    </a>
                 </div>
             </div>
 

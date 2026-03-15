@@ -145,17 +145,22 @@ class AdminController extends BaseController
 
         require_once 'models/Setting.php';
         require_once 'helpers/ImageHelper.php';
+        require_once 'helpers/CloudflareR2Helper.php';
 
         $settingModel = new Setting();
-        $settings = $settingModel->getMultiple(['shop_name', 'shop_logo', 'currency_symbol']);
+        $settings = $settingModel->getMultiple(['shop_name', 'shop_logo', 'currency_symbol', 'cloudflare_images_enabled']);
 
         $runSummary = null;
+        $migrationSummary = null;
         $inspectReport = null;
         $mode = 'scan';
         $batchLimit = 25;
         $optimizationSummary = [];
+        $migrationLimit = 25;
+        $migrationDeleteLocal = false;
 
         $optimizationSummary = ImageHelper::getUploadOptimizationSummary();
+        $cloudflareStatus = CloudflareR2Helper::statusSummary();
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (isset($_POST['reset_opcache'])) {
@@ -167,6 +172,15 @@ class AdminController extends BaseController
 
                 $this->redirect('admin/imageOptimizer?opcache=' . $status);
                 return;
+            } elseif (isset($_POST['migrate_cloudflare'])) {
+                $migrationLimit = max(1, (int) ($_POST['migration_limit'] ?? 25));
+                $migrationOffset = max(0, (int) ($_POST['migration_offset'] ?? 0));
+                $migrationDeleteLocal = !empty($_POST['delete_local_after_upload']);
+                $migrationSummary = ImageHelper::migrateExistingUploadsToCloudflareBatch(
+                    $migrationLimit,
+                    $migrationOffset,
+                    $migrationDeleteLocal
+                );
             } elseif (isset($_POST['inspect_image'])) {
                 $inspectReport = ImageHelper::inspectImageSet((string) ($_POST['inspect_image'] ?? ''));
             } else {
@@ -206,16 +220,24 @@ class AdminController extends BaseController
             }
         }
 
+        $migratableUploads = ImageHelper::getCloudflareMigratableUploads();
+        $migratableCount = count($migratableUploads);
+
         $this->view('admin/image_optimizer', [
             'title' => 'Image Optimizer',
             'settings' => $settings,
             'upload_count' => $uploadCount,
             'derived_count' => $derivedCount,
             'run_summary' => $runSummary,
+            'migration_summary' => $migrationSummary,
             'inspect_report' => $inspectReport,
             'mode' => $mode,
             'batch_limit' => $batchLimit,
-            'optimization_summary' => $optimizationSummary
+            'optimization_summary' => $optimizationSummary,
+            'cloudflare_status' => $cloudflareStatus,
+            'migratable_count' => $migratableCount,
+            'migration_limit' => $migrationLimit,
+            'migration_delete_local' => $migrationDeleteLocal
         ]);
     }
 }

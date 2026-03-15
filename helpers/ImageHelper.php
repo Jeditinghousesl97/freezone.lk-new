@@ -9,6 +9,7 @@ class ImageHelper
     private const QUALITY_WEBP = 82;
     private const QUALITY_AVIF = 52;
     private const QUALITY_JPEG = 84;
+    private static $localOptimizationEnabled = null;
 
     public static function uploadUrl($filename, $fallback = '')
     {
@@ -106,14 +107,18 @@ class ImageHelper
         }
 
         self::ensureDirectory(ROOT_PATH . self::ORIGINAL_DIR);
-        self::ensureDirectory(ROOT_PATH . self::DERIVED_DIR);
+        if (self::localOptimizationEnabled()) {
+            self::ensureDirectory(ROOT_PATH . self::DERIVED_DIR);
+        }
 
         $targetPath = ROOT_PATH . self::ORIGINAL_DIR . $baseName;
         if (!move_uploaded_file($file['tmp_name'], $targetPath)) {
             return '';
         }
 
-        self::generateDerivativeSet($baseName);
+        if (self::localOptimizationEnabled()) {
+            self::generateDerivativeSet($baseName);
+        }
         return $baseName;
     }
 
@@ -132,6 +137,101 @@ class ImageHelper
         ];
 
         return self::storeUploadedFile($file, $prefix);
+    }
+
+    public static function getCloudflareMigratableUploads()
+    {
+        $originalDir = ROOT_PATH . self::ORIGINAL_DIR;
+        if (!is_dir($originalDir)) {
+            return [];
+        }
+
+        $entries = scandir($originalDir) ?: [];
+        $files = [];
+        foreach ($entries as $entry) {
+            if ($entry === '.' || $entry === '..') {
+                continue;
+            }
+
+            $absolutePath = $originalDir . $entry;
+            if (!is_file($absolutePath)) {
+                continue;
+            }
+
+            if (!self::isPortableImage($entry)) {
+                continue;
+            }
+
+            $files[] = $entry;
+        }
+
+        sort($files, SORT_NATURAL | SORT_FLAG_CASE);
+        return $files;
+    }
+
+    public static function migrateExistingUploadsToCloudflareBatch($limit = 25, $offset = 0, $deleteLocalAfterUpload = false)
+    {
+        $files = self::getCloudflareMigratableUploads();
+        $total = count($files);
+        $offset = max(0, (int) $offset);
+        $limit = max(1, (int) $limit);
+
+        if (!CloudflareR2Helper::isEnabled()) {
+            return [
+                'scanned' => 0,
+                'uploaded' => 0,
+                'deleted_local' => 0,
+                'failed' => 0,
+                'files' => [],
+                'offset' => $offset,
+                'next_offset' => $offset,
+                'limit' => $limit,
+                'total' => $total,
+                'complete' => true,
+                'message' => 'Cloudflare image delivery must be enabled and configured before migration can run.'
+            ];
+        }
+
+        $batchFiles = array_slice($files, $offset, $limit);
+        $result = [
+            'scanned' => count($batchFiles),
+            'uploaded' => 0,
+            'deleted_local' => 0,
+            'failed' => 0,
+            'files' => [],
+            'offset' => $offset,
+            'next_offset' => min($offset + count($batchFiles), $total),
+            'limit' => $limit,
+            'total' => $total,
+            'complete' => ($offset + count($batchFiles)) >= $total,
+            'message' => ''
+        ];
+
+        foreach ($batchFiles as $entry) {
+            $absolutePath = ROOT_PATH . self::ORIGINAL_DIR . $entry;
+            if (!is_file($absolutePath)) {
+                $result['failed']++;
+                continue;
+            }
+
+            $uploaded = CloudflareR2Helper::uploadLocalFile($absolutePath, $entry);
+            if (!$uploaded) {
+                $result['failed']++;
+                continue;
+            }
+
+            $result['uploaded']++;
+            if (count($result['files']) < 20) {
+                $result['files'][] = $entry;
+            }
+
+            if ($deleteLocalAfterUpload) {
+                self::deleteLocalImageSetOnly($entry);
+                $result['deleted_local']++;
+            }
+        }
+
+        return $result;
     }
 
     public static function deleteImageSet($filename)
@@ -165,7 +265,7 @@ class ImageHelper
 
     public static function getOptimizableUploads()
     {
-        if (CloudflareR2Helper::isEnabled()) {
+        if (CloudflareR2Helper::isEnabled() || !self::localOptimizationEnabled()) {
             return [];
         }
 
@@ -200,6 +300,16 @@ class ImageHelper
     public static function getUploadOptimizationSummary()
     {
         if (CloudflareR2Helper::isEnabled()) {
+            return [
+                'total_optimizable' => 0,
+                'fully_optimized' => 0,
+                'missing_derivatives' => 0,
+                'missing_formats' => [],
+                'derived_files' => 0
+            ];
+        }
+
+        if (!self::localOptimizationEnabled()) {
             return [
                 'total_optimizable' => 0,
                 'fully_optimized' => 0,
@@ -319,7 +429,7 @@ class ImageHelper
 
     public static function optimizeExistingUploadsBatch($force = false, $limit = 25, $offset = 0)
     {
-        if (CloudflareR2Helper::isEnabled()) {
+        if (CloudflareR2Helper::isEnabled() || !self::localOptimizationEnabled()) {
             return [
                 'scanned' => 0,
                 'optimized' => 0,
@@ -510,7 +620,7 @@ class ImageHelper
 
     public static function regenerateImageSet($filename, $force = false)
     {
-        if (CloudflareR2Helper::isEnabled()) {
+        if (CloudflareR2Helper::isEnabled() || !self::localOptimizationEnabled()) {
             return false;
         }
 
@@ -532,7 +642,7 @@ class ImageHelper
 
     private static function generateDerivativeSet($filename)
     {
-        if (CloudflareR2Helper::isEnabled()) {
+        if (CloudflareR2Helper::isEnabled() || !self::localOptimizationEnabled()) {
             return false;
         }
 
@@ -697,6 +807,12 @@ class ImageHelper
         return in_array($extension, ['jpg', 'jpeg', 'png', 'webp', 'avif'], true);
     }
 
+    private static function isPortableImage($filename)
+    {
+        $extension = strtolower((string) pathinfo((string) $filename, PATHINFO_EXTENSION));
+        return in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif'], true);
+    }
+
     private static function gdImageFromFile($path, $mime)
     {
         switch ($mime) {
@@ -713,6 +829,49 @@ class ImageHelper
                 return function_exists('imagecreatefromavif') ? @imagecreatefromavif($path) : null;
             default:
                 return null;
+        }
+    }
+
+    public static function localOptimizationEnabled()
+    {
+        if (self::$localOptimizationEnabled !== null) {
+            return self::$localOptimizationEnabled;
+        }
+
+        require_once ROOT_PATH . 'models/Setting.php';
+        $settingModel = new Setting();
+        self::$localOptimizationEnabled = $settingModel->get('local_image_optimization_enabled', '1') !== '0';
+
+        return self::$localOptimizationEnabled;
+    }
+
+    public static function clearConfigCache()
+    {
+        self::$localOptimizationEnabled = null;
+    }
+
+    private static function deleteLocalImageSetOnly($filename)
+    {
+        $filename = basename(trim((string) $filename));
+        if ($filename === '') {
+            return;
+        }
+
+        $originalPath = ROOT_PATH . self::ORIGINAL_DIR . $filename;
+        if (is_file($originalPath)) {
+            @unlink($originalPath);
+        }
+
+        $nameWithoutExtension = pathinfo($filename, PATHINFO_FILENAME);
+        $derivedDir = ROOT_PATH . self::DERIVED_DIR;
+        if (!is_dir($derivedDir)) {
+            return;
+        }
+
+        foreach (glob($derivedDir . $nameWithoutExtension . '__*') ?: [] as $derivedFile) {
+            if (is_file($derivedFile)) {
+                @unlink($derivedFile);
+            }
         }
     }
 }
