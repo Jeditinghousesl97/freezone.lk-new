@@ -19,6 +19,15 @@
             margin-top: 20px;
         }
 
+        .guide-preview {
+            width: 100%;
+            max-width: 220px;
+            border-radius: 8px;
+            display: block;
+            margin: 12px auto 0;
+            object-fit: cover;
+        }
+
         .header-bar {
             display: flex;
             justify-content: space-between;
@@ -46,42 +55,81 @@
             background: none;
             font-size: 16px;
         }
+
+        .current-image-note {
+            font-size: 12px;
+            color: #666;
+            margin: 8px 0 0;
+        }
     </style>
 </head>
 
 <body>
-<?php include 'views/admin/partials/loader.php'; ?>
-    <form action="<?= BASE_URL ?>sizeGuide/store" method="POST" enctype="multipart/form-data">
+    <?php require_once ROOT_PATH . 'helpers/ImageHelper.php'; ?>
+    <?php include 'views/admin/partials/loader.php'; ?>
+    <form action="<?= BASE_URL ?>sizeGuide/<?= $mode === 'edit' ? 'update' : 'store' ?>" method="POST" enctype="multipart/form-data"
+        onsubmit="showGlobalLoader()">
         <div class="container">
+            <?php if ($mode === 'edit'): ?>
+                <input type="hidden" name="id" value="<?= $guide['id'] ?>">
+            <?php endif; ?>
+
             <div class="header-bar">
                 <div style="display:flex; gap:10px; align-items:center;">
-                    <a href="<?= BASE_URL ?>sizeGuide/index" class="back-circle">❮</a>
-                    <h2 style="margin:0;">Add Guide</h2>
+                    <a href="<?= BASE_URL ?>sizeGuide/index" class="back-circle">&#10094;</a>
+                    <h2 style="margin:0;"><?= $mode === 'edit' ? 'Edit Guide' : 'Add Guide' ?></h2>
                 </div>
-                <button type="submit" class="save-txt" onclick="showGlobalLoader()">SAVE</button>
+                <button type="submit" class="save-txt">SAVE</button>
             </div>
 
-            <input type="text" name="name" class="form-control" placeholder="Size Guide Name" required>
+            <input type="text" name="name" class="form-control" placeholder="Size Guide Name"
+                value="<?= htmlspecialchars($guide['name'] ?? '') ?>" required>
 
             <div class="upload-area" onclick="document.getElementById('guide-img').click()">
-                <div id="guide-placeholder">
+                <div id="guide-placeholder" style="<?= !empty($guide['image_path']) ? 'display:none;' : '' ?>">
                     <p style="color:#888; margin:0;">Size Guide Image</p>
-                    <div style="font-size:24px; margin: 10px 0;">📷</div>
-                    <p style="font-size:10px; color:#aaa;">Tap here to upload a photo from gallery</p>
+                    <div style="font-size:24px; margin: 10px 0;">&#128247;</div>
+                    <p style="font-size:10px; color:#aaa;">
+                        <?= $mode === 'edit' ? 'Tap here to replace the current image' : 'Tap here to upload a photo from gallery' ?>
+                    </p>
                 </div>
+
+                <div id="guide-current-image" style="<?= empty($guide['image_path']) ? 'display:none;' : '' ?>">
+                    <?php if (!empty($guide['image_path'])): ?>
+                        <?php $guidePreview = ImageHelper::uploadUrl($guide['image_path'], 'https://via.placeholder.com/320x320?text=Guide'); ?>
+                        <?= ImageHelper::renderResponsivePicture(
+                            $guide['image_path'],
+                            $guidePreview,
+                            [
+                                'class' => 'guide-preview',
+                                'alt' => $guide['name'] ?? 'Size guide',
+                                'loading' => 'eager',
+                                'decoding' => 'async',
+                                'fetchpriority' => 'high'
+                            ],
+                            'admin_thumb'
+                        ) ?>
+                        <p class="current-image-note">Tap here to replace the current image.</p>
+                    <?php endif; ?>
+                </div>
+
                 <p id="guide-feedback" style="display:none; color:#007aff; font-weight:bold; font-size:16px;">+1 image
                     selected</p>
-                <input type="file" name="image" id="guide-img" style="display:none;" required>
+                <input type="file" name="image" id="guide-img" style="display:none;" <?= $mode === 'add' ? 'required' : '' ?>>
             </div>
-
         </div>
     </form>
 
     <script>
-        document.getElementById('guide-img').addEventListener('change', function (e)  {
-            
+        document.getElementById('guide-img').addEventListener('change', function (e) {
             if (e.target.files && e.target.files.length > 0) {
                 document.getElementById('guide-placeholder').style.display = 'none';
+
+                const currentImage = document.getElementById('guide-current-image');
+                if (currentImage) {
+                    currentImage.style.display = 'none';
+                }
+
                 document.getElementById('guide-feedback').style.display = 'block';
                 document.getElementById('guide-feedback').innerText = "+" + e.target.files.length + " image selected";
             }

@@ -29,6 +29,7 @@
             display: flex;
             align-items: center;
             gap: 15px;
+            min-width: 0;
         }
 
         .guide-thumb {
@@ -37,6 +38,7 @@
             border-radius: 8px;
             object-fit: cover;
             background-color: #eee;
+            flex-shrink: 0;
         }
 
         .guide-name {
@@ -45,8 +47,14 @@
             color: #333;
         }
 
-        .delete-btn-icon {
-            background-color: #ff3b30;
+        .guide-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .action-btn-icon {
             color: white;
             width: 32px;
             height: 32px;
@@ -56,6 +64,14 @@
             justify-content: center;
             text-decoration: none;
             font-size: 16px;
+        }
+
+        .action-btn-icon.edit {
+            background-color: #00c4b4;
+        }
+
+        .action-btn-icon.delete {
+            background-color: #ff3b30;
         }
 
         .header-bar {
@@ -81,12 +97,10 @@
 
 <body>
     <?php require_once ROOT_PATH . 'helpers/ImageHelper.php'; ?>
-<!-- Global Loader Injection -->
     <?php include 'views/admin/partials/loader.php'; ?>
     <div class="container">
         <div class="header-bar">
-            <!-- Assuming back goes to Dashboard or previous page. Screenshot shows Back Arrow. -->
-            <a href="<?= BASE_URL ?>admin/dashboard" class="back-circle">❮</a>
+            <a href="<?= BASE_URL ?>admin/dashboard" class="back-circle">&#10094;</a>
             <h2 style="margin:0;">Size Guides</h2>
         </div>
 
@@ -122,10 +136,17 @@
                         </span>
                     </div>
 
-                    <a href="<?= BASE_URL ?>sizeGuide/delete/<?= $guide['id'] ?>" class="delete-btn-icon"
-                        onclick="if(confirm('Delete this size guide?')){ showGlobalLoader(); return true; } else { return false; }">
-                        🗑️
-                    </a>
+                    <div class="guide-actions">
+                        <a href="<?= BASE_URL ?>sizeGuide/edit/<?= $guide['id'] ?>" class="action-btn-icon edit"
+                            onclick="showGlobalLoader()" title="Edit Size Guide">
+                            &#9998;
+                        </a>
+                        <a href="<?= BASE_URL ?>sizeGuide/delete/<?= $guide['id'] ?>" class="action-btn-icon delete"
+                            onclick="if(confirm('Delete this size guide?')){ showGlobalLoader(); return true; } else { return false; }"
+                            title="Delete Size Guide">
+                            &#128465;
+                        </a>
+                    </div>
                 </div>
             <?php endforeach; ?>
 
@@ -135,14 +156,13 @@
         </div>
     </div>
     <script>
-        // Check if inside Iframe
         if (window.self !== window.top) {
-            // 1. Hide Back Button
             const backBtn = document.querySelector('.back-circle');
-            if(backBtn) backBtn.style.display = 'none';
+            if (backBtn) {
+                backBtn.style.display = 'none';
+            }
 
-            // 2. Refresh Parent Dropdown (if parent has the function)
-            if(window.parent && window.parent.refreshSizeGuides) {
+            if (window.parent && window.parent.refreshSizeGuides) {
                 window.parent.refreshSizeGuides();
             }
         }

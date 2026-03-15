@@ -33,6 +33,27 @@ class SizeGuide extends BaseModel
         return $stmt->execute();
     }
 
+    public function update($id, $data)
+    {
+        $sql = "UPDATE size_guides SET name = :name";
+
+        if (!empty($data['image_path'])) {
+            $sql .= ", image_path = :image_path";
+        }
+
+        $sql .= " WHERE id = :id";
+
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bindParam(':id', $id);
+        $stmt->bindParam(':name', $data['name']);
+
+        if (!empty($data['image_path'])) {
+            $stmt->bindParam(':image_path', $data['image_path']);
+        }
+
+        return $stmt->execute();
+    }
+
     public function delete($id)
     {
         $sql = "DELETE FROM size_guides WHERE id = :id";

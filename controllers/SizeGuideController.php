@@ -32,6 +32,21 @@ class SizeGuideController extends BaseController
         ]);
     }
 
+    public function edit($id)
+    {
+        $guide = $this->model->getById($id);
+        if (!$guide) {
+            $this->redirect('sizeGuide/index');
+            return;
+        }
+
+        $this->view('admin/sizeguides/form', [
+            'title' => 'Edit Size Guide',
+            'mode' => 'edit',
+            'guide' => $guide
+        ]);
+    }
+
     public function store()
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -49,6 +64,40 @@ class SizeGuideController extends BaseController
                 $this->redirect('sizeGuide/index');
             } else {
                 echo "Error adding size guide.";
+            }
+        }
+    }
+
+    public function update()
+    {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $id = $_POST['id'] ?? null;
+            $name = $_POST['name'] ?? '';
+
+            if (!$id) {
+                $this->redirect('sizeGuide/index');
+                return;
+            }
+
+            $imagePath = null;
+            if (isset($_FILES['image']) && ($_FILES['image']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+                $storedName = ImageHelper::storeUploadedFile($_FILES['image'], 'sizeguide');
+                if ($storedName !== '') {
+                    $imagePath = $storedName;
+                    $currentGuide = $this->model->getById($id);
+                    if ($currentGuide && !empty($currentGuide['image_path'])) {
+                        $this->deleteFile($currentGuide['image_path']);
+                    }
+                }
+            }
+
+            if ($this->model->update($id, [
+                'name' => $name,
+                'image_path' => $imagePath
+            ])) {
+                $this->redirect('sizeGuide/index');
+            } else {
+                echo "Error updating size guide.";
             }
         }
     }
