@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <?php require_once 'helpers/SeoHelper.php'; ?>
+    <?php require_once ROOT_PATH . 'helpers/ImageHelper.php'; ?>
     <title>
         <?= htmlspecialchars(isset($seo_title) ? $seo_title : (isset($title) ? $title : 'Ecom Shop')) ?>
     </title>
@@ -44,7 +45,7 @@
     <?php endif; ?>
     <!-- Use the new Customer CSS -->
     <?php if (!empty($settings['shop_favicon'])): ?>
-        <link rel="icon" type="image/x-icon" href="<?= str_replace('/Ecom-CMS/', BASE_URL, $settings['shop_favicon']) ?>">
+        <link rel="icon" type="image/x-icon" href="<?= htmlspecialchars(ImageHelper::settingsImageUrl($settings['shop_favicon'], str_replace('/Ecom-CMS/', BASE_URL, $settings['shop_favicon']))) ?>">
     <?php endif; ?>
     <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/customer.css?v=<?= time() ?>">
     <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/customer-desktop-refresh.css?v=<?= time() ?>">
@@ -63,7 +64,6 @@
     <?php endif; ?>
 
     <!-- Dynamic Global Styles -->
-<?php require_once ROOT_PATH . 'helpers/ImageHelper.php'; ?>
 <style>
         :root {
             /* Core Colors */

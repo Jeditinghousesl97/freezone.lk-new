@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 
+<?php require_once ROOT_PATH . 'helpers/ImageHelper.php'; ?>
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -121,7 +123,7 @@
     <div class="login-card">
         <!-- Logo -->
         <?php if (!empty($settings['shop_logo'])): ?>
-            <img src="<?= $settings['shop_logo'] ?>" alt="Shop Logo" class="shop-logo">
+            <img src="<?= htmlspecialchars(ImageHelper::settingsImageUrl($settings['shop_logo'], $settings['shop_logo'])) ?>" alt="Shop Logo" class="shop-logo">
         <?php else: ?>
             <div class="shop-logo" style="background:#ccc; display:flex; align-items:center; justify-content:center;">Logo
             </div>

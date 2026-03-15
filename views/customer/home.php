@@ -30,11 +30,12 @@ require_once 'views/layouts/customer_header.php';
     for ($i = 1; $i <= 3; $i++) {
         $imageKey = 'hero_slide_' . $i . '_image';
         $linkKey = 'hero_slide_' . $i . '_link';
-        $imageUrl = $settings[$imageKey] ?? '';
+        $imageUrl = ImageHelper::settingsImageUrl($settings[$imageKey] ?? '', '');
 
         if (!empty($imageUrl)) {
             $heroSlides[] = [
                 'image' => $imageUrl,
+                'image_name' => basename((string) parse_url($imageUrl, PHP_URL_PATH)),
                 'alt' => 'Hero slide ' . $i,
                 'link' => $settings[$linkKey] ?? ''
             ];

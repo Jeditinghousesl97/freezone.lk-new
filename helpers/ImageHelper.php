@@ -43,11 +43,22 @@ class ImageHelper
         }
 
         if (preg_match('#^https?://#i', $url)) {
+            $path = (string) parse_url($url, PHP_URL_PATH);
+            $filename = basename($path);
+            if ($filename !== '' && self::isPortableImage($filename)) {
+                return self::uploadUrl($filename, $url);
+            }
+
             return $url;
         }
 
         if (strpos($url, BASE_URL) === 0) {
             $relativePath = ltrim(substr($url, strlen(BASE_URL)), '/');
+            $filename = basename($relativePath);
+            if ($filename !== '' && self::isPortableImage($filename)) {
+                return self::uploadUrl($filename, $url);
+            }
+
             return is_file(ROOT_PATH . $relativePath) ? $url : $fallback;
         }
 
@@ -57,6 +68,11 @@ class ImageHelper
         }
 
         $relativePath = ltrim(str_replace('/Ecom-CMS/', '', $parsed), '/');
+        $filename = basename($relativePath);
+        if ($filename !== '' && self::isPortableImage($filename)) {
+            return self::uploadUrl($filename, BASE_URL . $relativePath);
+        }
+
         return is_file(ROOT_PATH . $relativePath) ? BASE_URL . $relativePath : $fallback;
     }
 

@@ -1,4 +1,6 @@
 <?php
+require_once ROOT_PATH . 'helpers/ImageHelper.php';
+
 class SeoHelper
 {
     public static function getSiteUrl()
@@ -36,6 +38,7 @@ class SeoHelper
             return '';
         }
 
+        $value = ImageHelper::settingsImageUrl((string) $value, (string) $value);
         $value = str_replace('/Ecom-CMS/', BASE_URL, $value);
 
         if (preg_match('#^https?://#i', $value)) {
@@ -64,12 +67,7 @@ class SeoHelper
             return '';
         }
 
-        $path = 'assets/uploads/' . ltrim($imageName, '/');
-        if (!file_exists(ROOT_PATH . $path)) {
-            return '';
-        }
-
-        return self::absoluteUrl(BASE_URL . $path);
+        return self::absoluteUrl(ImageHelper::uploadUrl((string) $imageName, ''));
     }
 
     public static function trimText($text, $length = 160)
