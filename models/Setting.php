@@ -13,7 +13,9 @@ class Setting extends BaseModel
         'sms_api_key',
         'koko_api_key',
         'koko_private_key',
-        'koko_callback_secret'
+        'koko_callback_secret',
+        'cloudflare_r2_access_key_id',
+        'cloudflare_r2_secret_access_key'
     ];
 
     // Get value by key

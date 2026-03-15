@@ -1,5 +1,7 @@
 <?php
 
+require_once ROOT_PATH . 'helpers/CloudflareR2Helper.php';
+
 class ImageHelper
 {
     private const DERIVED_DIR = 'assets/uploads/derived/';
@@ -18,8 +20,18 @@ class ImageHelper
         $filename = basename($filename);
         $relativePath = self::ORIGINAL_DIR . $filename;
         $absolutePath = ROOT_PATH . $relativePath;
+        if (is_file($absolutePath)) {
+            return BASE_URL . $relativePath;
+        }
 
-        return is_file($absolutePath) ? BASE_URL . $relativePath : $fallback;
+        if (CloudflareR2Helper::isEnabled()) {
+            $remoteUrl = CloudflareR2Helper::publicUrl($filename);
+            if ($remoteUrl !== '') {
+                return $remoteUrl;
+            }
+        }
+
+        return $fallback;
     }
 
     public static function settingsImageUrl($url, $fallback = '')
@@ -27,6 +39,10 @@ class ImageHelper
         $url = trim((string) $url);
         if ($url === '') {
             return $fallback;
+        }
+
+        if (preg_match('#^https?://#i', $url)) {
+            return $url;
         }
 
         if (strpos($url, BASE_URL) === 0) {
@@ -41,6 +57,11 @@ class ImageHelper
 
         $relativePath = ltrim(str_replace('/Ecom-CMS/', '', $parsed), '/');
         return is_file(ROOT_PATH . $relativePath) ? BASE_URL . $relativePath : $fallback;
+    }
+
+    public static function storedAssetUrl($filename, $fallback = '')
+    {
+        return self::uploadUrl($filename, $fallback);
     }
 
     public static function attrs(array $attributes)
@@ -75,12 +96,19 @@ class ImageHelper
             return '';
         }
 
+        $baseName = time() . '_' . preg_replace('/[^a-zA-Z0-9_-]/', '', $prefix) . '_' . preg_replace('/[^a-zA-Z0-9\._-]/', '', basename($originalName));
+        $contentType = (string) ($file['type'] ?? '');
+
+        if (CloudflareR2Helper::isEnabled()) {
+            if (CloudflareR2Helper::uploadTmpFile((string) $file['tmp_name'], $baseName, $contentType)) {
+                return $baseName;
+            }
+        }
+
         self::ensureDirectory(ROOT_PATH . self::ORIGINAL_DIR);
         self::ensureDirectory(ROOT_PATH . self::DERIVED_DIR);
 
-        $baseName = time() . '_' . preg_replace('/[^a-zA-Z0-9_-]/', '', $prefix) . '_' . preg_replace('/[^a-zA-Z0-9\._-]/', '', basename($originalName));
         $targetPath = ROOT_PATH . self::ORIGINAL_DIR . $baseName;
-
         if (!move_uploaded_file($file['tmp_name'], $targetPath)) {
             return '';
         }
@@ -113,6 +141,10 @@ class ImageHelper
             return;
         }
 
+        if (CloudflareR2Helper::isEnabled()) {
+            CloudflareR2Helper::deleteByFilename($filename);
+        }
+
         $originalPath = ROOT_PATH . self::ORIGINAL_DIR . $filename;
         if (is_file($originalPath)) {
             @unlink($originalPath);
@@ -133,6 +165,10 @@ class ImageHelper
 
     public static function getOptimizableUploads()
     {
+        if (CloudflareR2Helper::isEnabled()) {
+            return [];
+        }
+
         $originalDir = ROOT_PATH . self::ORIGINAL_DIR;
         if (!is_dir($originalDir)) {
             return [];
@@ -163,6 +199,16 @@ class ImageHelper
 
     public static function getUploadOptimizationSummary()
     {
+        if (CloudflareR2Helper::isEnabled()) {
+            return [
+                'total_optimizable' => 0,
+                'fully_optimized' => 0,
+                'missing_derivatives' => 0,
+                'missing_formats' => [],
+                'derived_files' => 0
+            ];
+        }
+
         $files = self::getOptimizableUploads();
         $summary = [
             'total_optimizable' => count($files),
@@ -239,7 +285,7 @@ class ImageHelper
         $exists = $filename !== '' && is_file($originalPath);
 
         $delivery = self::imageDelivery($filename, '', $profile);
-        $expected = $exists ? self::expectedDerivedFiles($filename) : [];
+        $expected = (!$exists || CloudflareR2Helper::isEnabled()) ? [] : self::expectedDerivedFiles($filename);
         $derivedExisting = [];
         $derivedMissing = [];
         $baseName = pathinfo($filename, PATHINFO_FILENAME);
@@ -264,7 +310,7 @@ class ImageHelper
             'input' => $input,
             'filename' => $filename,
             'exists' => $exists,
-            'original_url' => $exists ? (BASE_URL . self::ORIGINAL_DIR . $filename) : '',
+            'original_url' => $exists ? self::uploadUrl($filename, BASE_URL . self::ORIGINAL_DIR . $filename) : '',
             'derived_existing' => $derivedExisting,
             'derived_missing' => $derivedMissing,
             'delivery' => $delivery
@@ -273,6 +319,22 @@ class ImageHelper
 
     public static function optimizeExistingUploadsBatch($force = false, $limit = 25, $offset = 0)
     {
+        if (CloudflareR2Helper::isEnabled()) {
+            return [
+                'scanned' => 0,
+                'optimized' => 0,
+                'skipped' => 0,
+                'failed' => 0,
+                'formats' => [],
+                'files' => [],
+                'offset' => 0,
+                'next_offset' => 0,
+                'limit' => max(1, (int) $limit),
+                'total' => 0,
+                'complete' => true
+            ];
+        }
+
         self::ensureDirectory(ROOT_PATH . self::DERIVED_DIR);
         $files = self::getOptimizableUploads();
         $total = count($files);
@@ -343,11 +405,29 @@ class ImageHelper
             return [
                 'src' => $fallbackUrl,
                 'sources' => [],
-                'fallback' => $fallbackUrl
+                'fallback' => $fallbackUrl,
+                'img_srcset' => '',
+                'img_sizes' => ''
             ];
         }
 
         $profileConfig = self::profileConfig($profile);
+        if (CloudflareR2Helper::isEnabled()) {
+            $srcsetParts = [];
+            foreach ($profileConfig['widths'] as $width) {
+                $srcsetParts[] = CloudflareR2Helper::transformedUrl($fallbackUrl, $width) . ' ' . $width . 'w';
+            }
+
+            $defaultWidth = max($profileConfig['widths']);
+            return [
+                'src' => CloudflareR2Helper::transformedUrl($fallbackUrl, $defaultWidth),
+                'sources' => [],
+                'fallback' => $fallbackUrl,
+                'img_srcset' => implode(', ', $srcsetParts),
+                'img_sizes' => $profileConfig['sizes']
+            ];
+        }
+
         $baseName = pathinfo($filename, PATHINFO_FILENAME);
         $sources = [];
 
@@ -373,7 +453,9 @@ class ImageHelper
         return [
             'src' => $fallbackUrl,
             'sources' => $sources,
-            'fallback' => $fallbackUrl
+            'fallback' => $fallbackUrl,
+            'img_srcset' => '',
+            'img_sizes' => ''
         ];
     }
 
@@ -390,7 +472,13 @@ class ImageHelper
             ]) . '>';
         }
 
-        $attributes = array_merge(['src' => $delivery['src']], $attributes);
+        $imgAttributes = ['src' => $delivery['src']];
+        if (!empty($delivery['img_srcset'])) {
+            $imgAttributes['srcset'] = $delivery['img_srcset'];
+            $imgAttributes['sizes'] = $delivery['img_sizes'] ?? '';
+        }
+
+        $attributes = array_merge($imgAttributes, $attributes);
         $html .= '<img ' . self::attrs($attributes) . '>';
         $html .= '</picture>';
 
@@ -422,6 +510,10 @@ class ImageHelper
 
     public static function regenerateImageSet($filename, $force = false)
     {
+        if (CloudflareR2Helper::isEnabled()) {
+            return false;
+        }
+
         $filename = basename(trim((string) $filename));
         if ($filename === '' || !self::isOptimizableImage($filename)) {
             return false;
@@ -440,6 +532,10 @@ class ImageHelper
 
     private static function generateDerivativeSet($filename)
     {
+        if (CloudflareR2Helper::isEnabled()) {
+            return false;
+        }
+
         $filename = basename(trim((string) $filename));
         if ($filename === '') {
             return false;

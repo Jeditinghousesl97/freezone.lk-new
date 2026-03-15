@@ -112,7 +112,7 @@ class MyShopController extends BaseController
                             $this->deleteFile(basename((string) $oldUrl));
                         }
 
-                        $this->settingModel->set($imageKey, BASE_URL . 'assets/uploads/' . $fileName);
+                        $this->settingModel->set($imageKey, ImageHelper::storedAssetUrl($fileName, BASE_URL . 'assets/uploads/' . $fileName));
                     }
                 }
             }

@@ -8,6 +8,7 @@ require_once 'helpers/SeoHelper.php';
 require_once 'helpers/OrderEmailService.php';
 require_once 'helpers/OrderSmsService.php';
 require_once 'helpers/KokoGateway.php';
+require_once 'helpers/ImageHelper.php';
 
 class OrderController extends BaseController
 {
@@ -273,10 +274,7 @@ class OrderController extends BaseController
             $item['variant_key'] = trim((string) ($item['variant_key'] ?? ''));
 
             if (empty($item['img']) && !empty($product['main_image'])) {
-                $imagePath = 'assets/uploads/' . $product['main_image'];
-                if (file_exists(ROOT_PATH . $imagePath)) {
-                    $item['img'] = BASE_URL . $imagePath;
-                }
+                $item['img'] = ImageHelper::uploadUrl($product['main_image'], '');
             }
         }
 
@@ -318,10 +316,7 @@ class OrderController extends BaseController
 
         $imageUrl = '';
         if (!empty($product['main_image'])) {
-            $imagePath = 'assets/uploads/' . $product['main_image'];
-            if (file_exists(ROOT_PATH . $imagePath)) {
-                $imageUrl = BASE_URL . $imagePath;
-            }
+            $imageUrl = ImageHelper::uploadUrl($product['main_image'], '');
         }
 
         return [[
@@ -378,10 +373,7 @@ class OrderController extends BaseController
 
         $imageUrl = '';
         if (!empty($product['main_image'])) {
-            $imagePath = 'assets/uploads/' . $product['main_image'];
-            if (file_exists(ROOT_PATH . $imagePath)) {
-                $imageUrl = BASE_URL . $imagePath;
-            }
+            $imageUrl = ImageHelper::uploadUrl($product['main_image'], '');
         }
 
         return [$product, [[

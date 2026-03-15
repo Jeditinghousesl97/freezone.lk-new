@@ -6,6 +6,7 @@
 require_once 'models/Setting.php';
 require_once 'models/User.php';
 require_once 'helpers/ImageHelper.php';
+require_once 'helpers/CloudflareR2Helper.php';
 require_once 'models/DeliverySetting.php';
 require_once 'helpers/DeliveryHelper.php';
 
@@ -74,6 +75,12 @@ class SettingsController extends BaseController
             'shop_about',
             'currency_symbol',
             'shop_whatsapp',
+            'cloudflare_images_enabled',
+            'cloudflare_r2_account_id',
+            'cloudflare_r2_bucket',
+            'cloudflare_r2_access_key_id',
+            'cloudflare_r2_secret_access_key',
+            'cloudflare_r2_public_base_url',
             'smtp_host',
             'smtp_port',
             'smtp_encryption',
@@ -154,7 +161,7 @@ class SettingsController extends BaseController
                         $this->deleteFile($oldFile);
                     }
 
-                    $this->settingModel->set('shop_logo', BASE_URL . "assets/uploads/" . $fileName);
+                    $this->settingModel->set('shop_logo', ImageHelper::storedAssetUrl($fileName, BASE_URL . "assets/uploads/" . $fileName));
                 }
             }
 
@@ -170,7 +177,7 @@ class SettingsController extends BaseController
                         $this->deleteFile($oldFile);
                     }
 
-                    $this->settingModel->set('shop_qr', BASE_URL . "assets/uploads/" . $fileName);
+                    $this->settingModel->set('shop_qr', ImageHelper::storedAssetUrl($fileName, BASE_URL . "assets/uploads/" . $fileName));
                 }
             }
 
@@ -187,7 +194,7 @@ class SettingsController extends BaseController
                         $this->deleteFile($oldFile);
                     }
 
-                    $this->settingModel->set('shop_favicon', BASE_URL . "assets/uploads/" . $fileName);
+                    $this->settingModel->set('shop_favicon', ImageHelper::storedAssetUrl($fileName, BASE_URL . "assets/uploads/" . $fileName));
                 }
             }
 
@@ -198,6 +205,9 @@ class SettingsController extends BaseController
                 'shop_about',
                 'currency_symbol',
                 'shop_whatsapp',
+                'cloudflare_r2_account_id',
+                'cloudflare_r2_bucket',
+                'cloudflare_r2_public_base_url',
                 'smtp_host',
                 'smtp_port',
                 'smtp_encryption',
@@ -265,12 +275,23 @@ class SettingsController extends BaseController
                 $this->settingModel->set('sms_api_key', trim((string) $_POST['sms_api_key']));
             }
 
+            if (isset($_POST['cloudflare_r2_access_key_id']) && trim((string) $_POST['cloudflare_r2_access_key_id']) !== '') {
+                $this->settingModel->set('cloudflare_r2_access_key_id', trim((string) $_POST['cloudflare_r2_access_key_id']));
+            }
+
+            if (isset($_POST['cloudflare_r2_secret_access_key']) && trim((string) $_POST['cloudflare_r2_secret_access_key']) !== '') {
+                $this->settingModel->set('cloudflare_r2_secret_access_key', trim((string) $_POST['cloudflare_r2_secret_access_key']));
+            }
+
             $this->settingModel->set('payhere_enabled', !empty($_POST['payhere_enabled']) ? '1' : '0');
             $this->settingModel->set('payhere_sandbox', !empty($_POST['payhere_sandbox']) ? '1' : '0');
             $this->settingModel->set('koko_enabled', !empty($_POST['koko_enabled']) ? '1' : '0');
             $this->settingModel->set('koko_sandbox', !empty($_POST['koko_sandbox']) ? '1' : '0');
             $this->settingModel->set('sms_enabled', !empty($_POST['sms_enabled']) ? '1' : '0');
             $this->settingModel->set('sms_owner_enabled', !empty($_POST['sms_owner_enabled']) ? '1' : '0');
+            $this->settingModel->set('cloudflare_images_enabled', !empty($_POST['cloudflare_images_enabled']) ? '1' : '0');
+
+            CloudflareR2Helper::clearCache();
 
             // Owner Credentials Update / Create
             $ownerId = $_POST['owner_id'] ?? '';

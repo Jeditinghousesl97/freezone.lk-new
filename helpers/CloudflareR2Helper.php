@@ -1,0 +1,245 @@
+<?php
+
+require_once ROOT_PATH . 'models/Setting.php';
+
+class CloudflareR2Helper
+{
+    private const KEY_PREFIX = 'uploads/';
+    private static $settingsCache = null;
+
+    public static function isEnabled()
+    {
+        $settings = self::settings();
+
+        return !empty($settings['cloudflare_images_enabled'])
+            && self::hasUploadCredentials()
+            && trim((string) ($settings['cloudflare_r2_public_base_url'] ?? '')) !== '';
+    }
+
+    public static function hasUploadCredentials()
+    {
+        $settings = self::settings();
+
+        return trim((string) ($settings['cloudflare_r2_account_id'] ?? '')) !== ''
+            && trim((string) ($settings['cloudflare_r2_bucket'] ?? '')) !== ''
+            && trim((string) ($settings['cloudflare_r2_access_key_id'] ?? '')) !== ''
+            && trim((string) ($settings['cloudflare_r2_secret_access_key'] ?? '')) !== '';
+    }
+
+    public static function publicUrl($filename)
+    {
+        $filename = self::cleanFilename($filename);
+        if ($filename === '' || !self::isEnabled()) {
+            return '';
+        }
+
+        $baseUrl = rtrim((string) (self::settings()['cloudflare_r2_public_base_url'] ?? ''), '/');
+        if ($baseUrl === '') {
+            return '';
+        }
+
+        return $baseUrl . '/' . self::KEY_PREFIX . rawurlencode($filename);
+    }
+
+    public static function uploadTmpFile($tmpPath, $filename, $contentType = 'application/octet-stream')
+    {
+        $filename = self::cleanFilename($filename);
+        $tmpPath = (string) $tmpPath;
+
+        if ($filename === '' || $tmpPath === '' || !is_file($tmpPath) || !self::isEnabled()) {
+            return false;
+        }
+
+        $body = @file_get_contents($tmpPath);
+        if ($body === false) {
+            return false;
+        }
+
+        $response = self::signedRequest(
+            'PUT',
+            self::bucketUrl(self::objectKey($filename)),
+            $body,
+            [
+                'content-type' => trim((string) $contentType) !== '' ? (string) $contentType : 'application/octet-stream'
+            ]
+        );
+
+        return !empty($response['ok']);
+    }
+
+    public static function deleteByFilename($filename)
+    {
+        $filename = self::cleanFilename($filename);
+        if ($filename === '' || !self::isEnabled()) {
+            return false;
+        }
+
+        $response = self::signedRequest('DELETE', self::bucketUrl(self::objectKey($filename)), '');
+        return !empty($response['ok']);
+    }
+
+    public static function transformedUrl($sourceUrl, $width = null, array $extraOptions = [])
+    {
+        $sourceUrl = trim((string) $sourceUrl);
+        if ($sourceUrl === '') {
+            return '';
+        }
+
+        $options = [];
+        if ($width !== null && (int) $width > 0) {
+            $options[] = 'width=' . (int) $width;
+        }
+
+        $options[] = 'format=auto';
+        $options[] = 'fit=scale-down';
+        $options[] = 'metadata=none';
+        $options[] = 'quality=' . (int) ($extraOptions['quality'] ?? 82);
+
+        return '/cdn-cgi/image/' . implode(',', $options) . '/' . ltrim(str_replace(' ', '%20', $sourceUrl), '/');
+    }
+
+    public static function settings()
+    {
+        if (self::$settingsCache !== null) {
+            return self::$settingsCache;
+        }
+
+        $settingModel = new Setting();
+        self::$settingsCache = $settingModel->getMultiple([
+            'cloudflare_images_enabled',
+            'cloudflare_r2_account_id',
+            'cloudflare_r2_bucket',
+            'cloudflare_r2_access_key_id',
+            'cloudflare_r2_secret_access_key',
+            'cloudflare_r2_public_base_url'
+        ]);
+
+        return self::$settingsCache;
+    }
+
+    public static function clearCache()
+    {
+        self::$settingsCache = null;
+    }
+
+    private static function cleanFilename($filename)
+    {
+        return basename(trim((string) $filename));
+    }
+
+    private static function objectKey($filename)
+    {
+        return self::KEY_PREFIX . self::cleanFilename($filename);
+    }
+
+    private static function bucketUrl($objectKey)
+    {
+        $settings = self::settings();
+        $accountId = trim((string) ($settings['cloudflare_r2_account_id'] ?? ''));
+        $bucket = trim((string) ($settings['cloudflare_r2_bucket'] ?? ''));
+
+        return 'https://' . $accountId . '.r2.cloudflarestorage.com/' . rawurlencode($bucket) . '/' . str_replace('%2F', '/', rawurlencode($objectKey));
+    }
+
+    private static function signedRequest($method, $url, $body = '', array $headers = [])
+    {
+        $settings = self::settings();
+        $accessKey = trim((string) ($settings['cloudflare_r2_access_key_id'] ?? ''));
+        $secretKey = trim((string) ($settings['cloudflare_r2_secret_access_key'] ?? ''));
+
+        if ($accessKey === '' || $secretKey === '') {
+            return ['ok' => false, 'status' => 0, 'body' => 'Missing Cloudflare R2 credentials'];
+        }
+
+        $method = strtoupper((string) $method);
+        $timestamp = gmdate('Ymd\THis\Z');
+        $date = gmdate('Ymd');
+        $region = 'auto';
+        $service = 's3';
+        $scope = $date . '/' . $region . '/' . $service . '/aws4_request';
+        $payloadHash = hash('sha256', (string) $body);
+
+        $parts = parse_url($url);
+        $host = (string) ($parts['host'] ?? '');
+        $path = (string) ($parts['path'] ?? '/');
+
+        $canonicalHeaders = [
+            'host' => $host,
+            'x-amz-content-sha256' => $payloadHash,
+            'x-amz-date' => $timestamp
+        ];
+
+        foreach ($headers as $key => $value) {
+            $canonicalHeaders[strtolower((string) $key)] = trim((string) $value);
+        }
+
+        ksort($canonicalHeaders);
+
+        $canonicalHeaderString = '';
+        foreach ($canonicalHeaders as $key => $value) {
+            $canonicalHeaderString .= $key . ':' . preg_replace('/\s+/', ' ', $value) . "\n";
+        }
+
+        $signedHeaders = implode(';', array_keys($canonicalHeaders));
+        $canonicalRequest = implode("\n", [
+            $method,
+            $path,
+            '',
+            $canonicalHeaderString,
+            $signedHeaders,
+            $payloadHash
+        ]);
+
+        $stringToSign = implode("\n", [
+            'AWS4-HMAC-SHA256',
+            $timestamp,
+            $scope,
+            hash('sha256', $canonicalRequest)
+        ]);
+
+        $signingKey = self::signatureKey($secretKey, $date, $region, $service);
+        $signature = hash_hmac('sha256', $stringToSign, $signingKey);
+
+        $requestHeaders = [
+            'Authorization: AWS4-HMAC-SHA256 Credential=' . $accessKey . '/' . $scope . ', SignedHeaders=' . $signedHeaders . ', Signature=' . $signature,
+            'x-amz-content-sha256: ' . $payloadHash,
+            'x-amz-date: ' . $timestamp,
+            'Host: ' . $host
+        ];
+
+        foreach ($headers as $key => $value) {
+            $requestHeaders[] = $key . ': ' . trim((string) $value);
+        }
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $requestHeaders);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+
+        if ($method === 'PUT') {
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+        }
+
+        $responseBody = curl_exec($ch);
+        $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+
+        return [
+            'ok' => $status >= 200 && $status < 300,
+            'status' => $status,
+            'body' => $responseBody,
+            'error' => $error
+        ];
+    }
+
+    private static function signatureKey($secretKey, $date, $region, $service)
+    {
+        $kDate = hash_hmac('sha256', $date, 'AWS4' . $secretKey, true);
+        $kRegion = hash_hmac('sha256', $region, $kDate, true);
+        $kService = hash_hmac('sha256', $service, $kRegion, true);
+        return hash_hmac('sha256', 'aws4_request', $kService, true);
+    }
+}

@@ -345,6 +345,45 @@
             <input type="text" name="currency_symbol" class="input-box" placeholder="LKR"
                 value="<?= htmlspecialchars($settings['currency_symbol'] ?? '') ?>">
 
+            <div style="margin-top:20px; padding:20px; border-radius:16px; background:#ffffff; border:1px solid #e9e9e9;">
+                <h3 style="margin:0 0 14px;">Cloudflare Image Delivery</h3>
+                <p style="font-size:12px; color:#777; margin:0 0 16px;">Use Cloudflare R2 + Cloudflare edge delivery for new uploads. When enabled and configured correctly, new images stop generating many local optimized files on this server.</p>
+
+                <label style="display:flex; align-items:center; gap:8px; margin-bottom:18px; font-size:14px; color:#333;">
+                    <input type="checkbox" name="cloudflare_images_enabled" value="1" <?= !empty($settings['cloudflare_images_enabled']) ? 'checked' : '' ?>>
+                    Enable Cloudflare image storage and delivery
+                </label>
+
+                <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px;">
+                    <div>
+                        <label class="label">Cloudflare Account ID</label>
+                        <input type="text" name="cloudflare_r2_account_id" class="input-box" placeholder="Cloudflare Account ID"
+                            value="<?= htmlspecialchars($settings['cloudflare_r2_account_id'] ?? '') ?>">
+                    </div>
+                    <div>
+                        <label class="label">R2 Bucket Name</label>
+                        <input type="text" name="cloudflare_r2_bucket" class="input-box" placeholder="example-bucket"
+                            value="<?= htmlspecialchars($settings['cloudflare_r2_bucket'] ?? '') ?>">
+                    </div>
+                </div>
+
+                <label class="label">R2 Access Key ID</label>
+                <input type="password" name="cloudflare_r2_access_key_id" class="input-box" autocomplete="new-password"
+                    placeholder="Leave blank to keep current Access Key ID" value="">
+
+                <label class="label">R2 Secret Access Key</label>
+                <input type="password" name="cloudflare_r2_secret_access_key" class="input-box" autocomplete="new-password"
+                    placeholder="Leave blank to keep current Secret Access Key" value="">
+
+                <label class="label">Public Image Base URL</label>
+                <input type="text" name="cloudflare_r2_public_base_url" class="input-box" placeholder="https://img.yourdomain.com"
+                    value="<?= htmlspecialchars($settings['cloudflare_r2_public_base_url'] ?? '') ?>">
+
+                <div style="font-size:12px; color:#777; margin-top:-8px;">
+                    Recommended: point a proxied Cloudflare custom domain to your R2 bucket, then enter that URL here. Example object path will be <code>/uploads/your-file.jpg</code>.
+                </div>
+            </div>
+
             <div style="margin-top:30px; padding:20px; border-radius:16px; background:#ffffff; border:1px solid #e9e9e9;">
                 <h3 style="margin:0 0 14px;">SMTP Email Settings</h3>
                 <p style="font-size:12px; color:#777; margin:0 0 16px;">These settings are used for order emails to the customer and shop owner.</p>

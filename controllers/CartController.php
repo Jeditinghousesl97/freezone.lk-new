@@ -1,4 +1,6 @@
 <?php
+require_once 'helpers/ImageHelper.php';
+
 class CartController extends BaseController
 {
     private function enrichCartItems(array $cart)
@@ -29,10 +31,7 @@ class CartController extends BaseController
             $item['variant_key'] = (string) ($item['variant_key'] ?? '');
 
             if (empty($item['img']) && !empty($product['main_image'])) {
-                $imagePath = 'assets/uploads/' . $product['main_image'];
-                if (file_exists(ROOT_PATH . $imagePath)) {
-                    $item['img'] = BASE_URL . $imagePath;
-                }
+                $item['img'] = ImageHelper::uploadUrl($product['main_image'], '');
             }
 
             $updated = true;
@@ -143,10 +142,7 @@ class CartController extends BaseController
         if (!$found) {
             $imageUrl = $input['img'] ?? '';
             if (!empty($product['main_image'])) {
-                $imagePath = 'assets/uploads/' . $product['main_image'];
-                if (file_exists(ROOT_PATH . $imagePath)) {
-                    $imageUrl = BASE_URL . $imagePath;
-                }
+                $imageUrl = ImageHelper::uploadUrl($product['main_image'], $imageUrl);
             }
 
             $livePrice = (!empty($product['sale_price']) && (float) $product['sale_price'] < (float) $product['price'])
