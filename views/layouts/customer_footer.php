@@ -58,6 +58,8 @@ foreach ($gatewayDefinitions as $gatewayKey => $gateway) {
         <a href="<?= BASE_URL ?>page/termsConditions">Terms &amp; Conditions</a>
         <span>|</span>
         <a href="<?= BASE_URL ?>page/privacyPolicy">Privacy Policy</a>
+        <span>|</span>
+        <a href="<?= BASE_URL ?>contact">Contact Us</a>
     </div>
 </div>
 
@@ -71,6 +73,8 @@ foreach ($gatewayDefinitions as $gatewayKey => $gateway) {
         <a href="<?= BASE_URL ?>page/termsConditions">Terms &amp; Conditions</a>
         <span>|</span>
         <a href="<?= BASE_URL ?>page/privacyPolicy">Privacy Policy</a>
+        <span>|</span>
+        <a href="<?= BASE_URL ?>contact">Contact Us</a>
     </div>
 </div>
 
