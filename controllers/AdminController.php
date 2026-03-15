@@ -152,12 +152,14 @@ class AdminController extends BaseController
 
         $runSummary = null;
         $migrationSummary = null;
+        $restoreSummary = null;
         $inspectReport = null;
         $mode = 'scan';
         $batchLimit = 25;
         $optimizationSummary = [];
         $migrationLimit = 25;
         $migrationDeleteLocal = false;
+        $restoreLimit = 25;
 
         $optimizationSummary = ImageHelper::getUploadOptimizationSummary();
         $cloudflareStatus = CloudflareR2Helper::statusSummary();
@@ -181,6 +183,10 @@ class AdminController extends BaseController
                     $migrationOffset,
                     $migrationDeleteLocal
                 );
+            } elseif (isset($_POST['restore_local_from_cloudflare'])) {
+                $restoreLimit = max(1, (int) ($_POST['restore_limit'] ?? 25));
+                $restoreOffset = max(0, (int) ($_POST['restore_offset'] ?? 0));
+                $restoreSummary = ImageHelper::restoreReferencedUploadsFromCloudflareBatch($restoreLimit, $restoreOffset);
             } elseif (isset($_POST['inspect_image'])) {
                 $inspectReport = ImageHelper::inspectImageSet((string) ($_POST['inspect_image'] ?? ''));
             } else {
@@ -222,6 +228,8 @@ class AdminController extends BaseController
 
         $migratableUploads = ImageHelper::getCloudflareMigratableUploads();
         $migratableCount = count($migratableUploads);
+        $restorableMissingUploads = ImageHelper::getCloudflareRestorableMissingUploads();
+        $restorableMissingCount = count($restorableMissingUploads);
 
         $this->view('admin/image_optimizer', [
             'title' => 'Image Optimizer',
@@ -230,14 +238,17 @@ class AdminController extends BaseController
             'derived_count' => $derivedCount,
             'run_summary' => $runSummary,
             'migration_summary' => $migrationSummary,
+            'restore_summary' => $restoreSummary,
             'inspect_report' => $inspectReport,
             'mode' => $mode,
             'batch_limit' => $batchLimit,
             'optimization_summary' => $optimizationSummary,
             'cloudflare_status' => $cloudflareStatus,
             'migratable_count' => $migratableCount,
+            'restorable_missing_count' => $restorableMissingCount,
             'migration_limit' => $migrationLimit,
-            'migration_delete_local' => $migrationDeleteLocal
+            'migration_delete_local' => $migrationDeleteLocal,
+            'restore_limit' => $restoreLimit
         ]);
     }
 }

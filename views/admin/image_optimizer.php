@@ -82,6 +82,11 @@
             <div class="imgopt-value"><?= (int) ($migratable_count ?? 0) ?></div>
             <div class="imgopt-note"><?= htmlspecialchars((string) ($cloudflare_status['label'] ?? 'Cloudflare Off')) ?>. Old local originals can be copied to Cloudflare in batches from this page.</div>
         </div>
+        <div class="imgopt-card">
+            <div class="imgopt-label">Missing Local Files Referenced By Site</div>
+            <div class="imgopt-value"><?= (int) ($restorable_missing_count ?? 0) ?></div>
+            <div class="imgopt-note">These are referenced images that can be pulled back from Cloudflare R2 into <code>assets/uploads</code>.</div>
+        </div>
     </div>
 
     <div class="imgopt-panel" style="margin-bottom:16px;">
@@ -159,6 +164,80 @@
                 <div class="imgopt-note" style="margin:14px 0 8px;">Sample migrated files:</div>
                 <div class="imgopt-list">
                     <?php foreach ($migration_summary['files'] as $fileName): ?>
+                        <div class="imgopt-item"><?= htmlspecialchars((string) $fileName) ?></div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
+
+    <div class="imgopt-panel" style="margin-bottom:16px;">
+        <h3 style="margin:0 0 12px;">Pull Referenced Images From Cloudflare To Local Uploads</h3>
+        <div class="imgopt-item" style="margin-bottom:12px;">
+            <strong>What this does:</strong> restores missing images that your website already references from Cloudflare R2 into local <code>assets/uploads</code>. Frontend image loading will automatically use the local copy again once restored.
+        </div>
+        <form method="POST" class="imgopt-form">
+            <input type="hidden" name="restore_local_from_cloudflare" value="1">
+            <div class="imgopt-field">
+                <label for="restore_limit">Files Per Batch</label>
+                <input type="number" min="1" step="1" name="restore_limit" id="restore_limit" value="<?= (int) ($restore_limit ?? 25) ?>" placeholder="25">
+            </div>
+            <input type="hidden" name="restore_offset" value="0">
+            <div class="imgopt-note">Use this if you want a local backup again or if the site should keep working after Cloudflare is turned off.</div>
+            <div class="imgopt-actions" style="margin-bottom:0;">
+                <button type="submit" class="imgopt-btn primary">Start Pull To Local</button>
+            </div>
+        </form>
+    </div>
+
+    <?php if (!empty($restore_summary)): ?>
+        <div class="imgopt-panel" style="margin-bottom:16px;">
+            <h3 style="margin:0 0 12px;">Pull To Local Result</h3>
+            <?php if (!empty($restore_summary['message'])): ?>
+                <div class="imgopt-alert warn"><?= htmlspecialchars((string) $restore_summary['message']) ?></div>
+            <?php endif; ?>
+            <div class="imgopt-grid" style="margin-bottom:12px;">
+                <div class="imgopt-card">
+                    <div class="imgopt-label">Batch Scanned</div>
+                    <div class="imgopt-value"><?= (int) ($restore_summary['scanned'] ?? 0) ?></div>
+                </div>
+                <div class="imgopt-card">
+                    <div class="imgopt-label">Restored To Local</div>
+                    <div class="imgopt-value"><?= (int) ($restore_summary['restored'] ?? 0) ?></div>
+                </div>
+                <div class="imgopt-card">
+                    <div class="imgopt-label">Optimized Locally</div>
+                    <div class="imgopt-value"><?= (int) ($restore_summary['optimized'] ?? 0) ?></div>
+                </div>
+                <div class="imgopt-card">
+                    <div class="imgopt-label">Failed</div>
+                    <div class="imgopt-value"><?= (int) ($restore_summary['failed'] ?? 0) ?></div>
+                </div>
+            </div>
+
+            <div class="imgopt-item" style="margin-bottom:12px;">
+                <strong>Progress:</strong>
+                <?= (int) ($restore_summary['next_offset'] ?? 0) ?> / <?= (int) ($restore_summary['total'] ?? 0) ?> missing local references processed
+                <?php if (!empty($restore_summary['complete'])): ?>
+                    <span style="color:#1d7a40; font-weight:800;"> - Completed</span>
+                <?php endif; ?>
+            </div>
+
+            <?php if (empty($restore_summary['complete']) && (int) ($restore_summary['next_offset'] ?? 0) < (int) ($restore_summary['total'] ?? 0)): ?>
+                <form method="POST" class="imgopt-form" style="margin-top:14px;">
+                    <input type="hidden" name="restore_local_from_cloudflare" value="1">
+                    <input type="hidden" name="restore_limit" value="<?= (int) ($restore_summary['limit'] ?? ($restore_limit ?? 25)) ?>">
+                    <input type="hidden" name="restore_offset" value="<?= (int) ($restore_summary['next_offset'] ?? 0) ?>">
+                    <div class="imgopt-actions" style="margin-bottom:0;">
+                        <button type="submit" class="imgopt-btn primary">Continue Pull To Local</button>
+                    </div>
+                </form>
+            <?php endif; ?>
+
+            <?php if (!empty($restore_summary['files'])): ?>
+                <div class="imgopt-note" style="margin:14px 0 8px;">Sample restored files:</div>
+                <div class="imgopt-list">
+                    <?php foreach ($restore_summary['files'] as $fileName): ?>
                         <div class="imgopt-item"><?= htmlspecialchars((string) $fileName) ?></div>
                     <?php endforeach; ?>
                 </div>

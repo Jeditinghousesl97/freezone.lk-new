@@ -94,6 +94,27 @@ class CloudflareR2Helper
         return !empty($response['ok']);
     }
 
+    public static function downloadToLocal($filename, $targetPath)
+    {
+        $filename = self::cleanFilename($filename);
+        $targetPath = (string) $targetPath;
+        if ($filename === '' || $targetPath === '' || !self::hasUploadCredentials()) {
+            return false;
+        }
+
+        $response = self::signedRequest('GET', self::bucketUrl(self::objectKey($filename)), '');
+        if (empty($response['ok']) || !is_string($response['body']) || $response['body'] === '') {
+            return false;
+        }
+
+        $directory = dirname($targetPath);
+        if (!is_dir($directory)) {
+            @mkdir($directory, 0777, true);
+        }
+
+        return @file_put_contents($targetPath, $response['body']) !== false;
+    }
+
     public static function transformedUrl($sourceUrl, $width = null, array $extraOptions = [])
     {
         $sourceUrl = trim((string) $sourceUrl);

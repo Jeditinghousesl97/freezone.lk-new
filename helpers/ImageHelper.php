@@ -1,6 +1,7 @@
 <?php
 
 require_once ROOT_PATH . 'helpers/CloudflareR2Helper.php';
+require_once ROOT_PATH . 'config/db.php';
 
 class ImageHelper
 {
@@ -244,6 +245,88 @@ class ImageHelper
             if ($deleteLocalAfterUpload) {
                 self::deleteLocalImageSetOnly($entry);
                 $result['deleted_local']++;
+            }
+        }
+
+        return $result;
+    }
+
+    public static function getCloudflareRestorableMissingUploads()
+    {
+        $files = self::getReferencedImageFilenames();
+        $missing = [];
+
+        foreach ($files as $filename) {
+            $absolutePath = ROOT_PATH . self::ORIGINAL_DIR . $filename;
+            if (!is_file($absolutePath)) {
+                $missing[] = $filename;
+            }
+        }
+
+        sort($missing, SORT_NATURAL | SORT_FLAG_CASE);
+        return array_values(array_unique($missing));
+    }
+
+    public static function restoreReferencedUploadsFromCloudflareBatch($limit = 25, $offset = 0)
+    {
+        $files = self::getCloudflareRestorableMissingUploads();
+        $total = count($files);
+        $offset = max(0, (int) $offset);
+        $limit = max(1, (int) $limit);
+
+        if (!CloudflareR2Helper::hasUploadCredentials()) {
+            return [
+                'scanned' => 0,
+                'restored' => 0,
+                'optimized' => 0,
+                'failed' => 0,
+                'files' => [],
+                'offset' => $offset,
+                'next_offset' => $offset,
+                'limit' => $limit,
+                'total' => $total,
+                'complete' => true,
+                'message' => 'Cloudflare R2 credentials are required to pull images back into local uploads.'
+            ];
+        }
+
+        $batchFiles = array_slice($files, $offset, $limit);
+        $result = [
+            'scanned' => count($batchFiles),
+            'restored' => 0,
+            'optimized' => 0,
+            'failed' => 0,
+            'files' => [],
+            'offset' => $offset,
+            'next_offset' => min($offset + count($batchFiles), $total),
+            'limit' => $limit,
+            'total' => $total,
+            'complete' => ($offset + count($batchFiles)) >= $total,
+            'message' => ''
+        ];
+
+        self::ensureDirectory(ROOT_PATH . self::ORIGINAL_DIR);
+        if (self::localOptimizationEnabled()) {
+            self::ensureDirectory(ROOT_PATH . self::DERIVED_DIR);
+        }
+
+        foreach ($batchFiles as $entry) {
+            $absolutePath = ROOT_PATH . self::ORIGINAL_DIR . $entry;
+            $restored = CloudflareR2Helper::downloadToLocal($entry, $absolutePath);
+            if (!$restored) {
+                $result['failed']++;
+                continue;
+            }
+
+            $result['restored']++;
+            if (self::localOptimizationEnabled() && self::isOptimizableImage($entry)) {
+                if (self::generateDerivativeSet($entry)) {
+                    $result['optimized']++;
+                }
+            }
+
+            if (count($result['files']) < 20) {
+                $result['files'][] = $entry;
             }
         }
 
@@ -864,6 +947,61 @@ class ImageHelper
     public static function clearConfigCache()
     {
         self::$localOptimizationEnabled = null;
+    }
+
+    private static function getReferencedImageFilenames()
+    {
+        $db = (new Database())->getConnection();
+        if (!$db) {
+            return [];
+        }
+
+        $files = [];
+
+        $queries = [
+            "SELECT main_image AS image_name FROM products WHERE main_image IS NOT NULL AND main_image <> ''",
+            "SELECT image_path AS image_name FROM product_images WHERE image_path IS NOT NULL AND image_path <> ''",
+            "SELECT image_path AS image_name FROM reviews WHERE image_path IS NOT NULL AND image_path <> ''",
+            "SELECT image_path AS image_name FROM size_guides WHERE image_path IS NOT NULL AND image_path <> ''",
+            "SELECT image AS image_name FROM categories WHERE image IS NOT NULL AND image <> ''"
+        ];
+
+        foreach ($queries as $sql) {
+            try {
+                $stmt = $db->query($sql);
+                foreach ($stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [] as $row) {
+                    $name = basename((string) ($row['image_name'] ?? ''));
+                    if ($name !== '' && self::isPortableImage($name)) {
+                        $files[$name] = true;
+                    }
+                }
+            } catch (Throwable $e) {
+            }
+        }
+
+        try {
+            $stmt = $db->query("SELECT setting_key, setting_value FROM settings");
+            foreach ($stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [] as $row) {
+                $key = (string) ($row['setting_key'] ?? '');
+                if (!preg_match('/(shop_logo|shop_qr|shop_favicon|hero_slide_[1-3]_image)/', $key)) {
+                    continue;
+                }
+
+                $value = trim((string) ($row['setting_value'] ?? ''));
+                if ($value === '') {
+                    continue;
+                }
+
+                $path = (string) parse_url($value, PHP_URL_PATH);
+                $name = basename($path ?: $value);
+                if ($name !== '' && self::isPortableImage($name)) {
+                    $files[$name] = true;
+                }
+            }
+        } catch (Throwable $e) {
+        }
+
+        return array_keys($files);
     }
 
     private static function deleteLocalImageSetOnly($filename)
