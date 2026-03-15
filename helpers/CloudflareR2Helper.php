@@ -98,12 +98,19 @@ class CloudflareR2Helper
     {
         $filename = self::cleanFilename($filename);
         $targetPath = (string) $targetPath;
-        if ($filename === '' || $targetPath === '' || !self::hasUploadCredentials()) {
+        if ($filename === '' || $targetPath === '') {
             return false;
         }
 
-        $response = self::signedRequest('GET', self::bucketUrl(self::objectKey($filename)), '');
-        if (empty($response['ok']) || !is_string($response['body']) || $response['body'] === '') {
+        $body = self::downloadBodyFromPublicUrl($filename);
+        if ($body === null && self::hasUploadCredentials()) {
+            $response = self::signedRequest('GET', self::bucketUrl(self::objectKey($filename)), '');
+            if (!empty($response['ok']) && is_string($response['body']) && $response['body'] !== '') {
+                $body = $response['body'];
+            }
+        }
+
+        if ($body === null || $body === '') {
             return false;
         }
 
@@ -112,7 +119,7 @@ class CloudflareR2Helper
             @mkdir($directory, 0777, true);
         }
 
-        return @file_put_contents($targetPath, $response['body']) !== false;
+        return @file_put_contents($targetPath, $body) !== false;
     }
 
     public static function transformedUrl($sourceUrl, $width = null, array $extraOptions = [])
@@ -351,5 +358,28 @@ class CloudflareR2Helper
         $kRegion = hash_hmac('sha256', $region, $kDate, true);
         $kService = hash_hmac('sha256', $service, $kRegion, true);
         return hash_hmac('sha256', 'aws4_request', $kService, true);
+    }
+
+    private static function downloadBodyFromPublicUrl($filename)
+    {
+        $publicUrl = self::publicUrl($filename);
+        if ($publicUrl === '') {
+            return null;
+        }
+
+        $ch = curl_init($publicUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+        $body = curl_exec($ch);
+        $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        curl_close($ch);
+
+        if ($status >= 200 && $status < 300 && is_string($body) && $body !== '') {
+            return $body;
+        }
+
+        return null;
     }
 }
