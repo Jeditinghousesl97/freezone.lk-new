@@ -220,6 +220,7 @@ class ProductController extends BaseController
 
         // Get existing images and variations
         $product['gallery_images'] = $this->productModel->getGalleryImages($id);
+        $product['gallery_image_records'] = $this->productModel->getGalleryImageRecords($id);
         $product['variations'] = $this->productModel->getVariations($id); // This returns grouped vars
         $product['variant_stocks'] = $this->productModel->getVariantStockRows($id);
         // We might need raw variation lines to pre-select, but let's see how the form expects it.
@@ -309,6 +310,9 @@ class ProductController extends BaseController
                 }
             }
 
+            $removeGalleryImageIds = array_values(array_filter(array_map('intval', $_POST['remove_gallery_image_ids'] ?? [])));
+            $galleryImagesToDelete = $this->productModel->getGalleryImageRecordsByIds($id, $removeGalleryImageIds);
+
             // 6. Handle Variations
             $formattedVars = [];
             if (isset($_POST['selected_variations']) && is_array($_POST['selected_variations'])) {
@@ -342,6 +346,7 @@ class ProductController extends BaseController
                 'is_featured' => isset($_POST['is_featured']), // Checkbox sends 'on' if checked
                 'main_image' => $mainImagePath,
                 'new_gallery_images' => $galleryPaths, // array of new paths to ADD
+                'remove_gallery_image_ids' => $removeGalleryImageIds,
                 'variations' => $formattedVars,
                 'categories' => $_POST['categories'] ?? [],
                 'variant_stocks' => $this->parseVariantStocksFromRequest()
@@ -354,6 +359,11 @@ class ProductController extends BaseController
             // var_dump($result); die("Model Update Result");
 
             if ($result) {
+                foreach ($galleryImagesToDelete as $galleryImage) {
+                    if (!empty($galleryImage['image_path'])) {
+                        $this->deleteFile($galleryImage['image_path']);
+                    }
+                }
                 $this->redirect('product/index');
             } else {
                 echo "<div style='color:red; padding:20px; font-family:sans-serif;'>

@@ -413,6 +413,28 @@ class Product extends BaseModel
                 }
             }
 
+            if (!empty($data['remove_gallery_image_ids']) && is_array($data['remove_gallery_image_ids'])) {
+                $removeIds = array_values(array_filter(array_map('intval', $data['remove_gallery_image_ids'])));
+                if (!empty($removeIds)) {
+                    $placeholders = [];
+                    $params = [':pid' => (int) $data['id']];
+                    foreach ($removeIds as $index => $removeId) {
+                        $key = ':remove_' . $index;
+                        $placeholders[] = $key;
+                        $params[$key] = $removeId;
+                    }
+
+                    $sqlDeleteImages = "DELETE FROM product_images
+                        WHERE product_id = :pid AND id IN (" . implode(', ', $placeholders) . ")";
+                    $stmtDeleteImages = $this->conn->prepare($sqlDeleteImages);
+                    $stmtDeleteImages->execute($params);
+
+                    if ($stmtDeleteImages->rowCount() > 0) {
+                        $mainUpdateSuccess = true;
+                    }
+                }
+            }
+
             // 3. Update Variations
             if (isset($data['variations'])) {
                 // Delete existing
@@ -633,6 +655,37 @@ class Product extends BaseModel
         $stmt->bindParam(':pid', $productId);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_COLUMN); // Returns array of strings
+    }
+
+    public function getGalleryImageRecords($productId)
+    {
+        $sql = "SELECT id, image_path FROM product_images WHERE product_id = :pid ORDER BY id ASC";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bindParam(':pid', $productId);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function getGalleryImageRecordsByIds($productId, array $imageIds)
+    {
+        $imageIds = array_values(array_filter(array_map('intval', $imageIds)));
+        if (empty($imageIds)) {
+            return [];
+        }
+
+        $placeholders = [];
+        $params = [':pid' => (int) $productId];
+        foreach ($imageIds as $index => $imageId) {
+            $key = ':img' . $index;
+            $placeholders[] = $key;
+            $params[$key] = $imageId;
+        }
+
+        $sql = "SELECT id, image_path FROM product_images
+                WHERE product_id = :pid AND id IN (" . implode(', ', $placeholders) . ")";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /**

@@ -93,6 +93,72 @@
             display: none;
         }
 
+        .existing-gallery-wrap {
+            margin-bottom: 20px;
+        }
+
+        .existing-gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        .gallery-thumb-card {
+            position: relative;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #f5f5f5;
+            border: 1px solid #ececec;
+            min-height: 96px;
+        }
+
+        .gallery-thumb-card img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .gallery-thumb-card.removing {
+            opacity: 0.45;
+        }
+
+        .gallery-remove-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            border: none;
+            border-radius: 999px;
+            background: rgba(0, 0, 0, 0.72);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 7px 10px;
+            cursor: pointer;
+        }
+
+        .gallery-remove-btn.marked {
+            background: #ff3b30;
+        }
+
+        .gallery-thumb-status {
+            position: absolute;
+            left: 8px;
+            bottom: 8px;
+            background: rgba(0, 0, 0, 0.72);
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            border-radius: 999px;
+            padding: 5px 8px;
+            display: none;
+        }
+
+        .gallery-thumb-card.removing .gallery-thumb-status {
+            display: inline-flex;
+        }
+
         .input-box {
             background: #f0f0f0;
             border: none;
@@ -454,6 +520,10 @@
                 width: 100%;
             }
 
+            .existing-gallery-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
             .variant-stock-table,
             .variant-stock-table thead,
             .variant-stock-table tbody,
@@ -554,7 +624,7 @@
             <span class="section-label">Product Images</span>
             <span class="sub-label">Maximum Size of each photo to upload: 800Kb</span>
 
-            <div class="images-container">
+                <div class="images-container">
                 <!-- Main Image -->
                 <div class="main-img-box" onclick="document.getElementById('mainImgInput').click()">
                     <?php if (isset($mode) && $mode === 'edit' && !empty($product['main_image'])): ?>
@@ -585,6 +655,25 @@
                             accept="image/*" multiple>
                     </div>
                 </div>
+
+                <?php if (isset($mode) && $mode === 'edit' && !empty($product['gallery_image_records'])): ?>
+                    <div class="existing-gallery-wrap">
+                        <span class="section-label" style="margin-top:0;">Current Gallery Images</span>
+                        <span class="sub-label">Tap Remove on any image you want to delete when you save this product.</span>
+                        <div class="existing-gallery-grid">
+                            <?php foreach ($product['gallery_image_records'] as $galleryImage): ?>
+                                <?php $galleryThumbUrl = ImageHelper::uploadUrl($galleryImage['image_path'] ?? '', ''); ?>
+                                <div class="gallery-thumb-card" id="gallery-card-<?= (int) $galleryImage['id'] ?>">
+                                    <img src="<?= htmlspecialchars($galleryThumbUrl) ?>" alt="Gallery image">
+                                    <button type="button" class="gallery-remove-btn"
+                                        onclick="toggleGalleryImageRemoval(<?= (int) $galleryImage['id'] ?>, this)">Remove</button>
+                                    <span class="gallery-thumb-status">Will be deleted</span>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <div id="removedGalleryImageInputs"></div>
+                    </div>
+                <?php endif; ?>
 
                 <!-- Category -->
                 <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -895,6 +984,7 @@
                 },
                 categories: Array.from(document.querySelectorAll('input[name="categories[]"]:checked')).map(cb => cb.value),
                 selectedVariations: Array.from(document.querySelectorAll('.var-opt.selected')).map(el => el.dataset.id),
+                removedGalleryImageIds: Array.from(document.querySelectorAll('input[name="remove_gallery_image_ids[]"]')).map(input => input.value),
                 variantStockRows,
                 files: {
                     mainImageSelected: (document.getElementById('mainImgInput')?.files.length || 0) > 0,
@@ -1004,6 +1094,14 @@
                 }
             });
             populateHiddenVars();
+
+            document.querySelectorAll('input[name="remove_gallery_image_ids[]"]').forEach(input => input.remove());
+            document.querySelectorAll('.gallery-thumb-card.removing').forEach(card => card.classList.remove('removing'));
+            document.querySelectorAll('.gallery-remove-btn.marked').forEach(btn => btn.classList.remove('marked'));
+            const removedGalleryImageIds = new Set((draftState.removedGalleryImageIds || []).map(String));
+            removedGalleryImageIds.forEach(id => {
+                toggleGalleryImageRemoval(id);
+            });
 
             variantStockRows = Array.isArray(draftState.variantStockRows) ? draftState.variantStockRows : [];
             renderVariantStockRows();
@@ -1349,6 +1447,40 @@
                 txt.innerText = count + " Photos Selected";
             }
         });
+
+        function toggleGalleryImageRemoval(imageId, button = null) {
+            const normalizedId = String(imageId);
+            const card = document.getElementById('gallery-card-' + normalizedId);
+            const inputsContainer = document.getElementById('removedGalleryImageInputs');
+            if (!card || !inputsContainer) {
+                return;
+            }
+
+            const existingInput = inputsContainer.querySelector('input[value="' + normalizedId + '"]');
+            const actionButton = button || card.querySelector('.gallery-remove-btn');
+
+            if (existingInput) {
+                existingInput.remove();
+                card.classList.remove('removing');
+                if (actionButton) {
+                    actionButton.classList.remove('marked');
+                    actionButton.textContent = 'Remove';
+                }
+            } else {
+                const hiddenInput = document.createElement('input');
+                hiddenInput.type = 'hidden';
+                hiddenInput.name = 'remove_gallery_image_ids[]';
+                hiddenInput.value = normalizedId;
+                inputsContainer.appendChild(hiddenInput);
+                card.classList.add('removing');
+                if (actionButton) {
+                    actionButton.classList.add('marked');
+                    actionButton.textContent = 'Undo';
+                }
+            }
+
+            scheduleDraftSave();
+        }
 
         // Modal Logic
         function openVarModal() { document.getElementById('varModal').style.display = 'flex'; }
