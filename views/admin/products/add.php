@@ -397,6 +397,40 @@
             border: 1px solid #ffd6d1;
         }
 
+        .draft-alert {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            background: #fff7e8;
+            border: 1px solid #ffd79a;
+            color: #7a5200;
+            border-radius: 10px;
+            padding: 12px 14px;
+            margin-bottom: 16px;
+            font-size: 13px;
+        }
+
+        .draft-alert.show {
+            display: flex;
+        }
+
+        .draft-alert.success {
+            background: #eefbf3;
+            border-color: #b7e5c6;
+            color: #1f6b3d;
+        }
+
+        .draft-alert button {
+            border: none;
+            background: transparent;
+            color: inherit;
+            font-weight: 700;
+            cursor: pointer;
+            padding: 0;
+            white-space: nowrap;
+        }
+
         @media (max-width: 640px) {
             .stock-grid,
             .stock-row,
@@ -504,6 +538,11 @@
                     <h2 style="margin:0;"><?= isset($mode) && $mode === 'edit' ? 'Edit Product' : 'Add Product' ?></h2>
                     <p style="margin:0; font-size:11px; color:#888;">List New Items in One Minute...</p>
                 </div>
+            </div>
+
+            <div id="draftAlert" class="draft-alert">
+                <span id="draftAlertText"></span>
+                <button type="button" id="discardDraftBtn">Forget Saved Draft</button>
             </div>
 
             <?php if (isset($mode) && $mode === 'edit'): ?>
@@ -808,6 +847,175 @@
     <script>
         const initialVariantStockRows = <?= json_encode($product['variant_stocks'] ?? [], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
         let variantStockRows = Array.isArray(initialVariantStockRows) ? initialVariantStockRows : [];
+        const productForm = document.getElementById('productForm');
+        const draftAlert = document.getElementById('draftAlert');
+        const draftAlertText = document.getElementById('draftAlertText');
+        const discardDraftBtn = document.getElementById('discardDraftBtn');
+        const isEditMode = <?= isset($mode) && $mode === 'edit' ? 'true' : 'false' ?>;
+        const draftStorageKey = isEditMode
+            ? 'fz_product_form_draft_edit_<?= (int) ($product['id'] ?? 0) ?>'
+            : 'fz_product_form_draft_add';
+        const trackedFieldNames = ['title', 'price', 'sale_price', 'weight_grams', 'description', 'size_guide_id', 'sku', 'stock_mode', 'stock_qty', 'low_stock_threshold'];
+        let isSubmittingProductForm = false;
+        let suppressDraftTracking = false;
+        let saveDraftTimer = null;
+        let initialDraftFingerprint = '';
+        let allowIntentionalNavigation = false;
+
+        function showDraftAlert(message, tone = 'warning', allowDiscard = true) {
+            if (!draftAlert || !draftAlertText) return;
+            draftAlert.classList.add('show');
+            draftAlert.classList.remove('success');
+            if (tone === 'success') {
+                draftAlert.classList.add('success');
+            }
+            draftAlertText.textContent = message;
+            if (discardDraftBtn) {
+                discardDraftBtn.style.display = allowDiscard ? 'inline-block' : 'none';
+            }
+        }
+
+        function hideDraftAlert() {
+            if (!draftAlert) return;
+            draftAlert.classList.remove('show', 'success');
+        }
+
+        function getCurrentDraftState() {
+            const fields = {};
+            trackedFieldNames.forEach(name => {
+                const field = productForm.elements.namedItem(name);
+                fields[name] = field ? field.value : '';
+            });
+
+            return {
+                fields,
+                toggles: {
+                    is_featured: !!productForm.querySelector('input[name="is_featured"]')?.checked,
+                    free_shipping: !!productForm.querySelector('input[name="free_shipping"]')?.checked
+                },
+                categories: Array.from(document.querySelectorAll('input[name="categories[]"]:checked')).map(cb => cb.value),
+                selectedVariations: Array.from(document.querySelectorAll('.var-opt.selected')).map(el => el.dataset.id),
+                variantStockRows,
+                files: {
+                    mainImageSelected: (document.getElementById('mainImgInput')?.files.length || 0) > 0,
+                    galleryImageCount: document.getElementById('galImgInput')?.files.length || 0
+                }
+            };
+        }
+
+        function getDraftFingerprint(state) {
+            return JSON.stringify(state);
+        }
+
+        function saveDraftNow() {
+            if (isSubmittingProductForm || suppressDraftTracking) {
+                return;
+            }
+
+            const draftState = getCurrentDraftState();
+            const draftFingerprint = getDraftFingerprint(draftState);
+
+            if (draftFingerprint === initialDraftFingerprint) {
+                localStorage.removeItem(draftStorageKey);
+                hideDraftAlert();
+                return;
+            }
+
+            localStorage.setItem(draftStorageKey, JSON.stringify({
+                ...draftState,
+                saved_at: Date.now()
+            }));
+            showDraftAlert('Draft auto-saved on this device. You can safely come back later.', 'success');
+        }
+
+        function scheduleDraftSave() {
+            if (suppressDraftTracking || isSubmittingProductForm) {
+                return;
+            }
+
+            window.clearTimeout(saveDraftTimer);
+            saveDraftTimer = window.setTimeout(saveDraftNow, 300);
+        }
+
+        function hasUnsavedChanges() {
+            return getDraftFingerprint(getCurrentDraftState()) !== initialDraftFingerprint;
+        }
+
+        function clearSavedDraft(showMessage = false) {
+            window.clearTimeout(saveDraftTimer);
+            localStorage.removeItem(draftStorageKey);
+            if (showMessage) {
+                showDraftAlert('Saved draft cleared for this product form.', 'success', false);
+                window.setTimeout(hideDraftAlert, 2200);
+            } else {
+                hideDraftAlert();
+            }
+        }
+
+        function restoreDraftFromStorage() {
+            const rawDraft = localStorage.getItem(draftStorageKey);
+            if (!rawDraft) {
+                return;
+            }
+
+            let draftState;
+            try {
+                draftState = JSON.parse(rawDraft);
+            } catch (error) {
+                localStorage.removeItem(draftStorageKey);
+                return;
+            }
+
+            if (!window.confirm('Unsaved product draft found. Do you want to restore it now?')) {
+                clearSavedDraft();
+                return;
+            }
+
+            suppressDraftTracking = true;
+
+            trackedFieldNames.forEach(name => {
+                const field = productForm.elements.namedItem(name);
+                if (field && draftState.fields && Object.prototype.hasOwnProperty.call(draftState.fields, name)) {
+                    field.value = draftState.fields[name];
+                }
+            });
+
+            const featuredInput = productForm.querySelector('input[name="is_featured"]');
+            if (featuredInput) {
+                featuredInput.checked = !!draftState.toggles?.is_featured;
+            }
+
+            const freeShippingInput = productForm.querySelector('input[name="free_shipping"]');
+            if (freeShippingInput) {
+                freeShippingInput.checked = !!draftState.toggles?.free_shipping;
+            }
+
+            const selectedCategories = new Set((draftState.categories || []).map(String));
+            document.querySelectorAll('input[name="categories[]"]').forEach(checkbox => {
+                checkbox.checked = selectedCategories.has(String(checkbox.value));
+            });
+            updatePrimaryCat();
+
+            document.querySelectorAll('.var-opt.selected').forEach(el => el.classList.remove('selected'));
+            const selectedVariations = new Set((draftState.selectedVariations || []).map(String));
+            document.querySelectorAll('.var-opt').forEach(el => {
+                if (selectedVariations.has(String(el.dataset.id))) {
+                    el.classList.add('selected');
+                }
+            });
+            populateHiddenVars();
+
+            variantStockRows = Array.isArray(draftState.variantStockRows) ? draftState.variantStockRows : [];
+            renderVariantStockRows();
+            toggleStockPanels();
+
+            suppressDraftTracking = false;
+
+            const imageWarning = draftState.files?.mainImageSelected || Number(draftState.files?.galleryImageCount || 0) > 0
+                ? ' Image files could not be restored, so please re-upload them.'
+                : '';
+            showDraftAlert('Unsaved draft restored.' + imageWarning, 'success');
+        }
 
         function normalizeVariantKey(values) {
             return values
@@ -876,16 +1084,19 @@
                 variantStockRows[index][key] = !!value;
             }
             syncVariantStocksJson();
+            scheduleDraftSave();
         }
 
         function removeVariantRow(index) {
             variantStockRows.splice(index, 1);
             renderVariantStockRows();
+            scheduleDraftSave();
         }
 
         function clearVariantCombinations() {
             variantStockRows = [];
             renderVariantStockRows();
+            scheduleDraftSave();
         }
 
         function getSelectedVariationGroups() {
@@ -956,6 +1167,7 @@
             });
 
             renderVariantStockRows();
+            scheduleDraftSave();
         }
 
         function syncVariantStocksJson() {
@@ -1046,6 +1258,8 @@
                 label.style.fontWeight = "normal";
                 label.style.color = "#333";
             }
+
+            scheduleDraftSave();
         }
 
         function toggleCatDropdown() {
@@ -1142,11 +1356,14 @@
         function closeVarModal() {
             document.getElementById('varModal').style.display = 'none';
             populateHiddenVars();
+            scheduleDraftSave();
         }
 
         function toggleVar(el) {
             el.classList.toggle('selected');
+            populateHiddenVars();
             toggleStockPanels();
+            scheduleDraftSave();
         }
 
                 // Universal Modal Logic (Fixed Glitch + Loader)
@@ -1198,6 +1415,8 @@
 
                 // Form Submit Loading (Global)
         document.getElementById('productForm').addEventListener('submit', function () {
+            isSubmittingProductForm = true;
+            localStorage.removeItem(draftStorageKey);
             showGlobalLoader();
         });
 
@@ -1206,18 +1425,77 @@
             if(this.files.length > 0) showGlobalLoader();
             // Loader hides automatically via timeout in preview logic or manually below if instant
             setTimeout(hideGlobalLoader, 1000); // Simulate network delay for effect
+            scheduleDraftSave();
         });
 
         document.getElementById('galImgInput').addEventListener('change', function() {
             if(this.files.length > 0) showGlobalLoader();
             setTimeout(hideGlobalLoader, 1000);
+            scheduleDraftSave();
         });
+
+        productForm.addEventListener('input', function (event) {
+            if (event.target && event.target.matches('input, textarea, select')) {
+                scheduleDraftSave();
+            }
+        }, true);
+
+        productForm.addEventListener('change', function (event) {
+            if (event.target && event.target.matches('input, textarea, select')) {
+                scheduleDraftSave();
+            }
+        }, true);
+
+        document.addEventListener('click', function (event) {
+            const link = event.target.closest('a[href]');
+            if (!link || isSubmittingProductForm || !hasUnsavedChanges()) {
+                return;
+            }
+
+            const href = link.getAttribute('href') || '';
+            if (!href || href.startsWith('javascript:') || href.startsWith('#') || link.target === '_blank') {
+                return;
+            }
+
+            if (!window.confirm('You have unsaved product changes. Leave this page anyway?')) {
+                event.preventDefault();
+                return;
+            }
+
+            allowIntentionalNavigation = true;
+            window.setTimeout(() => {
+                allowIntentionalNavigation = false;
+            }, 1000);
+            saveDraftNow();
+        }, true);
+
+        window.addEventListener('beforeunload', function (event) {
+            if (isSubmittingProductForm || allowIntentionalNavigation || !hasUnsavedChanges()) {
+                return;
+            }
+
+            event.preventDefault();
+            event.returnValue = '';
+        });
+
+        if (discardDraftBtn) {
+            discardDraftBtn.addEventListener('click', function () {
+                suppressDraftTracking = true;
+                clearSavedDraft(true);
+                suppressDraftTracking = false;
+            });
+        }
 
         window.addEventListener('load', function () {
             populateHiddenVars();
             updatePrimaryCat(); // Set initial label state
             renderVariantStockRows();
             toggleStockPanels();
+            initialDraftFingerprint = getDraftFingerprint(getCurrentDraftState());
+            restoreDraftFromStorage();
+            if (hasUnsavedChanges()) {
+                scheduleDraftSave();
+            }
         });
     </script>
 </body>
