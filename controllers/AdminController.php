@@ -158,7 +158,16 @@ class AdminController extends BaseController
         $optimizationSummary = ImageHelper::getUploadOptimizationSummary();
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            if (isset($_POST['inspect_image'])) {
+            if (isset($_POST['reset_opcache'])) {
+                $status = 'unavailable';
+
+                if (function_exists('opcache_reset')) {
+                    $status = opcache_reset() ? 'success' : 'failed';
+                }
+
+                $this->redirect('admin/imageOptimizer?opcache=' . $status);
+                return;
+            } elseif (isset($_POST['inspect_image'])) {
                 $inspectReport = ImageHelper::inspectImageSet((string) ($_POST['inspect_image'] ?? ''));
             } else {
                 $mode = ($_POST['run_mode'] ?? 'missing') === 'rebuild' ? 'rebuild' : 'missing';

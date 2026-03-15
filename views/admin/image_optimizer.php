@@ -24,6 +24,10 @@
         .imgopt-item { padding:12px 14px; border:1px solid #f0f0f0; border-radius:14px; font-size:13px; color:#333; line-height:1.6; }
         .imgopt-badges { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
         .imgopt-badge { display:inline-flex; padding:6px 10px; border-radius:999px; background:#f5f5f5; font-size:11px; font-weight:800; text-transform:uppercase; color:#333; }
+        .imgopt-alert { margin-bottom:16px; padding:14px 16px; border-radius:14px; font-size:13px; font-weight:700; line-height:1.5; }
+        .imgopt-alert.success { background:#e9f8ef; color:#17663b; border:1px solid #cfe9d8; }
+        .imgopt-alert.warn { background:#fff5e6; color:#9a5a0a; border:1px solid #f2d19a; }
+        .imgopt-alert.error { background:#fff0f0; color:#a43838; border:1px solid #efc0c0; }
     </style>
 </head>
 <body>
@@ -39,7 +43,22 @@
     <div class="imgopt-actions">
         <a href="<?= BASE_URL ?>admin/dashboard" class="imgopt-btn secondary">Back to Dashboard</a>
         <a href="<?= BASE_URL ?>admin/serverCheck" class="imgopt-btn secondary">Server Check</a>
+        <form method="POST" style="display:inline-flex;">
+            <input type="hidden" name="reset_opcache" value="1">
+            <button type="submit" class="imgopt-btn secondary">Reset PHP Opcache</button>
+        </form>
     </div>
+
+    <?php if (isset($_GET['opcache'])): ?>
+        <?php $opcacheStatus = (string) $_GET['opcache']; ?>
+        <?php if ($opcacheStatus === 'success'): ?>
+            <div class="imgopt-alert success">PHP opcache reset completed. Please hard refresh the storefront and inspect the image markup again.</div>
+        <?php elseif ($opcacheStatus === 'unavailable'): ?>
+            <div class="imgopt-alert warn">This server does not expose <code>opcache_reset()</code> to PHP, so we could not clear opcache from the app.</div>
+        <?php else: ?>
+            <div class="imgopt-alert error">The app tried to reset PHP opcache, but the server did not confirm success. A PHP handler restart from hosting may still be needed.</div>
+        <?php endif; ?>
+    <?php endif; ?>
 
     <div class="imgopt-grid">
         <div class="imgopt-card">
