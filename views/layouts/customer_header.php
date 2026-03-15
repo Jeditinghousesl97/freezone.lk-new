@@ -788,6 +788,7 @@
             <a href="<?= BASE_URL ?>shop">All Products</a>
             <a href="<?= BASE_URL ?>shop/new_arrivals">Recent Items</a>
             <a href="<?= BASE_URL ?>shop/featured">Featured Products</a>
+            <a href="<?= BASE_URL ?>reviews" class="desktop-nav-reviews">Reviews</a>
             <?php if ($hasFreeShippingProducts): ?>
                 <a href="<?= BASE_URL ?>shop/free_shipping" class="desktop-nav-free-shipping">Free Shipping</a>
             <?php endif; ?>

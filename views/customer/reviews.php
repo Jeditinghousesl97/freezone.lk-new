@@ -205,32 +205,82 @@ require_once 'views/layouts/customer_header.php';
 
 
         <!-- Desktop View Fallback -->
-        <div class="d-none d-lg-block">
-            <div class="section-header">
-                <h2 class="section-title">Customer Reviews</h2>
-            </div>
-            <div class="shop-grid" style="grid-template-columns: repeat(4, 1fr);">
-                <?php if (!empty($feedbacks)):
-                    foreach ($feedbacks as $fb):
-                        $fbPath = ImageHelper::uploadUrl($fb['image_path'] ?? '', '');
-                        if ($fbPath):
-                            ?>
-                            <div style="border-radius: 10px; overflow: hidden; border: 1px solid #eee;">
-                                <?= ImageHelper::renderResponsivePicture(
-                                    $fb['image_path'] ?? '',
-                                    $fbPath,
-                                    [
-                                        'alt' => 'Feedback',
-                                        'loading' => 'lazy',
-                                        'decoding' => 'async',
-                                        'fetchpriority' => 'low',
-                                        'style' => 'width: 100%;'
-                                    ],
-                                    'feedback'
-                                ) ?>
-                            </div>
-                        <?php endif; endforeach; endif; ?>
-            </div>
+        <div class="d-none d-lg-block reviews-desktop-page">
+            <?php
+            $desktopReviewLink = isset($settings['review_link']) ? $settings['review_link'] : '#';
+            if ($desktopReviewLink !== '#' && strpos($desktopReviewLink, 'http') !== 0) {
+                $desktopReviewLink = 'https://wa.me/' . str_replace(['+', ' '], '', $desktopReviewLink) . '?text=I%20would%20like%20to%20leave%20a%20review!';
+            }
+            $desktopSocials = [
+                ['href' => $settings['social_fb'] ?? '', 'icon' => BASE_URL . 'assets/icons/facebook.png', 'label' => 'Facebook'],
+                ['href' => $settings['social_insta'] ?? '', 'icon' => BASE_URL . 'assets/icons/instagram.png', 'label' => 'Instagram'],
+                ['href' => $settings['social_tiktok'] ?? '', 'icon' => BASE_URL . 'assets/icons/tiktok.png', 'label' => 'TikTok'],
+                ['href' => $settings['social_youtube'] ?? '', 'icon' => BASE_URL . 'assets/icons/youtube.png', 'label' => 'YouTube'],
+            ];
+            ?>
+            <section class="reviews-desktop-hero">
+                <div class="reviews-desktop-copy">
+                    <div class="reviews-desktop-eyebrow">Community Love</div>
+                    <h1>Customer Reviews</h1>
+                    <p>Real buyer feedback, recent order experiences, and product snapshots shared by your customers.</p>
+                    <div class="reviews-desktop-actions">
+                        <a href="<?= htmlspecialchars($desktopReviewLink) ?>" target="_blank" rel="noopener noreferrer" class="reviews-desktop-cta">
+                            Give Us A Review
+                        </a>
+                        <a href="<?= BASE_URL ?>shop" class="reviews-desktop-secondary">
+                            Continue Shopping
+                        </a>
+                    </div>
+                </div>
+                <div class="reviews-desktop-summary">
+                    <div class="reviews-summary-card">
+                        <span class="reviews-summary-label">Shared Feedbacks</span>
+                        <strong><?= count($feedbacks ?? []) ?></strong>
+                    </div>
+                    <div class="reviews-summary-card">
+                        <span class="reviews-summary-label">Shop</span>
+                        <strong><?= !empty($settings['shop_name']) ? htmlspecialchars($settings['shop_name']) : 'Your Store' ?></strong>
+                    </div>
+                    <div class="reviews-desktop-socials">
+                        <?php foreach ($desktopSocials as $social): ?>
+                            <?php if (!empty($social['href'])): ?>
+                                <a href="<?= htmlspecialchars($social['href']) ?>" target="_blank" rel="noopener noreferrer" aria-label="<?= htmlspecialchars($social['label']) ?>">
+                                    <img src="<?= htmlspecialchars($social['icon']) ?>" alt="<?= htmlspecialchars($social['label']) ?>">
+                                </a>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </section>
+
+            <?php if (!empty($feedbacks)): ?>
+                <section class="reviews-desktop-grid">
+                    <?php foreach ($feedbacks as $index => $fb): ?>
+                        <?php $fbPath = ImageHelper::uploadUrl($fb['image_path'] ?? '', ''); ?>
+                        <?php if ($fbPath): ?>
+                            <article class="reviews-desktop-card reviews-card-<?= ($index % 5) + 1 ?>">
+                                <div class="reviews-desktop-media">
+                                    <?= ImageHelper::renderResponsivePicture(
+                                        $fb['image_path'] ?? '',
+                                        $fbPath,
+                                        [
+                                            'alt' => 'Customer review',
+                                            'loading' => 'lazy',
+                                            'decoding' => 'async',
+                                            'fetchpriority' => 'low'
+                                        ],
+                                        'feedback'
+                                    ) ?>
+                                </div>
+                            </article>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
+                </section>
+            <?php else: ?>
+                <div class="reviews-desktop-empty">
+                    No customer reviews available yet.
+                </div>
+            <?php endif; ?>
         </div>
 
     </main>

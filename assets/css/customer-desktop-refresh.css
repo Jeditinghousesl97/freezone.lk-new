@@ -230,6 +230,12 @@
         border-color: rgba(179, 74, 34, 0.16) !important;
     }
 
+    .desktop-nav-links .desktop-nav-reviews {
+        background: linear-gradient(135deg, #eef8ff 0%, #d9ecff 100%) !important;
+        color: #225f95 !important;
+        border-color: rgba(54, 115, 173, 0.16) !important;
+    }
+
     .desktop-nav-links a:hover {
         color: var(--desktop-accent) !important;
         background: rgba(255, 255, 255, 0.95);
@@ -243,6 +249,11 @@
     .desktop-nav-links .desktop-nav-discounts:hover {
         color: #993815 !important;
         background: linear-gradient(135deg, #fff5ef 0%, #ffe6da 100%) !important;
+    }
+
+    .desktop-nav-links .desktop-nav-reviews:hover {
+        color: #184971 !important;
+        background: linear-gradient(135deg, #f3fbff 0%, #e4f2ff 100%) !important;
     }
 
     .home-layout {
@@ -858,5 +869,188 @@
         right: 24px !important;
         bottom: 24px !important;
         box-shadow: 0 18px 36px rgba(37, 211, 102, 0.25) !important;
+    }
+
+    .reviews-desktop-page {
+        padding-bottom: 32px;
+    }
+
+    .reviews-desktop-hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.7fr);
+        gap: 22px;
+        align-items: stretch;
+        margin-bottom: 26px;
+    }
+
+    .reviews-desktop-copy,
+    .reviews-desktop-summary {
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.88) 0%, rgba(247, 240, 229, 0.92) 100%);
+        border: 1px solid var(--desktop-border);
+        border-radius: 30px;
+        box-shadow: var(--desktop-shadow);
+        padding: 28px;
+    }
+
+    .reviews-desktop-eyebrow {
+        font-size: 12px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--desktop-accent);
+        margin-bottom: 12px;
+    }
+
+    .reviews-desktop-copy h1 {
+        margin: 0 0 12px;
+        font-size: clamp(34px, 4vw, 46px);
+        line-height: 1.02;
+        color: var(--desktop-heading);
+    }
+
+    .reviews-desktop-copy p {
+        margin: 0;
+        max-width: 680px;
+        font-size: 15px;
+        line-height: 1.8;
+        color: var(--desktop-muted);
+    }
+
+    .reviews-desktop-actions {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 24px;
+    }
+
+    .reviews-desktop-cta,
+    .reviews-desktop-secondary {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 50px;
+        padding: 0 22px;
+        border-radius: 999px;
+        text-decoration: none;
+        font-weight: 800;
+        box-shadow: var(--desktop-shadow-soft);
+    }
+
+    .reviews-desktop-cta {
+        background: linear-gradient(135deg, #35bb72 0%, #1a8f51 100%);
+        color: #fff !important;
+    }
+
+    .reviews-desktop-secondary {
+        background: rgba(255, 255, 255, 0.9);
+        color: var(--desktop-heading) !important;
+        border: 1px solid rgba(82, 58, 32, 0.1);
+    }
+
+    .reviews-desktop-summary {
+        display: grid;
+        gap: 14px;
+        align-content: start;
+    }
+
+    .reviews-summary-card {
+        background: rgba(255, 255, 255, 0.88);
+        border: 1px solid rgba(82, 58, 32, 0.08);
+        border-radius: 22px;
+        padding: 16px 18px;
+    }
+
+    .reviews-summary-label {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--desktop-muted);
+    }
+
+    .reviews-summary-card strong {
+        font-size: 24px;
+        color: var(--desktop-heading);
+        line-height: 1.2;
+    }
+
+    .reviews-desktop-socials {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 4px;
+    }
+
+    .reviews-desktop-socials a {
+        width: 46px;
+        height: 46px;
+        border-radius: 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.88);
+        border: 1px solid rgba(82, 58, 32, 0.08);
+        box-shadow: var(--desktop-shadow-soft);
+    }
+
+    .reviews-desktop-socials img {
+        width: 24px;
+        height: 24px;
+        object-fit: contain;
+    }
+
+    .reviews-desktop-grid {
+        columns: 3;
+        column-gap: 18px;
+    }
+
+    .reviews-desktop-card {
+        break-inside: avoid;
+        margin-bottom: 18px;
+        border-radius: 24px;
+        overflow: hidden;
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid var(--desktop-border);
+        box-shadow: var(--desktop-shadow-soft);
+    }
+
+    .reviews-desktop-media {
+        position: relative;
+    }
+
+    .reviews-desktop-media picture,
+    .reviews-desktop-media img {
+        display: block;
+        width: 100%;
+    }
+
+    .reviews-desktop-media img {
+        object-fit: cover;
+    }
+
+    .reviews-card-1 .reviews-desktop-media img,
+    .reviews-card-4 .reviews-desktop-media img {
+        aspect-ratio: 4 / 5;
+    }
+
+    .reviews-card-2 .reviews-desktop-media img,
+    .reviews-card-5 .reviews-desktop-media img {
+        aspect-ratio: 4 / 4.8;
+    }
+
+    .reviews-card-3 .reviews-desktop-media img {
+        aspect-ratio: 4 / 6;
+    }
+
+    .reviews-desktop-empty {
+        border-radius: 26px;
+        padding: 42px 32px;
+        text-align: center;
+        color: var(--desktop-muted);
+        background: rgba(255, 255, 255, 0.78);
+        border: 1px solid var(--desktop-border);
+        box-shadow: var(--desktop-shadow-soft);
     }
 }
