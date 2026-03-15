@@ -9,13 +9,13 @@
     </title>
     <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/admin.css">
     <style>
-        .toggle-group {
+        .category-toggle-group {
             display: flex;
             gap: 10px;
             margin-bottom: 20px;
         }
 
-        .toggle-btn {
+        .category-toggle-btn {
             flex: 1;
             padding: 10px;
             border: 1px solid #ddd;
@@ -23,9 +23,11 @@
             border-radius: 8px;
             cursor: pointer;
             text-align: center;
+            box-sizing: border-box;
+            min-width: 0;
         }
 
-        .toggle-btn.active {
+        .category-toggle-btn.active {
             border-color: #0F172A;
             background-color: #0F172A;
             color: white;
@@ -85,10 +87,8 @@
 </head>
 
 <body>
-    <!-- 1. Inject Loader -->
     <?php include 'views/admin/partials/loader.php'; ?>
 
-    <!-- 2. Trigger on Submit -->
     <form action="<?= BASE_URL ?>category/<?= $mode === 'edit' ? 'update' : 'store' ?>" method="POST"
         enctype="multipart/form-data" onsubmit="showGlobalLoader()">
         <?php if ($mode === 'edit'): ?>
@@ -98,19 +98,19 @@
         <div class="container">
             <div class="header-bar">
                 <div style="display:flex; gap:10px; align-items:center;">
-                    <a href="<?= BASE_URL ?>category/index" class="back-circle">❮</a>
+                    <a href="<?= BASE_URL ?>category/index" class="back-circle">&#10094;</a>
                     <h2 style="margin:0;">
                         <?= $mode === 'edit' ? 'Edit Category' : 'Add Category' ?>
                     </h2>
                 </div>
-                <button type="submit" class="save-txt" onsubmit="showGlobalLoader()">SAVE</button>
+                <button type="submit" class="save-txt">SAVE</button>
             </div>
 
             <?php if ($mode === 'edit'): ?>
                 <div style="margin-bottom: 20px;">
                     <a href="<?= BASE_URL ?>category/delete/<?= $category['id'] ?>" class="delete-btn-red"
                         onclick="return confirm('Are you sure?')">
-                        🗑️ DELETE
+                        &#128465; DELETE
                     </a>
                 </div>
             <?php endif; ?>
@@ -121,7 +121,7 @@
             <div class="upload-area" onclick="document.getElementById('cat-img').click()">
                 <div id="cat-placeholder">
                     <p style="color:#888; margin:0;">Category Thumbnail</p>
-                    <div style="font-size:24px;">📷</div>
+                    <div style="font-size:24px;">&#128247;</div>
                     <p style="font-size:10px; color:#aaa;">Tap here to upload a photo from gallery</p>
                 </div>
                 <p id="cat-feedback" style="display:none; color:#007aff; font-weight:bold; font-size:16px;">+1 image
@@ -130,9 +130,9 @@
             </div>
 
             <p style="color:#666; font-size:14px; margin-bottom:10px;">This Category is</p>
-            <div class="toggle-group">
-                <div class="toggle-btn active" id="btn-main" onclick="setType('main')">Main Category</div>
-                <div class="toggle-btn" id="btn-sub" onclick="setType('sub')">Sub Category ∨</div>
+            <div class="category-toggle-group">
+                <button type="button" class="category-toggle-btn active" id="btn-main" onclick="setType('main')">Main Category</button>
+                <button type="button" class="category-toggle-btn" id="btn-sub" onclick="setType('sub')">Sub Category &or;</button>
             </div>
             <input type="hidden" name="type" id="type-input"
                 value="<?= ($category['parent_id'] ?? null) ? 'sub' : 'main' ?>">
@@ -147,18 +147,14 @@
                     <?php endforeach; ?>
                 </select>
             </div>
-
         </div>
     </form>
 
     <script>
-        // Image Selection Feedback
         document.getElementById('cat-img').addEventListener('change', function (e) {
             if (e.target.files && e.target.files.length > 0) {
                 document.getElementById('cat-placeholder').style.display = 'none';
                 document.getElementById('cat-feedback').style.display = 'block';
-                // User requested exactly "+1 image selected" style, but dynamic count is safer if multiple supported later
-                // Since input is single file, length is 1.
                 document.getElementById('cat-feedback').innerText = "+" + e.target.files.length + " image selected";
             }
         });
@@ -176,7 +172,6 @@
             }
         }
 
-        // Initialize state
         <?php if (isset($category['parent_id']) && $category['parent_id']): ?>
             setType('sub');
         <?php else: ?>
