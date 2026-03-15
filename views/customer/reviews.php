@@ -203,6 +203,7 @@ require_once 'views/layouts/customer_header.php';
 
 
 
+        </div>
 
         <!-- Desktop View Fallback -->
         <div class="d-none d-lg-block reviews-desktop-page">
