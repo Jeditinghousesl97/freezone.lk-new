@@ -457,6 +457,9 @@
                         Test Cloudflare Connection
                     </button>
                     <a href="<?= BASE_URL ?>admin/imageOptimizer" class="imgopt-btn secondary" style="padding:11px 15px; text-decoration:none;">
+                        Open Image Optimizer
+                    </a>
+                    <a href="<?= BASE_URL ?>admin/imageOptimizer" class="imgopt-btn secondary" style="padding:11px 15px; text-decoration:none;">
                         Move Existing Local Images
                     </a>
                 </div>

@@ -482,10 +482,6 @@
                 <h2 class="stat-number"><?= $stats['tracked_products'] ?? 0 ?></h2>
                 <p class="stat-label">Stock Report</p>
             </a>
-            <a href="<?= BASE_URL ?>admin/imageOptimizer" class="stat-card stat-card-link">
-                <h2 class="stat-number"><?= (int) ($stats['products'] ?? 0) ?></h2>
-                <p class="stat-label">Image Optimizer</p>
-            </a>
             <a href="<?= BASE_URL ?>order/reports" class="stat-card stat-card-link">
                 <h2 class="stat-number"><?= (int) ($stats['orders'] ?? 0) ?></h2>
                 <p class="stat-label">Accounting</p>
