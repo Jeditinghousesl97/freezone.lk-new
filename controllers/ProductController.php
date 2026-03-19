@@ -87,6 +87,101 @@ class ProductController extends BaseController
         return $variantStocks;
     }
 
+    private function getProductFormDependencies()
+    {
+        return [
+            'categories' => $this->categoryModel->getAll(),
+            'sizeGuides' => $this->sizeGuideModel->getAll(),
+            'variations' => $this->variationModel->getAll()
+        ];
+    }
+
+    private function getSelectedVariationTokensFromRequest()
+    {
+        $tokens = $_POST['selected_variations'] ?? [];
+        if (!is_array($tokens)) {
+            return [];
+        }
+
+        return array_values(array_filter(array_map(function ($token) {
+            return trim((string) $token);
+        }, $tokens)));
+    }
+
+    private function buildProductDraftFromRequest(array $baseProduct = [])
+    {
+        $categories = $_POST['categories'] ?? ($baseProduct['categories'] ?? []);
+        if (!is_array($categories)) {
+            $categories = [];
+        }
+
+        return array_merge($baseProduct, [
+            'id' => $baseProduct['id'] ?? ($_POST['id'] ?? null),
+            'title' => trim((string) ($_POST['title'] ?? ($baseProduct['title'] ?? ''))),
+            'sku' => trim((string) ($_POST['sku'] ?? ($baseProduct['sku'] ?? ''))),
+            'price' => trim((string) ($_POST['price'] ?? ($baseProduct['price'] ?? ''))),
+            'sale_price' => trim((string) ($_POST['sale_price'] ?? ($baseProduct['sale_price'] ?? ''))),
+            'weight_grams' => trim((string) ($_POST['weight_grams'] ?? ($baseProduct['weight_grams'] ?? '0'))),
+            'free_shipping' => isset($_POST['free_shipping']) ? 1 : (!empty($baseProduct['free_shipping']) ? 1 : 0),
+            'stock_mode' => trim((string) ($_POST['stock_mode'] ?? ($baseProduct['stock_mode'] ?? 'always_in_stock'))),
+            'stock_qty' => trim((string) ($_POST['stock_qty'] ?? ($baseProduct['stock_qty'] ?? '0'))),
+            'low_stock_threshold' => trim((string) ($_POST['low_stock_threshold'] ?? ($baseProduct['low_stock_threshold'] ?? '5'))),
+            'manual_stock_status' => trim((string) ($_POST['manual_stock_status'] ?? ($baseProduct['manual_stock_status'] ?? 'in_stock'))),
+            'description' => (string) ($_POST['description'] ?? ($baseProduct['description'] ?? '')),
+            'category_id' => trim((string) ($_POST['category_id'] ?? ($baseProduct['category_id'] ?? ''))),
+            'size_guide_id' => trim((string) ($_POST['size_guide_id'] ?? ($baseProduct['size_guide_id'] ?? ''))),
+            'is_featured' => isset($_POST['is_featured']) ? 1 : (!empty($baseProduct['is_featured']) ? 1 : 0),
+            'main_image' => $baseProduct['main_image'] ?? ($_POST['current_main_image'] ?? ''),
+            'gallery_image_records' => $baseProduct['gallery_image_records'] ?? [],
+            'gallery_images' => $baseProduct['gallery_images'] ?? [],
+            'categories' => $categories,
+            'selected_variation_tokens' => $this->getSelectedVariationTokensFromRequest(),
+            'variant_stocks' => $this->parseVariantStocksFromRequest()
+        ]);
+    }
+
+    private function getProductValidationError($isEdit = false, array $baseProduct = [])
+    {
+        $title = trim((string) ($_POST['title'] ?? ''));
+        $price = trim((string) ($_POST['price'] ?? ''));
+        $categoryId = trim((string) ($_POST['category_id'] ?? ''));
+
+        if ($title === '') {
+            return ['message' => 'Please enter the product title.', 'field' => 'title'];
+        }
+
+        if ($price === '') {
+            return ['message' => 'Please enter the product price.', 'field' => 'price'];
+        }
+
+        if ($categoryId === '') {
+            return ['message' => 'Please select at least one category.', 'field' => 'category_id'];
+        }
+
+        $existingMainImage = trim((string) ($baseProduct['main_image'] ?? ($_POST['current_main_image'] ?? '')));
+        $mainImageMissing = empty($_FILES['main_image']['name']) && $existingMainImage === '';
+        if (!$isEdit && $mainImageMissing) {
+            return ['message' => 'Please upload the main product image.', 'field' => 'main_image'];
+        }
+
+        return null;
+    }
+
+    private function renderProductForm($mode, array $product, array $options = [])
+    {
+        $deps = $this->getProductFormDependencies();
+        $viewData = array_merge($deps, [
+            'title' => $mode === 'edit' ? 'Edit Product' : 'Add Product',
+            'product' => $product
+        ], $options);
+
+        if ($mode === 'edit') {
+            $viewData['mode'] = 'edit';
+        }
+
+        $this->view('admin/products/add', $viewData);
+    }
+
     public function index()
     {
         $search = $_GET['search'] ?? null;
@@ -138,19 +233,7 @@ class ProductController extends BaseController
 
     public function add()
     {
-        // Fetch dependencies for the form
-        $categories = $this->categoryModel->getAll();
-        // Organize cats for dropdown (Main -> Sub) if possible, 
-        // but raw list with parent check in View is fine for now
-
-        $sizeGuides = $this->sizeGuideModel->getAll();
-        $variations = $this->variationModel->getAll();
-
-        $this->view('admin/products/add', [
-            'title' => 'Add Product',
-            'categories' => $categories,
-            'sizeGuides' => $sizeGuides,
-            'variations' => $variations,
+        $this->renderProductForm('add', [
             'product' => [
                 'price' => 0,
                 'weight_grams' => 0,
@@ -158,9 +241,10 @@ class ProductController extends BaseController
                 'stock_qty' => 0,
                 'low_stock_threshold' => 5,
                 'manual_stock_status' => 'in_stock',
-                'variant_stocks' => []
+                'variant_stocks' => [],
+                'selected_variation_tokens' => []
             ]
-        ]);
+        ]['product']);
     }
 
     public function store()
@@ -170,30 +254,44 @@ class ProductController extends BaseController
         // If the user uploads files larger than php.ini 'post_max_size', both $_POST and $_FILES will be empty.
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($_POST) && empty($_FILES) && isset($_SERVER['CONTENT_LENGTH']) && $_SERVER['CONTENT_LENGTH'] > 0) {
             $maxPost = ini_get('post_max_size');
-            echo "<div style='color:red; padding:20px; text-align:center; font-family:sans-serif;'>
-                    <h1>Upload Failed</h1>
-                    <p>The total size of your files exceeds the server limit ($maxPost).</p>
-                    <p>Please try uploading fewer images or compressing them first.</p>
-                    <a href='" . BASE_URL . "product/add'>Go Back</a>
-                  </div>";
+            $this->renderProductForm('add', [
+                'price' => 0,
+                'weight_grams' => 0,
+                'stock_mode' => 'always_in_stock',
+                'stock_qty' => 0,
+                'low_stock_threshold' => 5,
+                'manual_stock_status' => 'in_stock',
+                'variant_stocks' => [],
+                'selected_variation_tokens' => []
+            ], [
+                'product_form_error' => "The total size of your files exceeds the server limit ($maxPost). Please upload smaller files and try again.",
+                'product_form_error_field' => 'main_image'
+            ]);
             return;
         }
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $validationError = $this->getProductValidationError(false);
+            if ($validationError) {
+                $this->renderProductForm('add', $this->buildProductDraftFromRequest([
+                    'price' => 0,
+                    'weight_grams' => 0,
+                    'stock_mode' => 'always_in_stock',
+                    'stock_qty' => 0,
+                    'low_stock_threshold' => 5,
+                    'manual_stock_status' => 'in_stock',
+                    'variant_stocks' => [],
+                    'selected_variation_tokens' => []
+                ]), [
+                    'product_form_error' => $validationError['message'],
+                    'product_form_error_field' => $validationError['field']
+                ]);
+                return;
+            }
 
-            // 2. Validate Required Fields
             $title = $_POST['title'] ?? '';
             $price = $_POST['price'] ?? '';
             $categoryId = $_POST['category_id'] ?? '';
-
-            if (empty($title) || empty($price) || empty($categoryId)) {
-                echo "<div style='color:red; padding:20px; font-family:sans-serif;'>
-                        <h1>Missing Information</h1>
-                        <p>Please fill in all required fields (Title, Price, Category).</p>
-                        <a href='javascript:history.back()'>Go Back</a>
-                      </div>";
-                return;
-            }
 
             // 4. Handle Main Image
             $mainImagePath = isset($_FILES['main_image']) ? ImageHelper::storeUploadedFile($_FILES['main_image'], 'main') : '';
@@ -258,12 +356,19 @@ class ProductController extends BaseController
                 $this->stockAlertService->syncProductAlerts($newProductId);
                 $this->redirect('product/index');
             } else {
-                echo "<div style='color:red; padding:20px; font-family:sans-serif;'>
-                        <h1>Error Saving Product</h1>
-                        <p>There was an issue saving the product to the database.</p>
-                        <p>Please ensure the Product Title is unique (no duplicate names).</p>
-                        <a href='javascript:history.back()'>Go Back</a>
-                      </div>";
+                $this->renderProductForm('add', $this->buildProductDraftFromRequest([
+                    'price' => 0,
+                    'weight_grams' => 0,
+                    'stock_mode' => 'always_in_stock',
+                    'stock_qty' => 0,
+                    'low_stock_threshold' => 5,
+                    'manual_stock_status' => 'in_stock',
+                    'variant_stocks' => [],
+                    'selected_variation_tokens' => []
+                ]), [
+                    'product_form_error' => 'There was an issue saving the product. Please make sure the product title is unique and try again.',
+                    'product_form_error_field' => 'title'
+                ]);
             }
 
         }
@@ -275,11 +380,6 @@ class ProductController extends BaseController
         if (!$product) {
             $this->redirect('product/index');
         }
-
-        // Fetch dependencies
-        $categories = $this->categoryModel->getAll();
-        $sizeGuides = $this->sizeGuideModel->getAll();
-        $variations = $this->variationModel->getAll();
 
         // Get existing images and variations
         $product['gallery_images'] = $this->productModel->getGalleryImages($id);
@@ -298,15 +398,16 @@ class ProductController extends BaseController
 
         // Get multi-categories
         $product['categories'] = $this->productModel->getProductCategoryIds($id);
+        $product['selected_variation_tokens'] = array_map(function ($variation) {
+            return (string) ($variation['variation_id'] ?? '') . '_' . (string) ($variation['variation_value_id'] ?? '');
+        }, array_reduce(array_values($product['variant_stocks'] ?? []), function ($carry, $row) {
+            foreach (($row['values'] ?? []) as $value) {
+                $carry[] = $value;
+            }
+            return $carry;
+        }, []));
 
-        $this->view('admin/products/add', [
-            'title' => 'Edit Product',
-            'product' => $product,
-            'categories' => $categories,
-            'sizeGuides' => $sizeGuides,
-            'variations' => $variations,
-            'mode' => 'edit'
-        ]);
+        $this->renderProductForm('edit', $product);
     }
 
     public function update()
@@ -316,41 +417,60 @@ class ProductController extends BaseController
         // Mirrors logic from store() to prevent silent failures on large uploads
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($_POST) && empty($_FILES) && isset($_SERVER['CONTENT_LENGTH']) && $_SERVER['CONTENT_LENGTH'] > 0) {
             $maxPost = ini_get('post_max_size');
-            echo "<div style='color:red; padding:20px; text-align:center; font-family:sans-serif;'>
-                    <h1>Upload Failed</h1>
-                    <p>The total size of your files exceeds the server limit ($maxPost).</p>
-                    <p>Please try uploading fewer images or compressing them first.</p>
-                    <a href='javascript:history.back()'>Go Back</a>
-                  </div>";
+            $id = $_POST['id'] ?? null;
+            $existingProduct = !empty($id) ? $this->productModel->getById($id) : null;
+            if ($existingProduct) {
+                $existingProduct['gallery_images'] = $this->productModel->getGalleryImages($id);
+                $existingProduct['gallery_image_records'] = $this->productModel->getGalleryImageRecords($id);
+                $existingProduct['variations'] = $this->productModel->getVariations($id);
+                $existingProduct['variant_stocks'] = $this->productModel->getVariantStockRows($id);
+                $existingProduct['categories'] = $this->productModel->getProductCategoryIds($id);
+                $this->renderProductForm('edit', $existingProduct, [
+                    'product_form_error' => "The total size of your files exceeds the server limit ($maxPost). Please upload smaller files and try again.",
+                    'product_form_error_field' => 'main_image'
+                ]);
+                return;
+            }
+
             return;
         }
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $id = $_POST['id'] ?? null;
+            $existingProduct = !empty($id) ? $this->productModel->getById($id) : null;
+            if ($existingProduct) {
+                $existingProduct['gallery_images'] = $this->productModel->getGalleryImages($id);
+                $existingProduct['gallery_image_records'] = $this->productModel->getGalleryImageRecords($id);
+                $existingProduct['variations'] = $this->productModel->getVariations($id);
+                $existingProduct['variant_stocks'] = $this->productModel->getVariantStockRows($id);
+                $existingProduct['categories'] = $this->productModel->getProductCategoryIds($id);
+            }
 
             // 2. Validate ID and Required Fields
             // Strict check: we must have an ID to update
             if (empty($id)) {
-                echo "<div style='color:red; padding:20px; font-family:sans-serif;'>
-                        <h1>Update Failed</h1>
-                        <p>Product ID missing. Please go back and try again.</p>
-                        <a href='javascript:history.back()'>Go Back</a>
-                      </div>";
+                $this->renderProductForm('add', $this->buildProductDraftFromRequest(), [
+                    'product_form_error' => 'Product ID is missing. Please open the product again and try updating it.',
+                    'product_form_error_field' => 'title'
+                ]);
+                return;
+            }
+            if (!$existingProduct) {
+                $this->redirect('product/index');
+            }
+
+            $validationError = $this->getProductValidationError(true, $existingProduct);
+            if ($validationError) {
+                $this->renderProductForm('edit', $this->buildProductDraftFromRequest($existingProduct), [
+                    'product_form_error' => $validationError['message'],
+                    'product_form_error_field' => $validationError['field']
+                ]);
                 return;
             }
 
             $title = $_POST['title'] ?? '';
             $price = $_POST['price'] ?? '';
             $categoryId = $_POST['category_id'] ?? '';
-
-            if (empty($title) || empty($price) || empty($categoryId)) {
-                echo "<div style='color:red; padding:20px; font-family:sans-serif;'>
-                        <h1>Missing Information</h1>
-                        <p>Please fill in all required fields (Title, Price, Category).</p>
-                        <a href='javascript:history.back()'>Go Back</a>
-                      </div>";
-                return;
-            }
 
             // 4. Handle Main Image (Update only if new one provided)
             $mainImagePath = $_POST['current_main_image'] ?? '';
@@ -454,12 +574,10 @@ class ProductController extends BaseController
                 }
                 $this->redirect('product/index');
             } else {
-                echo "<div style='color:red; padding:20px; font-family:sans-serif;'>
-                        <h1>Update Failed</h1>
-                        <p>There was an issue updating the product in the database.</p>
-                        <p>It's possible that no changes were detected or the ID was invalid.</p>
-                        <a href='javascript:history.back()'>Go Back</a>
-                      </div>";
+                $this->renderProductForm('edit', $this->buildProductDraftFromRequest($existingProduct), [
+                    'product_form_error' => 'There was an issue updating the product. Please review the form and try again.',
+                    'product_form_error_field' => 'title'
+                ]);
             }
 
         }

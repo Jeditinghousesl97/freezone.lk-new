@@ -637,7 +637,7 @@
                 <button type="button" id="discardDraftBtn">Forget Saved Draft</button>
             </div>
 
-            <div id="productValidationAlert" class="validation-alert"></div>
+            <div id="productValidationAlert" class="validation-alert <?= !empty($product_form_error) ? 'show' : '' ?>"><?= htmlspecialchars($product_form_error ?? '') ?></div>
 
             <?php if (isset($mode) && $mode === 'edit'): ?>
                 <input type="hidden" name="id" value="<?= $product['id'] ?>">
@@ -914,6 +914,7 @@
                                         <?php
                                         // Check if this value is selected in the product data
                                         $selected = '';
+                                        $selectedVariationTokens = $product['selected_variation_tokens'] ?? [];
                                         if (isset($product['variations']) && is_array($product['variations'])) {
                                             // $product['variations'] is grouped: 'Color' => [[id=X, value=Y]]
                                             // We need to check if $val['id'] exists in any of the grouped arrays
@@ -925,6 +926,9 @@
                                                     }
                                                 }
                                             }
+                                        }
+                                        if ($selected === '' && in_array((string) $var['id'] . '_' . (string) $val['id'], $selectedVariationTokens, true)) {
+                                            $selected = 'selected';
                                         }
                                         ?>
                                         <div class="var-opt <?= $selected ?>" data-id="<?= $var['id'] ?>_<?= $val['id'] ?>"
@@ -987,6 +991,10 @@
             ? 'fz_product_form_draft_edit_<?= (int) ($product['id'] ?? 0) ?>'
             : 'fz_product_form_draft_add';
         const trackedFieldNames = ['title', 'price', 'sale_price', 'weight_grams', 'description', 'size_guide_id', 'sku', 'stock_mode', 'stock_qty', 'low_stock_threshold'];
+        const initialServerValidation = {
+            message: <?= json_encode((string) ($product_form_error ?? '')) ?>,
+            field: <?= json_encode((string) ($product_form_error_field ?? '')) ?>
+        };
         let isSubmittingProductForm = false;
         let suppressDraftTracking = false;
         let saveDraftTimer = null;
@@ -1660,6 +1668,16 @@
             }
         }
 
+        function getValidationTarget(fieldName) {
+            if (fieldName === 'category_id') {
+                return document.getElementById('categoryTrigger');
+            }
+            if (fieldName === 'main_image') {
+                return document.getElementById('mainImageBox');
+            }
+            return document.querySelector('[name="' + fieldName + '"]');
+        }
+
         function getCheckedCategories() {
             return Array.from(document.querySelectorAll('input[name="categories[]"]:checked'));
         }
@@ -1791,7 +1809,11 @@
             renderVariantStockRows();
             toggleStockPanels();
             initialDraftFingerprint = getDraftFingerprint(getCurrentDraftState());
-            restoreDraftFromStorage();
+            if (initialServerValidation.message) {
+                showValidationError(initialServerValidation.message, getValidationTarget(initialServerValidation.field));
+            } else {
+                restoreDraftFromStorage();
+            }
             if (hasUnsavedChanges()) {
                 scheduleDraftSave();
             }
