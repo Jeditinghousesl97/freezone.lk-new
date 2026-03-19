@@ -31,6 +31,11 @@ $gatewayDefinitions = [
         'label' => 'KOKO',
         'file' => 'koko.png'
     ],
+    'bank_transfer' => [
+        'enabled' => !empty($settings['bank_transfer_enabled']),
+        'label' => 'Bank Transfer',
+        'file' => 'bank.png'
+    ],
 ];
 
 foreach ($gatewayDefinitions as $gatewayKey => $gateway) {
