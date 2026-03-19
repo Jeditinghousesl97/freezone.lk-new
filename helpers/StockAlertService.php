@@ -123,7 +123,8 @@ class StockAlertService
             . ', Threshold: ' . (string) ($state['threshold'] ?? 0);
 
         try {
-            SmsLenzClient::send($settings, $recipient, $message);
+            $client = new SmsLenzClient();
+            $client->send($settings, $recipient, $message);
         } catch (Exception $e) {
             $this->logFailure('sms', $e->getMessage(), $state);
         }
