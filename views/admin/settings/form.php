@@ -532,7 +532,7 @@
 
             <div style="margin-top:20px; padding:20px; border-radius:16px; background:#ffffff; border:1px solid #e9e9e9;">
                 <h3 style="margin:0 0 14px;">KOKO Settings</h3>
-                <p style="font-size:12px; color:#777; margin:0 0 16px;">Configure KOKO Buy Now Pay Later. Leave secret fields blank if you want to keep the current saved values.</p>
+                <p style="font-size:12px; color:#777; margin:0 0 16px;">Configure the direct KOKO PHP API integration. Sandbox uses <code>qaapi.paykoko.com</code>. Leave secret fields blank if you want to keep the current saved values.</p>
 
                 <label style="display:flex; align-items:center; gap:8px; margin-bottom:14px; font-size:14px; color:#333;">
                     <input type="checkbox" name="koko_enabled" value="1" <?= !empty($settings['koko_enabled']) ? 'checked' : '' ?>>
@@ -541,7 +541,7 @@
 
                 <label style="display:flex; align-items:center; gap:8px; margin-bottom:18px; font-size:14px; color:#333;">
                     <input type="checkbox" name="koko_sandbox" value="1" <?= !empty($settings['koko_sandbox']) ? 'checked' : '' ?>>
-                    Use KOKO sandbox mode
+                    Use KOKO QA mode
                 </label>
 
                 <label class="label">Gateway Title</label>
@@ -562,12 +562,15 @@
                 <label class="label">KOKO Public Key</label>
                 <textarea name="koko_public_key" class="input-box" rows="7" placeholder="-----BEGIN PUBLIC KEY-----"><?= htmlspecialchars($settings['koko_public_key'] ?? '') ?></textarea>
 
-                <label class="label">KOKO Private Key</label>
+                <label class="label">Merchant Private Key</label>
                 <textarea name="koko_private_key" class="input-box" rows="8" placeholder="Leave blank to keep current KOKO Private Key"></textarea>
 
-                <label class="label">KOKO Callback Secret</label>
+                <label class="label">KOKO Response Secret</label>
                 <input type="password" name="koko_callback_secret" class="input-box" autocomplete="new-password"
-                    placeholder="Optional shared secret for callback validation" value="">
+                    placeholder="Optional shared secret for KOKO response URL validation" value="">
+                <p style="margin:-6px 0 0; font-size:11px; color:#777; line-height:1.7;">
+                    This integration sends separate KOKO return, cancel, and server response URLs automatically. Keep the public key from KOKO and the merchant private key in the matching environment.
+                </p>
             </div>
 
             <div style="margin-top:20px; padding:20px; border-radius:16px; background:#ffffff; border:1px solid #e9e9e9;">

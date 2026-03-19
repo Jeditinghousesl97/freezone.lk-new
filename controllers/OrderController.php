@@ -454,12 +454,138 @@ class OrderController extends BaseController
 
     private function renderKokoRedirect(array $order, array $settings, $description)
     {
-        $callbackUrl = SeoHelper::absoluteUrl(BASE_URL . 'order/kokoCallback');
-        $callbackUrl = $this->appendOptionalSecret($callbackUrl, $settings['koko_callback_secret'] ?? '');
-        $kokoPayload = KokoGateway::buildPayload($order, $settings, $description, $callbackUrl, 'woocommerce', '2.0.11');
+        $orderId = urlencode((string) ($order['id'] ?? ''));
+        $returnUrl = SeoHelper::absoluteUrl(BASE_URL . 'order/kokoReturn?orderId=' . $orderId);
+        $cancelUrl = SeoHelper::absoluteUrl(BASE_URL . 'order/kokoCancel?orderId=' . $orderId);
+        $responseUrl = SeoHelper::absoluteUrl(BASE_URL . 'order/kokoResponse');
+        $responseUrl = $this->appendOptionalSecret($responseUrl, $settings['koko_callback_secret'] ?? '');
+        $kokoPayload = KokoGateway::buildPayload($order, $settings, $description, $returnUrl, $cancelUrl, $responseUrl);
         $kokoEndpoint = KokoGateway::checkoutUrl($settings);
 
         require 'views/customer/koko_redirect.php';
+    }
+
+    private function resolveKokoOrderFromRequest($orderIdRaw)
+    {
+        $orderId = (int) trim((string) $orderIdRaw);
+        if ($orderId <= 0) {
+            return null;
+        }
+
+        return $this->orderModel->getById($orderId);
+    }
+
+    private function applyKokoPaymentResult(array $order, $paymentStatus, $paymentId, $statusCode, $message, array $payload, $transactionType)
+    {
+        $paymentStatus = trim((string) $paymentStatus);
+        $paymentId = trim((string) $paymentId);
+        $statusCode = trim((string) $statusCode);
+        $message = trim((string) $message);
+
+        $this->orderModel->recordTransaction(
+            (int) $order['id'],
+            'koko',
+            $transactionType,
+            $paymentId !== '' ? $paymentId : null,
+            $statusCode !== '' ? $statusCode : null,
+            (float) ($order['total_amount'] ?? 0),
+            $order['currency'] ?? 'LKR',
+            $payload
+        );
+
+        $this->orderModel->updatePaymentStatus(
+            (string) $order['order_number'],
+            $paymentStatus,
+            $paymentId !== '' ? $paymentId : null,
+            $statusCode !== '' ? $statusCode : null,
+            $message !== '' ? $message : null
+        );
+
+        if ($paymentStatus === 'paid' && (($order['order_status'] ?? 'pending') === 'pending')) {
+            $this->orderModel->updateOrderStatus((string) $order['order_number'], 'processing');
+        }
+
+        $updatedOrder = $this->syncOrderStockState((string) $order['order_number']);
+        if ($updatedOrder) {
+            if ($paymentStatus === 'paid') {
+                $this->notifyCustomerOrderEvent($updatedOrder, 'payment_completed');
+            } elseif ($paymentStatus === 'cancelled') {
+                $this->notifyCustomerOrderEvent($updatedOrder, 'payment_cancelled');
+            } elseif ($paymentStatus === 'failed' || $paymentStatus === 'verification_failed') {
+                $this->notifyCustomerOrderEvent($updatedOrder, 'payment_failed');
+            }
+            return $updatedOrder;
+        }
+
+        return $this->orderModel->getById((int) $order['id']);
+    }
+
+    private function renderKokoStatusPage(array $order, array $settings, $statusType)
+    {
+        $seo = SeoHelper::defaultSeo($settings, [
+            'seo_title' => 'Payment Status | ' . SeoHelper::shopName($settings),
+            'seo_description' => 'Check the latest status of your payment order.',
+            'seo_canonical' => SeoHelper::absoluteUrl(BASE_URL . 'order/' . ($statusType === 'cancel' ? 'kokoCancel' : 'kokoReturn') . '?orderId=' . urlencode((string) ($order['id'] ?? ''))),
+            'seo_robots' => 'noindex,nofollow'
+        ]);
+
+        $this->view('customer/payment_status', [
+            'title' => 'Payment Status',
+            'settings' => $settings,
+            'order' => $order,
+            'status_type' => $statusType,
+            'gateway_name' => 'KOKO',
+            'seo_title' => $seo['seo_title'],
+            'seo_description' => $seo['seo_description'],
+            'seo_canonical' => $seo['seo_canonical'],
+            'seo_image' => $seo['seo_image'],
+            'seo_type' => $seo['seo_type'],
+            'seo_robots' => $seo['seo_robots'],
+            'seo_json_ld' => $seo['seo_json_ld']
+        ]);
+    }
+
+    private function tryRefreshKokoOrderStatus(array $order, array $settings)
+    {
+        if (empty($settings['koko_merchant_id']) || empty($settings['koko_api_key']) || empty($settings['koko_private_key'])) {
+            return $order;
+        }
+
+        try {
+            $response = KokoGateway::fetchOrderView((string) ($order['id'] ?? ''), $settings);
+        } catch (Exception $e) {
+            return $order;
+        }
+
+        $orderIdRaw = (string) ($response['orderId'] ?? '');
+        $trnIdRaw = (string) ($response['trnId'] ?? '');
+        $statusRaw = (string) ($response['status'] ?? '');
+        $descRaw = (string) ($response['desc'] ?? '');
+        $signatureParam = (string) ($response['signature'] ?? '');
+
+        if ($orderIdRaw === '' || $statusRaw === '' || $signatureParam === '') {
+            return $order;
+        }
+
+        $signatureValid = !empty($settings['koko_public_key'])
+            && KokoGateway::verifyStatusSignature($orderIdRaw, $trnIdRaw, $statusRaw, $signatureParam, (string) ($settings['koko_public_key'] ?? ''));
+
+        if (!$signatureValid) {
+            return $order;
+        }
+
+        $paymentStatus = KokoGateway::normalizeStatus($statusRaw);
+        $message = trim($descRaw) !== '' ? trim($descRaw) : ('KOKO payment status refreshed as ' . str_replace('_', ' ', $paymentStatus) . '.');
+
+        return $this->applyKokoPaymentResult(
+            $order,
+            $paymentStatus,
+            $trnIdRaw,
+            $statusRaw,
+            $message,
+            $response,
+            'order_view'
+        );
     }
 
     public function manage()
@@ -1592,13 +1718,15 @@ class OrderController extends BaseController
         ]);
     }
 
-    public function kokoCallback()
+    public function kokoResponse()
     {
         $settings = $this->settingModel->getAllPairs();
 
         if (!empty($settings['koko_callback_secret'])) {
             $providedSecret = '';
-            if (isset($_SERVER['HTTP_X_DARAZBNPL_SECRET'])) {
+            if (isset($_SERVER['HTTP_X_KOKO_SECRET'])) {
+                $providedSecret = (string) $_SERVER['HTTP_X_KOKO_SECRET'];
+            } elseif (isset($_SERVER['HTTP_X_DARAZBNPL_SECRET'])) {
                 $providedSecret = (string) $_SERVER['HTTP_X_DARAZBNPL_SECRET'];
             } elseif (isset($_REQUEST['secret'])) {
                 $providedSecret = (string) $_REQUEST['secret'];
@@ -1617,88 +1745,103 @@ class OrderController extends BaseController
         $descRaw = isset($_REQUEST['desc']) ? (string) $_REQUEST['desc'] : '';
         $signatureParam = isset($_REQUEST['signature']) ? (string) $_REQUEST['signature'] : '';
 
-        $orderId = (int) trim($orderIdRaw);
-        $order = $orderId > 0 ? $this->orderModel->getById($orderId) : null;
+        $order = $this->resolveKokoOrderFromRequest($orderIdRaw);
+        if (!$order) {
+            http_response_code(404);
+            echo 'ORDER_NOT_FOUND';
+            exit;
+        }
+
+        $signatureValid = $signatureParam !== ''
+            && !empty($settings['koko_public_key'])
+            && KokoGateway::verifyStatusSignature($orderIdRaw, $trnIdRaw, $statusRaw, $signatureParam, (string) ($settings['koko_public_key'] ?? ''));
+
+        if (!$signatureValid) {
+            http_response_code(400);
+            echo 'INVALID_SIGNATURE';
+            exit;
+        }
+
+        $paymentStatus = KokoGateway::normalizeStatus($statusRaw);
+        $message = trim($descRaw) !== '' ? trim($descRaw) : 'KOKO payment status updated.';
+        $this->applyKokoPaymentResult($order, $paymentStatus, $trnIdRaw, $statusRaw, $message, $_REQUEST, 'response_verified');
+
+        echo 'OK';
+        exit;
+    }
+
+    public function kokoReturn()
+    {
+        $settings = $this->settingModel->getAllPairs();
+        $orderIdRaw = isset($_REQUEST['orderId']) ? (string) $_REQUEST['orderId'] : '';
+        $statusRaw = isset($_REQUEST['status']) ? (string) $_REQUEST['status'] : '';
+        $trnIdRaw = isset($_REQUEST['trnId']) ? (string) $_REQUEST['trnId'] : '';
+        $signatureParam = isset($_REQUEST['signature']) ? (string) $_REQUEST['signature'] : '';
+
+        $order = $this->resolveKokoOrderFromRequest($orderIdRaw);
         if (!$order) {
             $this->redirect('cart');
         }
 
-        $paymentStatus = 'pending';
-        $message = trim($descRaw) !== '' ? trim($descRaw) : 'KOKO payment pending.';
-        $signatureValid = false;
+        $order = $this->tryRefreshKokoOrderStatus($order, $settings);
+        $normalizedStatus = KokoGateway::normalizeStatus($statusRaw);
+        $signatureValid = $signatureParam !== ''
+            && !empty($settings['koko_public_key'])
+            && KokoGateway::verifyStatusSignature($orderIdRaw, $trnIdRaw, $statusRaw, $signatureParam, (string) ($settings['koko_public_key'] ?? ''));
 
-        if ($signatureParam !== '' && !empty($settings['koko_public_key'])) {
-            $signatureValid = KokoGateway::verifyCallback($orderIdRaw, $trnIdRaw, $statusRaw, $descRaw, $signatureParam, (string) $settings['koko_public_key']);
+        if (($order['payment_status'] ?? 'pending') === 'pending' && $signatureValid && $normalizedStatus !== 'pending') {
+            $message = 'KOKO payment status updated from return URL.';
+            $order = $this->applyKokoPaymentResult($order, $normalizedStatus, $trnIdRaw, $statusRaw, $message, $_REQUEST, 'return_verified');
         }
 
-        $this->orderModel->recordTransaction(
-            (int) $order['id'],
-            'koko',
-            'callback',
-            trim($trnIdRaw) !== '' ? trim($trnIdRaw) : null,
-            trim($statusRaw) !== '' ? trim($statusRaw) : null,
-            (float) ($order['total_amount'] ?? 0),
-            $order['currency'] ?? 'LKR',
-            $_REQUEST
-        );
-
-        if (!$signatureValid) {
-            $paymentStatus = 'verification_failed';
-            $message = 'KOKO signature verification failed.';
-        } else {
-            $paymentStatus = KokoGateway::normalizeStatus($statusRaw);
-            if ($paymentStatus === 'paid') {
-                $message = trim($descRaw) !== '' ? trim($descRaw) : 'KOKO payment completed successfully.';
-            } elseif ($paymentStatus === 'cancelled') {
-                $message = trim($descRaw) !== '' ? trim($descRaw) : 'KOKO payment was cancelled.';
-            } elseif ($paymentStatus === 'failed') {
-                $message = trim($descRaw) !== '' ? trim($descRaw) : 'KOKO payment failed.';
-            }
-        }
-
-        $this->orderModel->updatePaymentStatus($order['order_number'], $paymentStatus, trim($trnIdRaw) ?: null, trim($statusRaw) ?: null, $message);
-        if ($paymentStatus === 'paid' && (($order['order_status'] ?? 'pending') === 'pending')) {
-            $this->orderModel->updateOrderStatus($order['order_number'], 'processing');
-        }
-
-        $updatedOrder = $this->syncOrderStockState($order['order_number']);
-        if ($updatedOrder) {
-            if ($paymentStatus === 'paid') {
-                $this->notifyCustomerOrderEvent($updatedOrder, 'payment_completed');
-            } elseif ($paymentStatus === 'cancelled') {
-                $this->notifyCustomerOrderEvent($updatedOrder, 'payment_cancelled');
-            } elseif ($paymentStatus === 'failed' || $paymentStatus === 'verification_failed') {
-                $this->notifyCustomerOrderEvent($updatedOrder, 'payment_failed');
-            }
-            $order = $updatedOrder;
-        }
-
-        if ($paymentStatus === 'paid' && !empty($_SESSION['cart'])) {
+        if (($order['payment_status'] ?? 'pending') === 'paid' && !empty($_SESSION['cart'])) {
             $_SESSION['cart'] = [];
         }
         unset($_SESSION['pending_order_number']);
 
-        $seo = SeoHelper::defaultSeo($settings, [
-            'seo_title' => 'Payment Status | ' . SeoHelper::shopName($settings),
-            'seo_description' => 'Check the latest status of your payment order.',
-            'seo_canonical' => SeoHelper::absoluteUrl(BASE_URL . 'order/kokoCallback?orderId=' . urlencode((string) $orderId)),
-            'seo_robots' => 'noindex,nofollow'
-        ]);
+        $this->renderKokoStatusPage($order, $settings, 'return');
+    }
 
-        $this->view('customer/payment_status', [
-            'title' => 'Payment Status',
-            'settings' => $settings,
-            'order' => $order,
-            'status_type' => 'return',
-            'gateway_name' => 'KOKO',
-            'seo_title' => $seo['seo_title'],
-            'seo_description' => $seo['seo_description'],
-            'seo_canonical' => $seo['seo_canonical'],
-            'seo_image' => $seo['seo_image'],
-            'seo_type' => $seo['seo_type'],
-            'seo_robots' => $seo['seo_robots'],
-            'seo_json_ld' => $seo['seo_json_ld']
-        ]);
+    public function kokoCancel()
+    {
+        $settings = $this->settingModel->getAllPairs();
+        $orderIdRaw = isset($_REQUEST['orderId']) ? (string) $_REQUEST['orderId'] : '';
+        $order = $this->resolveKokoOrderFromRequest($orderIdRaw);
+        if (!$order) {
+            $this->redirect('cart');
+        }
+
+        $order = $this->tryRefreshKokoOrderStatus($order, $settings);
+        if (($order['payment_status'] ?? 'pending') === 'pending') {
+            $order = $this->applyKokoPaymentResult(
+                $order,
+                'cancelled',
+                (string) ($_REQUEST['trnId'] ?? ''),
+                (string) ($_REQUEST['status'] ?? 'CANCELED'),
+                'KOKO payment was cancelled by the customer.',
+                $_REQUEST,
+                'cancel_return'
+            );
+        }
+
+        unset($_SESSION['pending_order_number']);
+        $this->renderKokoStatusPage($order, $settings, 'cancel');
+    }
+
+    public function kokoCallback()
+    {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $this->kokoResponse();
+            return;
+        }
+
+        $statusRaw = isset($_REQUEST['status']) ? (string) $_REQUEST['status'] : '';
+        if (KokoGateway::normalizeStatus($statusRaw) === 'cancelled') {
+            $this->kokoCancel();
+            return;
+        }
+
+        $this->kokoReturn();
     }
 
     public function codSuccess()

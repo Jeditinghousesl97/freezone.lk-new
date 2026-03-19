@@ -422,10 +422,10 @@
                 <label class="section-title">Privacy Policy</label>
                 <textarea name="privacy_policy_content" class="input-white textarea-lg" placeholder="Enter privacy policy content here"><?= htmlspecialchars($settings['privacy_policy_content'] ?? '') ?></textarea>
 
-                <label class="section-title" style="margin-top:24px;">Checkout Settings</label>
-                <p style="margin:0 0 14px; font-size:12px; color:#666;">
-                    Turn checkout methods on or off for this shop. PayHere and KOKO settings are managed from Settings.
-                </p>
+                  <label class="section-title" style="margin-top:24px;">Checkout Settings</label>
+                  <p style="margin:0 0 14px; font-size:12px; color:#666;">
+                    Turn checkout methods on or off for this shop. PayHere and KOKO API credentials are managed from Settings.
+                  </p>
 
                 <label class="slider-remove-row" style="margin:0 0 12px;">
                     <input type="checkbox" name="cod_enabled" value="1" <?= !empty($settings['cod_enabled']) ? 'checked' : '' ?>>
