@@ -276,7 +276,17 @@ class OrderEmailService
                 : ($this->customerBodyDefaults[$eventKey] ?? 'We have an update for your order.');
         }
 
-        return $this->replacePlaceholders($template, $settings, $order);
+        $content = $this->replacePlaceholders($template, $settings, $order);
+        if (
+            $recipientType === 'customer'
+            && $eventKey === 'order_placed'
+            && strtolower((string) ($order['payment_method'] ?? '')) === 'bank_transfer'
+            && trim((string) ($settings['bank_transfer_details'] ?? '')) !== ''
+        ) {
+            $content .= "\n\nBank Transfer Details:\n" . trim((string) $settings['bank_transfer_details']);
+        }
+
+        return $content;
     }
 
     private function replacePlaceholders($text, array $settings, array $order)
@@ -296,7 +306,8 @@ class OrderEmailService
             '{website_url}' => SeoHelper::absoluteUrl(BASE_URL),
             '{customer_email}' => (string) ($order['email'] ?? ''),
             '{customer_phone}' => (string) ($order['phone'] ?? ''),
-            '{customer_address}' => trim(((string) ($order['address'] ?? '')) . ', ' . ((string) ($order['city'] ?? '')))
+            '{customer_address}' => trim(((string) ($order['address'] ?? '')) . ', ' . ((string) ($order['city'] ?? ''))),
+            '{bank_transfer_details}' => trim((string) ($settings['bank_transfer_details'] ?? ''))
         ];
 
         return strtr($text, $placeholders);

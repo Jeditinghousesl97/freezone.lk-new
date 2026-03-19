@@ -245,7 +245,8 @@ class OrderSmsService
             '{courier_service}' => (string) ($order['courier_service'] ?? ''),
             '{tracking_number}' => (string) ($order['tracking_number'] ?? ''),
             '{shop_whatsapp}' => (string) ($settings['shop_whatsapp'] ?? ''),
-            '{website_url}' => SeoHelper::absoluteUrl(BASE_URL)
+            '{website_url}' => SeoHelper::absoluteUrl(BASE_URL),
+            '{bank_transfer_details}' => trim((string) ($settings['bank_transfer_details'] ?? ''))
         ];
 
         if ($recipientType === 'owner') {
@@ -253,6 +254,14 @@ class OrderSmsService
         }
 
         $message = strtr($template, $placeholders);
+        if (
+            $recipientType === 'customer'
+            && $eventKey === 'order_placed'
+            && strtolower((string) ($order['payment_method'] ?? '')) === 'bank_transfer'
+            && trim((string) ($settings['bank_transfer_details'] ?? '')) !== ''
+        ) {
+            $message .= ' Bank details: ' . trim((string) $settings['bank_transfer_details']);
+        }
         $message = preg_replace('/\s+/', ' ', trim((string) $message));
 
         if (function_exists('mb_substr')) {
