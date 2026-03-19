@@ -46,7 +46,7 @@ class StockAlertService
     public function syncAlertsForItems(array $items)
     {
         foreach ($items as $item) {
-            $productId = (int) ($item['id'] ?? 0);
+            $productId = (int) ($item['product_id'] ?? $item['id'] ?? 0);
             if ($productId <= 0) {
                 continue;
             }

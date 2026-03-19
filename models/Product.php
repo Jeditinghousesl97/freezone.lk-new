@@ -1390,6 +1390,9 @@ class Product extends BaseModel
                 'last_ordered_at' => $sales['last_ordered_at'] ?? null,
                 'inventory_value' => $inventoryValue,
                 'effective_price' => $effectivePrice,
+                'price' => (float) ($product['price'] ?? 0),
+                'sale_price' => !empty($product['sale_price']) ? (float) $product['sale_price'] : null,
+                'weight_grams' => (int) ($product['weight_grams'] ?? 0),
                 'is_active' => !empty($product['is_active']),
                 'variant_summary' => $variantSummary,
                 'variant_rows' => $variantRows

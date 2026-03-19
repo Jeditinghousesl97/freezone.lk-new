@@ -102,6 +102,7 @@ class StockController extends BaseController
 
         fputcsv($output, [
             'Product',
+            'Variation',
             'SKU',
             'Category',
             'Product Type',
@@ -111,6 +112,8 @@ class StockController extends BaseController
             'Low Stock Threshold',
             'Variant Count',
             'Selling Price',
+            'Sale Price',
+            'Weight (g)',
             'Inventory Value',
             'Units Sold',
             'Orders Count',
@@ -120,8 +123,9 @@ class StockController extends BaseController
         ]);
 
         foreach ($rows as $row) {
-            fputcsv($output, [
+            $productCsvRow = [
                 $row['title'] ?? '',
+                '',
                 $row['sku'] ?? '',
                 $row['category_name'] ?? '',
                 ucfirst((string) ($row['product_type'] ?? 'simple')),
@@ -131,13 +135,45 @@ class StockController extends BaseController
                 (int) ($row['low_stock_threshold'] ?? 0),
                 (int) ($row['variant_count'] ?? 0),
                 number_format((float) ($row['effective_price'] ?? 0), 2, '.', ''),
+                !empty($row['sale_price']) ? number_format((float) $row['sale_price'], 2, '.', '') : '',
+                (int) ($row['weight_grams'] ?? 0),
                 $row['inventory_value'] === null ? '' : number_format((float) $row['inventory_value'], 2, '.', ''),
                 (int) ($row['units_sold'] ?? 0),
                 (int) ($row['orders_count'] ?? 0),
                 number_format((float) ($row['revenue_total'] ?? 0), 2, '.', ''),
                 $row['last_ordered_at'] ?? '',
                 !empty($row['is_active']) ? 'Yes' : 'No'
-            ]);
+            ];
+
+            fputcsv($output, $productCsvRow);
+
+            foreach (($row['variant_rows'] ?? []) as $variantRow) {
+                $variantInventoryValue = $variantRow['available_qty'] === null
+                    ? ''
+                    : number_format(((int) $variantRow['available_qty']) * (float) ($variantRow['effective_price'] ?? 0), 2, '.', '');
+
+                fputcsv($output, [
+                    $row['title'] ?? '',
+                    $variantRow['combination_label'] ?? ($variantRow['combination_key'] ?? ''),
+                    $variantRow['sku'] ?? '',
+                    $row['category_name'] ?? '',
+                    'Variant Item',
+                    ucwords(str_replace('_', ' ', (string) ($variantRow['status'] ?? 'in_stock'))),
+                    ucwords(str_replace('_', ' ', (string) ($variantRow['stock_mode'] ?? 'always_in_stock'))),
+                    $variantRow['available_qty'] === null ? 'Unlimited / Manual' : (int) $variantRow['available_qty'],
+                    (int) ($variantRow['low_stock_threshold'] ?? 0),
+                    '',
+                    $variantRow['variant_price'] !== null ? number_format((float) $variantRow['variant_price'], 2, '.', '') : '',
+                    $variantRow['variant_sale_price'] !== null ? number_format((float) $variantRow['variant_sale_price'], 2, '.', '') : '',
+                    (int) ($variantRow['variant_weight_grams'] ?? 0),
+                    $variantInventoryValue,
+                    '',
+                    '',
+                    '',
+                    '',
+                    !empty($variantRow['is_active']) ? 'Yes' : 'No'
+                ]);
+            }
         }
 
         fclose($output);
