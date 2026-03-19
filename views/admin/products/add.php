@@ -497,6 +497,28 @@
             white-space: nowrap;
         }
 
+        .validation-alert {
+            display: none;
+            background: #fff1f0;
+            border: 1px solid #ffc9c5;
+            color: #b42318;
+            border-radius: 12px;
+            padding: 14px 16px;
+            margin-bottom: 16px;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .validation-alert.show {
+            display: block;
+        }
+
+        .field-error {
+            border: 2px solid #ff5a4f !important;
+            background: #fff8f7 !important;
+            box-shadow: 0 0 0 4px rgba(255, 90, 79, 0.12);
+        }
+
         @media (max-width: 640px) {
             .stock-grid,
             .stock-row,
@@ -599,7 +621,7 @@
 
     <!-- Form -->
     <form action="<?= BASE_URL ?>product/<?= isset($mode) && $mode === 'edit' ? 'update' : 'store' ?>" method="POST"
-        enctype="multipart/form-data" id="productForm">
+        enctype="multipart/form-data" id="productForm" novalidate>
         <div class="container" style="padding-bottom: 80px;">
 
             <div class="header-bar">
@@ -615,6 +637,8 @@
                 <button type="button" id="discardDraftBtn">Forget Saved Draft</button>
             </div>
 
+            <div id="productValidationAlert" class="validation-alert"></div>
+
             <?php if (isset($mode) && $mode === 'edit'): ?>
                 <input type="hidden" name="id" value="<?= $product['id'] ?>">
                 <input type="hidden" name="current_main_image" value="<?= $product['main_image'] ?>">
@@ -626,7 +650,7 @@
 
                 <div class="images-container">
                 <!-- Main Image -->
-                <div class="main-img-box" onclick="document.getElementById('mainImgInput').click()">
+                <div class="main-img-box" id="mainImageBox" onclick="document.getElementById('mainImgInput').click()">
                     <?php if (isset($mode) && $mode === 'edit' && !empty($product['main_image'])): ?>
                         <?php $mainPreviewImage = ImageHelper::uploadUrl($product['main_image'], ''); ?>
                         <img id="mainPreview" class="preview-img"
@@ -689,7 +713,7 @@
 
                
                     <!-- Multi-Check Dropdown Trigger -->
-                <div class="input-box dropdown-trigger" onclick="toggleCatDropdown()">
+                <div class="input-box dropdown-trigger" id="categoryTrigger" onclick="toggleCatDropdown()">
                     <span id="catTriggerText">Select Categories...</span>
                     <span id="catArrow" style="font-size:12px; color:#999;">▼</span>
                 </div>
@@ -1606,8 +1630,81 @@
             }
         }
 
-                // Form Submit Loading (Global)
-        document.getElementById('productForm').addEventListener('submit', function () {
+        const validationAlert = document.getElementById('productValidationAlert');
+
+        function clearValidationErrors() {
+            if (validationAlert) {
+                validationAlert.classList.remove('show');
+                validationAlert.textContent = '';
+            }
+
+            document.querySelectorAll('.field-error').forEach(function (element) {
+                element.classList.remove('field-error');
+            });
+        }
+
+        function showValidationError(message, element) {
+            if (validationAlert) {
+                validationAlert.textContent = message;
+                validationAlert.classList.add('show');
+            }
+
+            if (element) {
+                element.classList.add('field-error');
+                if (typeof element.focus === 'function') {
+                    element.focus({ preventScroll: true });
+                }
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else if (validationAlert) {
+                validationAlert.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        function getCheckedCategories() {
+            return Array.from(document.querySelectorAll('input[name="categories[]"]:checked'));
+        }
+
+        function validateProductForm() {
+            clearValidationErrors();
+
+            const titleInput = document.querySelector('input[name="title"]');
+            const priceInput = document.querySelector('input[name="price"]');
+            const categoryTrigger = document.getElementById('categoryTrigger');
+            const mainImageInput = document.getElementById('mainImgInput');
+            const mainImageBox = document.getElementById('mainImageBox');
+            const primaryCategoryInput = document.getElementById('primaryCatInput');
+
+            if (titleInput && titleInput.value.trim() === '') {
+                showValidationError('Please enter the product title.', titleInput);
+                return false;
+            }
+
+            if (priceInput && priceInput.value.trim() === '') {
+                showValidationError('Please enter the product price.', priceInput);
+                return false;
+            }
+
+            if (getCheckedCategories().length === 0 || !primaryCategoryInput || primaryCategoryInput.value.trim() === '') {
+                showValidationError('Please select at least one category.', categoryTrigger);
+                return false;
+            }
+
+            if (mainImageInput && mainImageInput.required && (!mainImageInput.files || mainImageInput.files.length === 0)) {
+                showValidationError('Please upload the main product image.', mainImageBox);
+                return false;
+            }
+
+            return true;
+        }
+
+        // Form Submit Loading (Global)
+        document.getElementById('productForm').addEventListener('submit', function (event) {
+            if (!validateProductForm()) {
+                event.preventDefault();
+                hideGlobalLoader();
+                return;
+            }
+
             isSubmittingProductForm = true;
             localStorage.removeItem(draftStorageKey);
             showGlobalLoader();
@@ -1618,6 +1715,7 @@
             if(this.files.length > 0) showGlobalLoader();
             // Loader hides automatically via timeout in preview logic or manually below if instant
             setTimeout(hideGlobalLoader, 1000); // Simulate network delay for effect
+            document.getElementById('mainImageBox').classList.remove('field-error');
             scheduleDraftSave();
         });
 
@@ -1629,12 +1727,20 @@
 
         productForm.addEventListener('input', function (event) {
             if (event.target && event.target.matches('input, textarea, select')) {
+                event.target.classList.remove('field-error');
+                if (event.target.name === 'categories[]' || event.target.id === 'primaryCatInput') {
+                    document.getElementById('categoryTrigger').classList.remove('field-error');
+                }
                 scheduleDraftSave();
             }
         }, true);
 
         productForm.addEventListener('change', function (event) {
             if (event.target && event.target.matches('input, textarea, select')) {
+                event.target.classList.remove('field-error');
+                if (event.target.name === 'categories[]' || event.target.id === 'primaryCatInput') {
+                    document.getElementById('categoryTrigger').classList.remove('field-error');
+                }
                 scheduleDraftSave();
             }
         }, true);
