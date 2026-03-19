@@ -6,69 +6,89 @@
     <title><?= htmlspecialchars($title ?? 'Stock Report') ?></title>
     <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/admin.css?v=<?= time() ?>">
     <style>
-        .report-header { display:flex; justify-content:space-between; gap:14px; align-items:flex-start; flex-wrap:wrap; margin-bottom:20px; }
+        body { background:#f6f8fb; }
+        .report-shell { max-width:1320px; margin:0 auto; }
+        .report-header { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; margin-bottom:20px; }
         .report-actions { display:flex; gap:10px; flex-wrap:wrap; }
-        .report-btn { display:inline-flex; align-items:center; justify-content:center; padding:11px 15px; border-radius:12px; text-decoration:none; font-size:13px; font-weight:800; }
-        .report-btn.primary { background:#111; color:#fff; }
-        .report-btn.secondary { background:#fff; color:#333; border:1px solid #ececec; }
-        .report-btn.export { background:#1f8f45; color:#fff; }
+        .report-btn { display:inline-flex; align-items:center; justify-content:center; padding:11px 16px; border-radius:12px; text-decoration:none; font-size:13px; font-weight:800; border:none; cursor:pointer; }
+        .report-btn.primary { background:#111827; color:#fff; }
+        .report-btn.secondary { background:#fff; color:#374151; border:1px solid #dbe2ea; }
+        .report-btn.export { background:#177245; color:#fff; }
+        .report-card,
         .report-filter-card,
-        .report-panel,
-        .report-summary-card,
-        .report-highlight { background:#fff; border-radius:18px; box-shadow:0 4px 20px rgba(0,0,0,0.04); }
+        .product-card,
+        .tip-card { background:#fff; border-radius:22px; box-shadow:0 10px 34px rgba(15, 23, 42, 0.06); }
         .report-filter-card { padding:18px; margin-bottom:20px; }
-        .report-filter-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px; }
+        .filter-grid { display:grid; grid-template-columns:2fr repeat(4, minmax(140px, 1fr)) repeat(2, minmax(150px, 1fr)); gap:12px; }
         .report-input,
-        .report-select { width:100%; padding:12px 14px; border-radius:12px; border:1px solid #e6e6e6; background:#fff; font-size:13px; box-sizing:border-box; }
-        .report-summary-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:14px; margin-bottom:20px; }
-        .report-summary-card { padding:18px; }
-        .report-summary-label { font-size:11px; color:#777; font-weight:800; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px; }
-        .report-summary-value { font-size:28px; font-weight:900; color:#111; }
-        .report-summary-sub { margin-top:6px; font-size:12px; color:#777; }
-        .report-highlight { padding:20px; margin-bottom:20px; background:linear-gradient(135deg, #111 0%, #1d3f72 100%); color:#fff; }
-        .report-highlight-label { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.06em; opacity:0.72; margin-bottom:8px; }
-        .report-highlight-title { font-size:28px; font-weight:900; margin-bottom:8px; }
-        .report-highlight-meta { display:flex; gap:18px; flex-wrap:wrap; font-size:13px; opacity:0.9; }
-        .report-two-col { display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px; margin-bottom:20px; }
-        .report-panel { padding:18px; }
-        .report-panel h3 { margin:0 0 6px; font-size:18px; }
-        .report-panel p { margin:0 0 14px; font-size:12px; color:#777; }
-        .report-list { display:grid; gap:10px; }
-        .report-list-item { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; border:1px solid #f0f0f0; border-radius:14px; padding:12px 14px; }
-        .report-list-title { font-size:14px; font-weight:800; color:#111; }
-        .report-list-sub { margin-top:4px; font-size:12px; color:#777; }
-        .report-list-value { text-align:right; font-size:13px; font-weight:800; color:#111; }
-        .report-table-wrap { overflow:auto; }
-        .report-table { width:100%; border-collapse:collapse; min-width:1080px; }
-        .report-table th,
-        .report-table td { padding:12px 10px; border-bottom:1px solid #f0f0f0; font-size:12px; text-align:left; vertical-align:top; }
-        .report-table th { font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:#777; }
-        .status-pill { display:inline-flex; padding:6px 10px; border-radius:999px; font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:0.05em; }
-        .status-pill.in_stock { background:#ecf8ef; color:#1d7a40; }
-        .status-pill.low_stock { background:#fff5e8; color:#9a6a11; }
-        .status-pill.out_of_stock { background:#fff1f0; color:#d83b31; }
-        .empty-state { padding:18px; border-radius:14px; background:#fafafa; color:#777; font-size:13px; }
+        .report-select { width:100%; padding:12px 14px; border:1px solid #dbe2ea; border-radius:14px; font-size:13px; box-sizing:border-box; background:#fff; }
+        .filter-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; }
+        .summary-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:14px; margin-bottom:20px; }
+        .report-card { padding:18px; }
+        .summary-label { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; color:#6b7280; margin-bottom:10px; }
+        .summary-value { font-size:28px; font-weight:900; color:#111827; }
+        .summary-sub { margin-top:6px; font-size:12px; color:#6b7280; line-height:1.5; }
+        .helper-grid { display:grid; grid-template-columns:1.3fr 1fr; gap:16px; margin-bottom:20px; }
+        .tip-card { padding:18px 20px; }
+        .tip-title { font-size:18px; font-weight:900; color:#111827; margin-bottom:8px; }
+        .tip-copy { font-size:13px; color:#4b5563; line-height:1.7; }
+        .pill-row { display:flex; gap:8px; flex-wrap:wrap; margin-top:14px; }
+        .info-pill,
+        .status-pill { display:inline-flex; align-items:center; justify-content:center; border-radius:999px; font-size:11px; font-weight:900; padding:7px 10px; text-transform:uppercase; letter-spacing:0.05em; }
+        .info-pill { background:#eef2ff; color:#334155; }
+        .status-pill.in_stock { background:#e9f8ef; color:#157347; }
+        .status-pill.low_stock { background:#fff4db; color:#a15c00; }
+        .status-pill.out_of_stock { background:#ffe9e7; color:#c93c2c; }
+        .products-list { display:grid; gap:16px; }
+        .product-card { overflow:hidden; }
+        .product-top { padding:20px 20px 16px; display:flex; justify-content:space-between; gap:16px; align-items:flex-start; flex-wrap:wrap; border-bottom:1px solid #edf1f5; }
+        .product-title { font-size:22px; font-weight:900; color:#111827; margin-bottom:6px; }
+        .product-sub { font-size:13px; color:#6b7280; line-height:1.6; }
+        .product-metrics { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:12px; padding:16px 20px; background:#fbfcfe; border-bottom:1px solid #edf1f5; }
+        .metric-box { border:1px solid #e8edf3; border-radius:16px; padding:12px 14px; background:#fff; }
+        .metric-label { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.06em; color:#6b7280; margin-bottom:6px; }
+        .metric-value { font-size:18px; font-weight:900; color:#111827; }
+        .metric-sub { margin-top:4px; font-size:12px; color:#6b7280; }
+        .variant-summary { padding:16px 20px; border-bottom:1px solid #edf1f5; display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+        .variant-chip { display:inline-flex; align-items:center; gap:6px; background:#f3f7fb; color:#334155; border-radius:999px; padding:9px 12px; font-size:12px; font-weight:800; }
+        .variant-section { padding:16px 20px 20px; }
+        .section-title { font-size:15px; font-weight:900; color:#111827; margin-bottom:12px; }
+        .variant-table-wrap { overflow:auto; border:1px solid #e8edf3; border-radius:18px; }
+        .variant-table { width:100%; min-width:880px; border-collapse:collapse; background:#fff; }
+        .variant-table th,
+        .variant-table td { padding:13px 12px; border-bottom:1px solid #edf1f5; text-align:left; vertical-align:top; font-size:13px; }
+        .variant-table th { font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:#6b7280; background:#f8fafc; }
+        .variant-label { font-size:14px; font-weight:900; color:#166534; }
+        .variant-sub { margin-top:4px; font-size:12px; color:#6b7280; }
+        .money { font-weight:800; color:#111827; }
+        .muted { color:#6b7280; }
+        .product-actions { padding:0 20px 20px; display:flex; gap:10px; flex-wrap:wrap; }
+        .empty-state { padding:28px; border:1px dashed #dbe2ea; border-radius:18px; background:#fff; color:#6b7280; font-size:14px; text-align:center; }
+        @media (max-width: 960px) {
+            .filter-grid,
+            .helper-grid { grid-template-columns:1fr; }
+        }
     </style>
 </head>
 <body>
 <?php include 'views/admin/partials/loader.php'; ?>
 <?php $currency = htmlspecialchars($settings['currency_symbol'] ?? 'LKR'); ?>
-<div class="container">
+<div class="container report-shell">
     <div class="report-header">
         <div>
-            <h1 class="page-title" style="margin-bottom:6px;">Stock Report</h1>
-            <p class="shop-subtitle">Full inventory visibility, best sellers, attention items, and export-ready stock data for your online store.</p>
+            <h1 class="page-title" style="margin-bottom:8px;">Stock Report</h1>
+            <p class="shop-subtitle" style="max-width:860px;">This page is rebuilt to answer two clear questions: which products need attention now, and which exact variant combinations are causing that issue.</p>
         </div>
         <div class="report-actions">
             <a href="<?= BASE_URL ?>admin/dashboard" class="report-btn secondary">Back to Dashboard</a>
             <a href="<?= BASE_URL ?>stock/index" class="report-btn secondary">Stock Management</a>
-            <a href="<?= BASE_URL ?>stock/exportReport?<?= htmlspecialchars(http_build_query(array_filter($filters ?? [], function ($value) { return $value !== ''; }))) ?>" class="report-btn export">Export Excel</a>
+            <a href="<?= BASE_URL ?>stock/exportReport?<?= htmlspecialchars(http_build_query(array_filter($filters ?? [], function ($value) { return $value !== ''; }))) ?>" class="report-btn export">Export CSV</a>
         </div>
     </div>
 
     <form method="GET" action="<?= BASE_URL ?>stock/report" class="report-filter-card">
-        <div class="report-filter-grid">
-            <input type="text" name="search" class="report-input" placeholder="Search product, SKU, category" value="<?= htmlspecialchars($filters['search'] ?? '') ?>">
+        <div class="filter-grid">
+            <input type="text" name="search" class="report-input" placeholder="Search by product, SKU, category, or variant combination" value="<?= htmlspecialchars($filters['search'] ?? '') ?>">
             <select name="stock_state" class="report-select">
                 <option value="">All Stock States</option>
                 <option value="in_stock" <?= ($filters['stock_state'] ?? '') === 'in_stock' ? 'selected' : '' ?>>In Stock</option>
@@ -96,203 +116,176 @@
             <input type="date" name="date_from" class="report-input" value="<?= htmlspecialchars($filters['date_from'] ?? '') ?>">
             <input type="date" name="date_to" class="report-input" value="<?= htmlspecialchars($filters['date_to'] ?? '') ?>">
         </div>
-        <div class="report-actions" style="margin-top:14px;">
-            <button type="submit" class="report-btn primary" style="border:none; cursor:pointer;">Apply Filters</button>
+        <div class="filter-actions">
+            <button type="submit" class="report-btn primary">Apply Filters</button>
             <a href="<?= BASE_URL ?>stock/report" class="report-btn secondary">Reset</a>
         </div>
     </form>
 
-    <div class="report-summary-grid">
-        <div class="report-summary-card">
-            <div class="report-summary-label">Products in Report</div>
-            <div class="report-summary-value"><?= (int) ($summary['total_products'] ?? 0) ?></div>
-            <div class="report-summary-sub"><?= (int) ($summary['tracked_products'] ?? 0) ?> tracked stock items</div>
+    <div class="summary-grid">
+        <div class="report-card">
+            <div class="summary-label">Products In Report</div>
+            <div class="summary-value"><?= (int) ($summary['total_products'] ?? 0) ?></div>
+            <div class="summary-sub"><?= (int) ($summary['variant_products'] ?? 0) ?> variant products and <?= (int) ($summary['simple_products'] ?? 0) ?> simple products</div>
         </div>
-        <div class="report-summary-card">
-            <div class="report-summary-label">Units On Hand</div>
-            <div class="report-summary-value"><?= (int) ($summary['units_on_hand'] ?? 0) ?></div>
-            <div class="report-summary-sub"><?= $currency ?> <?= number_format((float) ($summary['inventory_value'] ?? 0), 2) ?> estimated stock value</div>
+        <div class="report-card">
+            <div class="summary-label">Need Attention</div>
+            <div class="summary-value"><?= (int) ($summary['attention_products'] ?? 0) ?></div>
+            <div class="summary-sub"><?= (int) ($summary['low_stock'] ?? 0) ?> low stock and <?= (int) ($summary['out_of_stock'] ?? 0) ?> out of stock products</div>
         </div>
-        <div class="report-summary-card">
-            <div class="report-summary-label">Units Sold</div>
-            <div class="report-summary-value"><?= (int) ($summary['total_units_sold'] ?? 0) ?></div>
-            <div class="report-summary-sub"><?= $currency ?> <?= number_format((float) ($summary['total_sales_revenue'] ?? 0), 2) ?> sales revenue</div>
+        <div class="report-card">
+            <div class="summary-label">Tracked Variants</div>
+            <div class="summary-value"><?= (int) ($summary['tracked_variants'] ?? 0) ?></div>
+            <div class="summary-sub"><?= (int) ($summary['low_stock_variants'] ?? 0) ?> low and <?= (int) ($summary['out_of_stock_variants'] ?? 0) ?> out of stock variant combinations</div>
         </div>
-        <div class="report-summary-card">
-            <div class="report-summary-label">In Stock</div>
-            <div class="report-summary-value"><?= (int) ($summary['in_stock'] ?? 0) ?></div>
-            <div class="report-summary-sub"><?= (int) ($summary['low_stock'] ?? 0) ?> low stock, <?= (int) ($summary['out_of_stock'] ?? 0) ?> out of stock</div>
+        <div class="report-card">
+            <div class="summary-label">Units On Hand</div>
+            <div class="summary-value"><?= (int) ($summary['units_on_hand'] ?? 0) ?></div>
+            <div class="summary-sub"><?= $currency ?> <?= number_format((float) ($summary['inventory_value'] ?? 0), 2) ?> estimated tracked stock value</div>
         </div>
-        <div class="report-summary-card">
-            <div class="report-summary-label">Best Seller Count</div>
-            <div class="report-summary-value"><?= (int) ($summary['products_with_sales'] ?? 0) ?></div>
-            <div class="report-summary-sub">Products with at least one sale</div>
+        <div class="report-card">
+            <div class="summary-label">Units Sold</div>
+            <div class="summary-value"><?= (int) ($summary['total_units_sold'] ?? 0) ?></div>
+            <div class="summary-sub"><?= $currency ?> <?= number_format((float) ($summary['total_sales_revenue'] ?? 0), 2) ?> revenue in the selected order period</div>
         </div>
-        <div class="report-summary-card">
-            <div class="report-summary-label">Dead Stock</div>
-            <div class="report-summary-value"><?= (int) ($summary['zero_sales_products'] ?? 0) ?></div>
-            <div class="report-summary-sub"><?= (int) ($summary['variant_products'] ?? 0) ?> variant, <?= (int) ($summary['simple_products'] ?? 0) ?> simple</div>
+        <div class="report-card">
+            <div class="summary-label">Products With Sales</div>
+            <div class="summary-value"><?= (int) ($summary['products_with_sales'] ?? 0) ?></div>
+            <div class="summary-sub"><?= (int) ($summary['zero_sales_products'] ?? 0) ?> products had no recorded sales in this filtered view</div>
         </div>
     </div>
 
-    <?php if (!empty($bestSeller)): ?>
-        <div class="report-highlight">
-            <div class="report-highlight-label">Best Selling Product</div>
-            <div class="report-highlight-title"><?= htmlspecialchars($bestSeller['title'] ?? 'Product') ?></div>
-            <div class="report-highlight-meta">
-                <span><?= (int) ($bestSeller['units_sold'] ?? 0) ?> units sold</span>
-                <span><?= (int) ($bestSeller['orders_count'] ?? 0) ?> orders</span>
-                <span><?= $currency ?> <?= number_format((float) ($bestSeller['revenue_total'] ?? 0), 2) ?> revenue</span>
-                <span><?= !empty($bestSeller['has_variant_stock']) ? 'Variant Product' : 'Simple Product' ?></span>
+    <div class="helper-grid">
+        <div class="tip-card">
+            <div class="tip-title">How To Read This Report</div>
+            <div class="tip-copy">Each product card shows the overall product health first. If the product has variations, the exact variant combinations are shown in a separate table so you can immediately see which size, color, or option is low or out of stock.</div>
+            <div class="pill-row">
+                <span class="status-pill in_stock">In Stock</span>
+                <span class="status-pill low_stock">Low Stock</span>
+                <span class="status-pill out_of_stock">Out Of Stock</span>
+                <span class="info-pill">Always In Stock = unlimited selling</span>
+                <span class="info-pill">Track Stock = qty is reduced by orders</span>
             </div>
         </div>
-    <?php endif; ?>
-
-    <div class="report-two-col">
-        <div class="report-panel">
-            <h3>Top Sellers</h3>
-            <p>Products ranked by quantity sold in the filtered period.</p>
-            <div class="report-list">
-                <?php foreach (($topSellers ?? []) as $row): ?>
-                    <div class="report-list-item">
-                        <div>
-                            <div class="report-list-title"><?= htmlspecialchars($row['title'] ?? 'Product') ?></div>
-                            <div class="report-list-sub"><?= htmlspecialchars($row['sku'] ?: 'No SKU') ?><?php if (!empty($row['category_name'])): ?> • <?= htmlspecialchars($row['category_name']) ?><?php endif; ?></div>
-                        </div>
-                        <div class="report-list-value">
-                            <div><?= (int) ($row['units_sold'] ?? 0) ?> units</div>
-                            <div style="margin-top:4px; color:#777; font-size:12px;"><?= (int) ($row['orders_count'] ?? 0) ?> orders</div>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
-                <?php if (empty($topSellers)): ?>
-                    <div class="empty-state">No sales found for the selected filters yet.</div>
-                <?php endif; ?>
-            </div>
-        </div>
-
-        <div class="report-panel">
-            <h3>Top Revenue Products</h3>
-            <p>Products generating the highest sales value.</p>
-            <div class="report-list">
-                <?php foreach (($topRevenue ?? []) as $row): ?>
-                    <div class="report-list-item">
-                        <div>
-                            <div class="report-list-title"><?= htmlspecialchars($row['title'] ?? 'Product') ?></div>
-                            <div class="report-list-sub"><?= (int) ($row['units_sold'] ?? 0) ?> units • <?= (int) ($row['orders_count'] ?? 0) ?> orders</div>
-                        </div>
-                        <div class="report-list-value">
-                            <div><?= $currency ?> <?= number_format((float) ($row['revenue_total'] ?? 0), 2) ?></div>
-                            <div style="margin-top:4px; color:#777; font-size:12px;"><?= htmlspecialchars($row['status'] ?? 'in_stock') ?></div>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
-                <?php if (empty($topRevenue)): ?>
-                    <div class="empty-state">No revenue data found for the selected filters yet.</div>
-                <?php endif; ?>
+        <div class="tip-card">
+            <div class="tip-title">Quick Focus</div>
+            <div class="tip-copy">If you want only problem items, use the <strong>Low Stock</strong> or <strong>Out of Stock</strong> filter. For variable products, the product may still be sellable while one or more combinations underneath already need attention.</div>
+            <div class="pill-row">
+                <span class="info-pill"><?= (int) ($summary['attention_products'] ?? 0) ?> products need review</span>
+                <span class="info-pill"><?= (int) ($summary['low_stock_variants'] ?? 0) ?> low-stock variants</span>
+                <span class="info-pill"><?= (int) ($summary['out_of_stock_variants'] ?? 0) ?> out-of-stock variants</span>
             </div>
         </div>
     </div>
 
-    <div class="report-two-col">
-        <div class="report-panel">
-            <h3>Needs Attention</h3>
-            <p>Products most likely to need replenishment or review.</p>
-            <div class="report-list">
-                <?php foreach (($attentionProducts ?? []) as $row): ?>
-                    <div class="report-list-item">
-                        <div>
-                            <div class="report-list-title"><?= htmlspecialchars($row['title'] ?? 'Product') ?></div>
-                            <div class="report-list-sub">
-                                <span class="status-pill <?= htmlspecialchars($row['status'] ?? 'in_stock') ?>"><?= htmlspecialchars(str_replace('_', ' ', $row['status'] ?? 'in_stock')) ?></span>
-                            </div>
-                        </div>
-                        <div class="report-list-value">
-                            <div><?= $row['available_qty'] === null ? 'Manual / unlimited' : ((int) $row['available_qty'] . ' qty') ?></div>
-                            <div style="margin-top:4px; color:#777; font-size:12px;"><?= (int) ($row['units_sold'] ?? 0) ?> sold</div>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
-                <?php if (empty($attentionProducts)): ?>
-                    <div class="empty-state">No stock issues found for the selected filters.</div>
-                <?php endif; ?>
-            </div>
-        </div>
-
-        <div class="report-panel">
-            <h3>Dead Stock</h3>
-            <p>Products with no recorded sales in the filtered period.</p>
-            <div class="report-list">
-                <?php foreach (($deadStock ?? []) as $row): ?>
-                    <div class="report-list-item">
-                        <div>
-                            <div class="report-list-title"><?= htmlspecialchars($row['title'] ?? 'Product') ?></div>
-                            <div class="report-list-sub"><?= $row['available_qty'] === null ? 'Manual stock' : ((int) $row['available_qty'] . ' units on hand') ?></div>
-                        </div>
-                        <div class="report-list-value">
-                            <div><?= $row['inventory_value'] === null ? '-' : ($currency . ' ' . number_format((float) $row['inventory_value'], 2)) ?></div>
-                            <div style="margin-top:4px; color:#777; font-size:12px;"><?= htmlspecialchars($row['sku'] ?: 'No SKU') ?></div>
+    <div class="products-list">
+        <?php foreach (($rows ?? []) as $row): ?>
+            <?php
+                $isVariantProduct = !empty($row['has_variant_stock']);
+                $variantSummary = $row['variant_summary'] ?? ['total' => 0, 'tracked' => 0, 'low_stock' => 0, 'out_of_stock' => 0, 'in_stock' => 0];
+                $rowStatus = (string) ($row['status'] ?? 'in_stock');
+                $availableQtyText = $row['available_qty'] === null ? 'Unlimited / not quantity-based' : (int) $row['available_qty'];
+                $effectivePriceText = $currency . ' ' . number_format((float) ($row['effective_price'] ?? 0), 2);
+            ?>
+            <div class="product-card">
+                <div class="product-top">
+                    <div>
+                        <div class="product-title"><?= htmlspecialchars($row['title'] ?? 'Product') ?></div>
+                        <div class="product-sub">
+                            <?= htmlspecialchars($row['sku'] ?: 'No SKU') ?>
+                            <?php if (!empty($row['category_name'])): ?> | <?= htmlspecialchars($row['category_name']) ?><?php endif; ?>
+                            | <?= $isVariantProduct ? 'Variant Product' : 'Simple Product' ?>
                         </div>
                     </div>
-                <?php endforeach; ?>
-                <?php if (empty($deadStock)): ?>
-                    <div class="empty-state">Every product in this filtered report has recorded sales.</div>
-                <?php endif; ?>
-            </div>
-        </div>
-    </div>
+                    <div class="pill-row" style="margin-top:0;">
+                        <span class="status-pill <?= htmlspecialchars($rowStatus) ?>"><?= htmlspecialchars(str_replace('_', ' ', $rowStatus)) ?></span>
+                        <?php if (!empty($row['is_active'])): ?>
+                            <span class="info-pill">Active</span>
+                        <?php else: ?>
+                            <span class="info-pill" style="background:#fef3c7; color:#92400e;">Inactive</span>
+                        <?php endif; ?>
+                    </div>
+                </div>
 
-    <div class="report-panel">
-        <h3>Full Stock Report</h3>
-        <p>Use this table for daily stock decisions, replenishment checks, and Excel exports.</p>
-        <div class="report-table-wrap">
-            <table class="report-table">
-                <thead>
-                    <tr>
-                        <th>Product</th>
-                        <th>Status</th>
-                        <th>Type</th>
-                        <th>Available Qty</th>
-                        <th>Inventory Value</th>
-                        <th>Units Sold</th>
-                        <th>Orders</th>
-                        <th>Revenue</th>
-                        <th>Last Ordered</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach (($rows ?? []) as $row): ?>
-                        <tr>
-                            <td>
-                                <div style="font-weight:800; color:#111;"><?= htmlspecialchars($row['title'] ?? 'Product') ?></div>
-                                <div style="margin-top:4px; color:#777;"><?= htmlspecialchars($row['sku'] ?: 'No SKU') ?><?php if (!empty($row['category_name'])): ?> • <?= htmlspecialchars($row['category_name']) ?><?php endif; ?></div>
-                            </td>
-                            <td>
-                                <span class="status-pill <?= htmlspecialchars($row['status'] ?? 'in_stock') ?>"><?= htmlspecialchars(str_replace('_', ' ', $row['status'] ?? 'in_stock')) ?></span>
-                            </td>
-                            <td><?= !empty($row['has_variant_stock']) ? 'Variant (' . (int) ($row['variant_count'] ?? 0) . ')' : 'Simple' ?></td>
-                            <td><?= $row['available_qty'] === null ? 'Unlimited / manual' : (int) $row['available_qty'] ?></td>
-                            <td><?= $row['inventory_value'] === null ? '-' : ($currency . ' ' . number_format((float) $row['inventory_value'], 2)) ?></td>
-                            <td><?= (int) ($row['units_sold'] ?? 0) ?></td>
-                            <td><?= (int) ($row['orders_count'] ?? 0) ?></td>
-                            <td><?= $currency ?> <?= number_format((float) ($row['revenue_total'] ?? 0), 2) ?></td>
-                            <td><?= !empty($row['last_ordered_at']) ? htmlspecialchars(date('Y-m-d H:i', strtotime((string) $row['last_ordered_at']))) : 'Never' ?></td>
-                            <td>
-                                <a href="<?= BASE_URL ?>product/edit/<?= (int) $row['id'] ?>" class="report-btn secondary" style="padding:8px 10px; font-size:12px;">Manage</a>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                    <?php if (empty($rows)): ?>
-                        <tr>
-                            <td colspan="10">
-                                <div class="empty-state">No products matched your stock report filters.</div>
-                            </td>
-                        </tr>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
+                <div class="product-metrics">
+                    <div class="metric-box">
+                        <div class="metric-label">Available Qty</div>
+                        <div class="metric-value"><?= htmlspecialchars((string) $availableQtyText) ?></div>
+                        <div class="metric-sub"><?= htmlspecialchars(ucwords(str_replace('_', ' ', (string) ($row['stock_mode'] ?? 'always_in_stock')))) ?></div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">Selling Price</div>
+                        <div class="metric-value"><?= htmlspecialchars($effectivePriceText) ?></div>
+                        <div class="metric-sub">Current effective product price</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">Inventory Value</div>
+                        <div class="metric-value"><?= $row['inventory_value'] === null ? 'Not fixed' : htmlspecialchars($currency . ' ' . number_format((float) $row['inventory_value'], 2)) ?></div>
+                        <div class="metric-sub">Based on tracked available quantity</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">Sales</div>
+                        <div class="metric-value"><?= (int) ($row['units_sold'] ?? 0) ?> units</div>
+                        <div class="metric-sub"><?= (int) ($row['orders_count'] ?? 0) ?> orders<?php if (!empty($row['last_ordered_at'])): ?> | Last: <?= htmlspecialchars(date('Y-m-d H:i', strtotime((string) $row['last_ordered_at']))) ?><?php endif; ?></div>
+                    </div>
+                </div>
+
+                <?php if ($isVariantProduct): ?>
+                    <div class="variant-summary">
+                        <span class="variant-chip"><?= (int) ($variantSummary['total'] ?? 0) ?> combinations</span>
+                        <span class="variant-chip"><?= (int) ($variantSummary['tracked'] ?? 0) ?> tracked</span>
+                        <span class="variant-chip"><?= (int) ($variantSummary['in_stock'] ?? 0) ?> in stock</span>
+                        <span class="variant-chip"><?= (int) ($variantSummary['low_stock'] ?? 0) ?> low stock</span>
+                        <span class="variant-chip"><?= (int) ($variantSummary['out_of_stock'] ?? 0) ?> out of stock</span>
+                    </div>
+                    <div class="variant-section">
+                        <div class="section-title">Variant Breakdown</div>
+                        <div class="variant-table-wrap">
+                            <table class="variant-table">
+                                <thead>
+                                    <tr>
+                                        <th>Combination</th>
+                                        <th>Status</th>
+                                        <th>Mode</th>
+                                        <th>Qty</th>
+                                        <th>Low Stock</th>
+                                        <th>Price</th>
+                                        <th>Sale Price</th>
+                                        <th>Weight</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach (($row['variant_rows'] ?? []) as $variantRow): ?>
+                                        <tr>
+                                            <td>
+                                                <div class="variant-label"><?= htmlspecialchars($variantRow['combination_label'] ?: $variantRow['combination_key']) ?></div>
+                                                <div class="variant-sub"><?= htmlspecialchars($variantRow['sku'] ?: 'No variant SKU') ?></div>
+                                            </td>
+                                            <td><span class="status-pill <?= htmlspecialchars($variantRow['status'] ?? 'in_stock') ?>"><?= htmlspecialchars(str_replace('_', ' ', (string) ($variantRow['status'] ?? 'in_stock'))) ?></span></td>
+                                            <td><?= htmlspecialchars(ucwords(str_replace('_', ' ', (string) ($variantRow['stock_mode'] ?? 'always_in_stock')))) ?></td>
+                                            <td><?= $variantRow['available_qty'] === null ? 'Unlimited' : (int) ($variantRow['available_qty'] ?? 0) ?></td>
+                                            <td><?= ((string) ($variantRow['stock_mode'] ?? '')) === 'track_stock' ? (int) ($variantRow['low_stock_threshold'] ?? 0) : '-' ?></td>
+                                            <td class="money"><?= $variantRow['variant_price'] !== null ? htmlspecialchars($currency . ' ' . number_format((float) $variantRow['variant_price'], 2)) : '<span class="muted">Use product price</span>' ?></td>
+                                            <td class="money"><?= $variantRow['variant_sale_price'] !== null ? htmlspecialchars($currency . ' ' . number_format((float) $variantRow['variant_sale_price'], 2)) : '<span class="muted">-</span>' ?></td>
+                                            <td><?= (int) ($variantRow['variant_weight_grams'] ?? 0) ?> g</td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
+                <div class="product-actions">
+                    <a href="<?= BASE_URL ?>product/edit/<?= (int) $row['id'] ?>" class="report-btn primary">Manage Product</a>
+                    <a href="<?= BASE_URL ?>shop/product/<?= (int) $row['id'] ?>" class="report-btn secondary" target="_blank">View Product</a>
+                </div>
+            </div>
+        <?php endforeach; ?>
+
+        <?php if (empty($rows)): ?>
+            <div class="empty-state">No products matched the current stock report filters.</div>
+        <?php endif; ?>
     </div>
 </div>
 </body>

@@ -1265,6 +1265,11 @@ class Product extends BaseModel
             'in_stock' => 0,
             'low_stock' => 0,
             'out_of_stock' => 0,
+            'attention_products' => 0,
+            'tracked_variants' => 0,
+            'in_stock_variants' => 0,
+            'low_stock_variants' => 0,
+            'out_of_stock_variants' => 0,
             'units_on_hand' => 0,
             'inventory_value' => 0.0,
             'products_with_sales' => 0,
@@ -1287,6 +1292,86 @@ class Product extends BaseModel
                 : (float) ($product['price'] ?? 0);
             $availableQty = $snapshot['available_qty'];
             $inventoryValue = $availableQty !== null ? ((int) $availableQty * $effectivePrice) : null;
+            $variantRows = [];
+            $variantSummary = [
+                'total' => 0,
+                'active' => 0,
+                'tracked' => 0,
+                'in_stock' => 0,
+                'low_stock' => 0,
+                'out_of_stock' => 0
+            ];
+
+            foreach (($snapshot['variant_rows'] ?? []) as $variantRow) {
+                $variantMode = (string) ($variantRow['stock_mode'] ?? 'always_in_stock');
+                $variantQty = max(0, (int) ($variantRow['stock_qty'] ?? 0));
+                $variantThreshold = max(0, (int) ($variantRow['low_stock_threshold'] ?? 0));
+                $variantIsActive = !empty($variantRow['is_active']);
+                $variantStatus = 'in_stock';
+                $variantAvailableQty = null;
+
+                if (!$variantIsActive) {
+                    $variantStatus = 'out_of_stock';
+                    $variantAvailableQty = 0;
+                } elseif ($variantMode === 'track_stock') {
+                    $variantAvailableQty = $variantQty;
+                    if ($variantQty <= 0) {
+                        $variantStatus = 'out_of_stock';
+                    } elseif ($variantQty <= $variantThreshold) {
+                        $variantStatus = 'low_stock';
+                    }
+                } elseif ($variantMode === 'always_in_stock') {
+                    $variantStatus = 'in_stock';
+                } elseif (($variantRow['manual_stock_status'] ?? 'in_stock') !== 'in_stock') {
+                    $variantStatus = 'out_of_stock';
+                    $variantAvailableQty = 0;
+                }
+
+                $variantEffectivePrice = $effectivePrice;
+                if (
+                    isset($variantRow['variant_sale_price'], $variantRow['variant_price'])
+                    && $variantRow['variant_sale_price'] !== null
+                    && (float) $variantRow['variant_sale_price'] > 0
+                    && (float) $variantRow['variant_sale_price'] < (float) $variantRow['variant_price']
+                ) {
+                    $variantEffectivePrice = (float) $variantRow['variant_sale_price'];
+                } elseif ($variantRow['variant_price'] !== null && (float) $variantRow['variant_price'] > 0) {
+                    $variantEffectivePrice = (float) $variantRow['variant_price'];
+                }
+
+                $variantRows[] = [
+                    'id' => (int) ($variantRow['id'] ?? 0),
+                    'combination_key' => (string) ($variantRow['combination_key'] ?? ''),
+                    'combination_label' => (string) ($variantRow['combination_label'] ?? ''),
+                    'sku' => (string) ($variantRow['sku'] ?? ''),
+                    'status' => $variantStatus,
+                    'stock_mode' => $variantMode,
+                    'available_qty' => $variantAvailableQty,
+                    'stock_qty' => $variantQty,
+                    'low_stock_threshold' => $variantThreshold,
+                    'effective_price' => $variantEffectivePrice,
+                    'variant_price' => $variantRow['variant_price'] !== null ? (float) $variantRow['variant_price'] : null,
+                    'variant_sale_price' => $variantRow['variant_sale_price'] !== null ? (float) $variantRow['variant_sale_price'] : null,
+                    'variant_weight_grams' => (int) ($variantRow['variant_weight_grams'] ?? 0),
+                    'is_active' => $variantIsActive
+                ];
+
+                $variantSummary['total']++;
+                if ($variantIsActive) {
+                    $variantSummary['active']++;
+                }
+                if ($variantMode === 'track_stock') {
+                    $variantSummary['tracked']++;
+                }
+                if ($variantStatus === 'in_stock') {
+                    $variantSummary['in_stock']++;
+                } elseif ($variantStatus === 'low_stock') {
+                    $variantSummary['low_stock']++;
+                } else {
+                    $variantSummary['out_of_stock']++;
+                }
+            }
+
             $row = [
                 'id' => (int) $product['id'],
                 'title' => (string) ($product['title'] ?? 'Product'),
@@ -1305,14 +1390,19 @@ class Product extends BaseModel
                 'last_ordered_at' => $sales['last_ordered_at'] ?? null,
                 'inventory_value' => $inventoryValue,
                 'effective_price' => $effectivePrice,
-                'is_active' => !empty($product['is_active'])
+                'is_active' => !empty($product['is_active']),
+                'variant_summary' => $variantSummary,
+                'variant_rows' => $variantRows
             ];
 
             if ($search !== '') {
                 $haystack = strtolower(trim(implode(' ', [
                     $row['title'],
                     $row['sku'],
-                    $row['category_name']
+                    $row['category_name'],
+                    implode(' ', array_map(function ($variantRow) {
+                        return trim((string) (($variantRow['combination_label'] ?? '') . ' ' . ($variantRow['sku'] ?? '')));
+                    }, $variantRows))
                 ])));
                 if (strpos($haystack, strtolower($search)) === false) {
                     continue;
@@ -1346,6 +1436,9 @@ class Product extends BaseModel
             } else {
                 $summary['out_of_stock']++;
             }
+            if ($row['status'] !== 'in_stock' || ($variantSummary['low_stock'] + $variantSummary['out_of_stock']) > 0) {
+                $summary['attention_products']++;
+            }
             if ($row['available_qty'] !== null) {
                 $summary['units_on_hand'] += $row['available_qty'];
             }
@@ -1357,6 +1450,10 @@ class Product extends BaseModel
             } else {
                 $summary['zero_sales_products']++;
             }
+            $summary['tracked_variants'] += $variantSummary['tracked'];
+            $summary['in_stock_variants'] += $variantSummary['in_stock'];
+            $summary['low_stock_variants'] += $variantSummary['low_stock'];
+            $summary['out_of_stock_variants'] += $variantSummary['out_of_stock'];
 
             $rows[] = $row;
         }
