@@ -638,6 +638,17 @@ if ($sgImg):
                     <span class="payment-method-arrow"><i class="fas fa-chevron-right"></i></span>
                 </button>
             <?php endif; ?>
+
+            <?php if (!empty($settings['bank_transfer_enabled'])): ?>
+                <button type="button" class="payment-method-card" onclick="choosePaymentMethod('bank_transfer')">
+                    <span class="payment-method-icon"><i class="fas fa-building-columns"></i></span>
+                    <span class="payment-method-copy">
+                        <strong>Bank Transfer</strong>
+                        <small>Place the order now and send the payment using the bank details provided.</small>
+                    </span>
+                    <span class="payment-method-arrow"><i class="fas fa-chevron-right"></i></span>
+                </button>
+            <?php endif; ?>
         </div>
     </div>
 </div>
@@ -712,6 +723,13 @@ if ($sgImg):
                 <textarea id="ordNote" class="form-control"
                     style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; height: 60px;"></textarea>
             </div>
+
+            <?php if (!empty($settings['bank_transfer_enabled']) && !empty($settings['bank_transfer_details'])): ?>
+                <div id="bankTransferDetailsBox" style="display:none; background:#f4f8ff; border:1px solid #d8e4ff; border-radius:12px; padding:14px; margin-bottom:20px;">
+                    <div style="font-size:13px; font-weight:800; color:#123b7a; margin-bottom:6px;">Bank Transfer Details</div>
+                    <div style="font-size:12px; color:#345; line-height:1.7; white-space:pre-wrap;"><?= nl2br(htmlspecialchars($settings['bank_transfer_details'])) ?></div>
+                </div>
+            <?php endif; ?>
 
             <div style="background:#fafafa; border:1px solid #ededed; border-radius:12px; padding:14px; margin-bottom:20px;">
                 <div style="display:flex; justify-content:space-between; gap:12px; margin-bottom:8px;">
@@ -1148,6 +1166,7 @@ if ($sgImg):
         if (orderMode === 'payhere') {
             submitButton.textContent = 'Continue to Card Payment';
             submitButton.classList.add('btn-payhere-submit');
+            submitButton.style.background = '';
         } else if (orderMode === 'whatsapp') {
             submitButton.textContent = 'Continue to WhatsApp';
             submitButton.classList.remove('btn-payhere-submit');
@@ -1156,10 +1175,19 @@ if ($sgImg):
             submitButton.textContent = 'Continue to KOKO';
             submitButton.classList.remove('btn-payhere-submit');
             submitButton.style.background = '#c48b11';
+        } else if (orderMode === 'bank_transfer') {
+            submitButton.textContent = 'Place Bank Transfer Order';
+            submitButton.classList.remove('btn-payhere-submit');
+            submitButton.style.background = '#1f5aa6';
         } else {
             submitButton.textContent = 'Place COD Order';
             submitButton.classList.remove('btn-payhere-submit');
             submitButton.style.background = '#111';
+        }
+
+        const bankDetailsBox = document.getElementById('bankTransferDetailsBox');
+        if (bankDetailsBox) {
+            bankDetailsBox.style.display = orderMode === 'bank_transfer' ? 'block' : 'none';
         }
 
         document.getElementById('orderModal').style.display = 'flex';
@@ -1213,6 +1241,20 @@ if ($sgImg):
 
         if (orderMode === 'koko') {
             submitOrderToKoko({
+                name,
+                email,
+                address,
+                city,
+                district,
+                phone1,
+                phone2,
+                note
+            });
+            return;
+        }
+
+        if (orderMode === 'bank_transfer') {
+            submitOrderToBankTransfer({
                 name,
                 email,
                 address,
@@ -1335,6 +1377,44 @@ if ($sgImg):
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = '<?= BASE_URL ?>order/startKokoSingle';
+        form.style.display = 'none';
+
+        const fields = {
+            product_id: '<?= (int) $product['id'] ?>',
+            quantity: qty,
+            variants: variantStr,
+            variant_key: variantKey,
+            customer_name: data.name,
+            email: data.email,
+            address: data.address,
+            city: data.city,
+            district: data.district,
+            phone: data.phone1,
+            phone_alt: data.phone2,
+            note: data.note
+        };
+
+        Object.keys(fields).forEach(function (key) {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = key;
+            input.value = fields[key] || '';
+            form.appendChild(input);
+        });
+
+        document.body.appendChild(form);
+        if (typeof showGlobalLoader === 'function') showGlobalLoader();
+        form.submit();
+    }
+
+    function submitOrderToBankTransfer(data) {
+        const qty = parseInt(document.getElementById('qtyInput').value) || 1;
+        const variantStr = getVariantText();
+        const variantKey = getSelectedVariantKey();
+
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '<?= BASE_URL ?>order/startBankTransferSingle';
         form.style.display = 'none';
 
         const fields = {

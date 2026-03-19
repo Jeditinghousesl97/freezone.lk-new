@@ -304,12 +304,69 @@ class OrderController extends BaseController
     {
         foreach ($items as $item) {
             $this->productModel->reduceStockForLineItem(
-                (int) ($item['id'] ?? 0),
+                (int) ($item['product_id'] ?? $item['id'] ?? 0),
                 max(1, (int) ($item['qty'] ?? 1)),
                 trim((string) ($item['variant_key'] ?? ''))
             );
         }
         $this->stockAlertService->syncAlertsForItems($items);
+    }
+
+    private function restoreStockForItems(array $items)
+    {
+        foreach ($items as $item) {
+            $this->productModel->restoreStockForLineItem(
+                (int) ($item['product_id'] ?? $item['id'] ?? 0),
+                max(1, (int) ($item['qty'] ?? 1)),
+                trim((string) ($item['variant_key'] ?? ''))
+            );
+        }
+        $this->stockAlertService->syncAlertsForItems($items);
+    }
+
+    private function orderConsumesStock(array $order)
+    {
+        $paymentMethod = strtolower(trim((string) ($order['payment_method'] ?? '')));
+        $paymentStatus = strtolower(trim((string) ($order['payment_status'] ?? 'pending')));
+        $orderStatus = strtolower(trim((string) ($order['order_status'] ?? 'pending')));
+
+        if ($orderStatus === 'cancelled') {
+            return false;
+        }
+
+        if ($paymentMethod === 'whatsapp') {
+            return false;
+        }
+
+        if ($paymentMethod === 'cod') {
+            return true;
+        }
+
+        if (in_array($paymentMethod, ['payhere', 'koko', 'bank_transfer'], true)) {
+            return $paymentStatus === 'paid';
+        }
+
+        return false;
+    }
+
+    private function syncOrderStockState($orderNumber)
+    {
+        $order = $this->orderModel->getByOrderNumberWithItems($orderNumber);
+        if (!$order) {
+            return null;
+        }
+
+        $shouldConsume = $this->orderConsumesStock($order);
+        $isApplied = !empty($order['stock_applied']);
+        if ($shouldConsume && !$isApplied) {
+            $this->deductStockForItems($order['items'] ?? []);
+            $this->orderModel->updateStockApplied($orderNumber, true);
+        } elseif (!$shouldConsume && $isApplied) {
+            $this->restoreStockForItems($order['items'] ?? []);
+            $this->orderModel->updateStockApplied($orderNumber, false);
+        }
+
+        return $this->orderModel->getByOrderNumberWithItems($orderNumber);
     }
 
     private function buildSingleProductItem(array $product, $qty, $variantText, $variantKey = '')
@@ -566,7 +623,7 @@ class OrderController extends BaseController
             $trackingNumber = trim((string) ($_POST['tracking_number'] ?? ''));
             $this->orderModel->updateCompletionDetails($orderNumber, $courierService, $trackingNumber);
             $this->orderModel->updateOrderStatus($orderNumber, 'completed');
-            $updatedOrder = $this->orderModel->getByOrderNumberWithItems($orderNumber);
+            $updatedOrder = $this->syncOrderStockState($orderNumber);
             if ($updatedOrder) {
                 $this->notifyCustomerOrderEvent($updatedOrder, 'order_completed');
             }
@@ -601,7 +658,7 @@ class OrderController extends BaseController
                 $this->orderModel->updateOrderStatus($orderNumber, 'processing');
             }
 
-            $updatedOrder = $this->orderModel->getByOrderNumberWithItems($orderNumber);
+            $updatedOrder = $this->syncOrderStockState($orderNumber);
             if ($updatedOrder) {
                 $this->notifyCustomerOrderEvent($updatedOrder, 'payment_received');
             }
@@ -622,7 +679,7 @@ class OrderController extends BaseController
         $paymentMethod = strtolower((string) ($order['payment_method'] ?? ''));
         $paymentStatus = strtolower((string) ($order['payment_status'] ?? 'pending'));
 
-        if ($order && in_array($paymentMethod, ['payhere', 'koko'], true) && $paymentStatus !== 'paid') {
+        if ($order && in_array($paymentMethod, ['payhere', 'koko', 'bank_transfer'], true) && $paymentStatus !== 'paid') {
             $gatewayLabel = strtoupper((string) ($order['payment_gateway'] ?: $paymentMethod));
             $manualMessage = $gatewayLabel . ' payment recorded manually by shop owner.';
 
@@ -649,9 +706,10 @@ class OrderController extends BaseController
                 $this->orderModel->updateOrderStatus($orderNumber, 'processing');
             }
 
-            $updatedOrder = $this->orderModel->getByOrderNumberWithItems($orderNumber);
+            $updatedOrder = $this->syncOrderStockState($orderNumber);
             if ($updatedOrder) {
-                $this->notifyCustomerOrderEvent($updatedOrder, 'payment_completed');
+                $eventKey = $paymentMethod === 'bank_transfer' ? 'payment_received' : 'payment_completed';
+                $this->notifyCustomerOrderEvent($updatedOrder, $eventKey);
             }
         }
 
@@ -669,7 +727,7 @@ class OrderController extends BaseController
         $order = $this->orderModel->getByOrderNumber($orderNumber);
         if ($order) {
             $this->orderModel->updateOrderStatus($orderNumber, 'cancelled');
-            $updatedOrder = $this->orderModel->getByOrderNumberWithItems($orderNumber);
+            $updatedOrder = $this->syncOrderStockState($orderNumber);
             if ($updatedOrder) {
                 $this->notifyCustomerOrderEvent($updatedOrder, 'order_cancelled');
             }
@@ -688,6 +746,7 @@ class OrderController extends BaseController
 
         $order = $this->orderModel->getByOrderNumber($orderNumber);
         if ($order) {
+            $updatedOrder = $this->syncOrderStockState($orderNumber);
             $this->orderModel->deleteByOrderNumber($orderNumber);
         }
 
@@ -707,8 +766,6 @@ class OrderController extends BaseController
             $_SESSION['order_error'] = 'Your cart is empty.';
             $this->redirect('cart');
         }
-        $this->validateCartStockOrRedirect($cart, 'cart');
-        $this->validateCartStockOrRedirect($cart, 'cart');
         $this->validateCartStockOrRedirect($cart, 'cart');
 
         if (empty($settings['payhere_enabled']) || empty($settings['payhere_merchant_id']) || empty($settings['payhere_merchant_secret'])) {
@@ -737,11 +794,8 @@ class OrderController extends BaseController
             $_SESSION['order_error'] = 'Unable to create your order right now.';
             $this->redirect('cart');
         }
-        $this->deductStockForItems($cart);
-        $this->deductStockForItems($cart);
-
         $_SESSION['pending_order_number'] = $order['order_number'];
-        $fullOrder = $this->orderModel->getByOrderNumberWithItems($order['order_number']);
+        $fullOrder = $this->syncOrderStockState($order['order_number']);
         if ($fullOrder) {
             $this->notifyCustomerOrderEvent($fullOrder, 'order_placed');
         }
@@ -947,15 +1001,76 @@ class OrderController extends BaseController
             $_SESSION['order_error'] = 'Unable to place your order right now.';
             $this->redirect('cart');
         }
-        $this->deductStockForItems($cart);
-
         $_SESSION['cod_order_number'] = $order['order_number'];
         $_SESSION['cart'] = [];
-        $fullOrder = $this->orderModel->getByOrderNumberWithItems($order['order_number']);
+        $fullOrder = $this->syncOrderStockState($order['order_number']);
         if ($fullOrder) {
             $this->notifyCustomerOrderEvent($fullOrder, 'order_placed');
         }
         $this->redirect('order/codSuccess?order=' . urlencode($order['order_number']));
+    }
+
+    public function startBankTransfer()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('cart');
+        }
+
+        $settings = $this->settingModel->getAllPairs();
+        $cart = $this->buildCartItemsWithDeliveryData($_SESSION['cart'] ?? []);
+
+        if (empty($cart)) {
+            $_SESSION['order_error'] = 'Your cart is empty.';
+            $this->redirect('cart');
+        }
+
+        if (empty($settings['bank_transfer_enabled']) || trim((string) ($settings['bank_transfer_details'] ?? '')) === '') {
+            $_SESSION['order_error'] = 'Bank Transfer is not enabled for this shop.';
+            $this->redirect('cart');
+        }
+
+        $customer = $this->buildCustomerFromRequest();
+        if (!$customer) {
+            $_SESSION['order_error'] = 'Please fill in all required order fields.';
+            $this->redirect('cart');
+        }
+
+        $shippingQuote = $this->buildShippingQuote($cart, $settings, $customer['district']);
+        if (!$shippingQuote['has_rate']) {
+            $_SESSION['order_error'] = 'Please select a valid district to calculate delivery.';
+            $this->redirect('cart');
+        }
+
+        $order = $this->orderModel->createFromCart($customer, $cart, $settings, [
+            'subtotal_amount' => $shippingQuote['subtotal'],
+            'shipping_fee' => $shippingQuote['shipping_fee'],
+            'chargeable_weight_grams' => $shippingQuote['chargeable_weight_grams'],
+            'payment_method' => 'bank_transfer',
+            'payment_gateway' => 'bank_transfer',
+            'payment_status' => 'pending',
+            'order_status' => 'pending',
+            'transaction_type' => 'bank_transfer_order_placed',
+            'transaction_status_code' => 'PENDING',
+            'transaction_payload' => [
+                'customer' => $customer,
+                'items_count' => count($cart),
+                'source' => 'cart_bank_transfer'
+            ]
+        ]);
+
+        if (!$order) {
+            $_SESSION['order_error'] = 'Unable to place your order right now.';
+            $this->redirect('cart');
+        }
+
+        $_SESSION['bank_transfer_order_number'] = $order['order_number'];
+        $_SESSION['cart'] = [];
+        $fullOrder = $this->syncOrderStockState($order['order_number']);
+        if ($fullOrder) {
+            $this->notifyCustomerOrderEvent($fullOrder, 'order_placed');
+        }
+
+        $this->redirect('order/bankTransferSuccess?order=' . urlencode($order['order_number']));
     }
 
     public function startPayhereSingle()
@@ -1009,10 +1124,8 @@ class OrderController extends BaseController
             $_SESSION['order_error'] = 'Unable to create your order right now.';
             $this->redirect('shop/product/' . $productId);
         }
-        $this->deductStockForItems($items);
-
         $_SESSION['pending_order_number'] = $order['order_number'];
-        $fullOrder = $this->orderModel->getByOrderNumberWithItems($order['order_number']);
+        $fullOrder = $this->syncOrderStockState($order['order_number']);
         if ($fullOrder) {
             $this->notifyCustomerOrderEvent($fullOrder, 'order_placed');
         }
@@ -1117,10 +1230,8 @@ class OrderController extends BaseController
             $_SESSION['order_error'] = 'Unable to create your order right now.';
             $this->redirect('shop/product/' . $productId);
         }
-        $this->deductStockForItems($items);
-
         $_SESSION['pending_order_number'] = $order['order_number'];
-        $fullOrder = $this->orderModel->getByOrderNumberWithItems($order['order_number']);
+        $fullOrder = $this->syncOrderStockState($order['order_number']);
         if ($fullOrder) {
             $this->notifyCustomerOrderEvent($fullOrder, 'order_placed');
             $order = $fullOrder;
@@ -1196,14 +1307,83 @@ class OrderController extends BaseController
             $_SESSION['order_error'] = 'Unable to place your order right now.';
             $this->redirect('shop/product/' . $productId);
         }
-        $this->deductStockForItems($items);
-
         $_SESSION['cod_order_number'] = $order['order_number'];
-        $fullOrder = $this->orderModel->getByOrderNumberWithItems($order['order_number']);
+        $fullOrder = $this->syncOrderStockState($order['order_number']);
         if ($fullOrder) {
             $this->notifyCustomerOrderEvent($fullOrder, 'order_placed');
         }
         $this->redirect('order/codSuccess?order=' . urlencode($order['order_number']));
+    }
+
+    public function startBankTransferSingle()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('cart');
+        }
+
+        $settings = $this->settingModel->getAllPairs();
+        if (empty($settings['bank_transfer_enabled']) || trim((string) ($settings['bank_transfer_details'] ?? '')) === '') {
+            $_SESSION['order_error'] = 'Bank Transfer is not enabled for this shop.';
+            $this->redirect('cart');
+        }
+
+        $productId = (int) ($_POST['product_id'] ?? 0);
+        $qty = max(1, (int) ($_POST['quantity'] ?? 1));
+        $variantText = trim((string) ($_POST['variants'] ?? ''));
+        $variantKey = trim((string) ($_POST['variant_key'] ?? ''));
+
+        $product = $this->productModel->getById($productId);
+        if (!$product) {
+            $_SESSION['order_error'] = 'The selected product could not be found.';
+            $this->redirect('cart');
+        }
+        $validation = $this->productModel->validatePurchase($productId, $qty, $variantKey);
+        if (empty($validation['ok'])) {
+            $_SESSION['order_error'] = $validation['message'] ?? 'This product is not available.';
+            $this->redirect('shop/product/' . $productId);
+        }
+
+        $customer = $this->buildCustomerFromRequest();
+        if (!$customer) {
+            $_SESSION['order_error'] = 'Please fill in all required order fields.';
+            $this->redirect('shop/product/' . $productId);
+        }
+
+        $items = $this->buildSingleProductItem($product, $qty, $variantText, $variantKey);
+        $shippingQuote = $this->buildShippingQuote($items, $settings, $customer['district']);
+        if (!$shippingQuote['has_rate']) {
+            $_SESSION['order_error'] = 'Please select a valid district to calculate delivery.';
+            $this->redirect('shop/product/' . $productId);
+        }
+
+        $order = $this->orderModel->createFromItems($customer, $items, $settings, [
+            'subtotal_amount' => $shippingQuote['subtotal'],
+            'shipping_fee' => $shippingQuote['shipping_fee'],
+            'chargeable_weight_grams' => $shippingQuote['chargeable_weight_grams'],
+            'payment_method' => 'bank_transfer',
+            'payment_gateway' => 'bank_transfer',
+            'payment_status' => 'pending',
+            'order_status' => 'pending',
+            'transaction_type' => 'bank_transfer_order_placed',
+            'transaction_status_code' => 'PENDING',
+            'transaction_payload' => [
+                'customer' => $customer,
+                'items_count' => count($items),
+                'source' => 'single_bank_transfer'
+            ]
+        ]);
+
+        if (!$order) {
+            $_SESSION['order_error'] = 'Unable to place your order right now.';
+            $this->redirect('shop/product/' . $productId);
+        }
+
+        $_SESSION['bank_transfer_order_number'] = $order['order_number'];
+        $fullOrder = $this->syncOrderStockState($order['order_number']);
+        if ($fullOrder) {
+            $this->notifyCustomerOrderEvent($fullOrder, 'order_placed');
+        }
+        $this->redirect('order/bankTransferSuccess?order=' . urlencode($order['order_number']));
     }
 
     public function payhereNotify()
@@ -1312,7 +1492,7 @@ class OrderController extends BaseController
             $this->orderModel->updateOrderStatus($orderNumber, 'processing');
         }
 
-        $updatedOrder = $this->orderModel->getByOrderNumberWithItems($orderNumber);
+        $updatedOrder = $this->syncOrderStockState($orderNumber);
         if ($updatedOrder) {
             if ($status === 'paid') {
                 $this->notifyCustomerOrderEvent($updatedOrder, 'payment_completed');
@@ -1379,7 +1559,7 @@ class OrderController extends BaseController
 
         if ($order && ($order['payment_status'] ?? 'pending') === 'pending') {
             $this->orderModel->updatePaymentStatus($orderNumber, 'cancelled', $order['gateway_payment_id'] ?? null, $order['gateway_status_code'] ?? null, 'Payment cancelled before completion.');
-            $updatedOrder = $this->orderModel->getByOrderNumberWithItems($orderNumber);
+            $updatedOrder = $this->syncOrderStockState($orderNumber);
             if ($updatedOrder) {
                 $this->notifyCustomerOrderEvent($updatedOrder, 'payment_cancelled');
                 $order = $updatedOrder;
@@ -1481,7 +1661,7 @@ class OrderController extends BaseController
             $this->orderModel->updateOrderStatus($order['order_number'], 'processing');
         }
 
-        $updatedOrder = $this->orderModel->getByOrderNumberWithItems($order['order_number']);
+        $updatedOrder = $this->syncOrderStockState($order['order_number']);
         if ($updatedOrder) {
             if ($paymentStatus === 'paid') {
                 $this->notifyCustomerOrderEvent($updatedOrder, 'payment_completed');
@@ -1542,6 +1722,39 @@ class OrderController extends BaseController
 
         $this->view('customer/order_confirmation', [
             'title' => 'Order Placed',
+            'settings' => $settings,
+            'order' => $order,
+            'seo_title' => $seo['seo_title'],
+            'seo_description' => $seo['seo_description'],
+            'seo_canonical' => $seo['seo_canonical'],
+            'seo_image' => $seo['seo_image'],
+            'seo_type' => $seo['seo_type'],
+            'seo_robots' => $seo['seo_robots'],
+            'seo_json_ld' => $seo['seo_json_ld']
+        ]);
+    }
+
+    public function bankTransferSuccess()
+    {
+        $settings = $this->settingModel->getAllPairs();
+        $orderNumber = $_GET['order'] ?? ($_SESSION['bank_transfer_order_number'] ?? '');
+        $order = $this->orderModel->getByOrderNumber($orderNumber);
+
+        if (!$order || ($order['payment_gateway'] ?? '') !== 'bank_transfer') {
+            $this->redirect('cart');
+        }
+
+        unset($_SESSION['bank_transfer_order_number']);
+
+        $seo = SeoHelper::defaultSeo($settings, [
+            'seo_title' => 'Bank Transfer Order Placed | ' . SeoHelper::shopName($settings),
+            'seo_description' => 'Your bank transfer order has been placed successfully.',
+            'seo_canonical' => SeoHelper::absoluteUrl(BASE_URL . 'order/bankTransferSuccess?order=' . urlencode($orderNumber)),
+            'seo_robots' => 'noindex,nofollow'
+        ]);
+
+        $this->view('customer/bank_transfer_confirmation', [
+            'title' => 'Bank Transfer Order Placed',
             'settings' => $settings,
             'order' => $order,
             'seo_title' => $seo['seo_title'],

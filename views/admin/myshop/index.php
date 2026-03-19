@@ -437,6 +437,14 @@
                     Enable WhatsApp Ordering
                 </label>
 
+                <label class="slider-remove-row" style="margin:0 0 12px;">
+                    <input type="checkbox" name="bank_transfer_enabled" value="1" <?= !empty($settings['bank_transfer_enabled']) ? 'checked' : '' ?>>
+                    Enable Bank Transfer
+                </label>
+
+                <label class="section-title" style="margin-top:18px;">Bank Transfer Details</label>
+                <textarea name="bank_transfer_details" class="input-white textarea-lg" placeholder="Enter one paragraph of bank transfer details here. Example: Bank name, account name, account number, branch, and any payment reference instructions."><?= htmlspecialchars($settings['bank_transfer_details'] ?? '') ?></textarea>
+
                 <p style="margin:0 0 8px; font-size:12px; color:#666;">
                     WhatsApp orders are sent directly to the admin WhatsApp number and are not saved to orders, finance, or reports.
                 </p>

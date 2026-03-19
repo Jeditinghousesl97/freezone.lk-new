@@ -164,6 +164,12 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
                                 Pay in 3 with KOKO
                             </button>
                         <?php endif; ?>
+                        <?php if (!empty($settings['bank_transfer_enabled'])): ?>
+                            <button onclick="openOrderModal('bank_transfer')" class="cart-payment-btn" style="background:#1f5aa6; color:#fff;">
+                                <i class="fas fa-building-columns" style="font-size: 18px;"></i>
+                                Bank Transfer
+                            </button>
+                        <?php endif; ?>
                     </div>
                 </div>
             <?php endif; ?>
@@ -222,6 +228,13 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
                 <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px;">Special Note</label>
                 <textarea id="ordNote" class="form-control" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; height: 60px;"></textarea>
             </div>
+
+            <?php if (!empty($settings['bank_transfer_enabled']) && !empty($settings['bank_transfer_details'])): ?>
+                <div id="bankTransferDetailsBox" style="display:none; background:#f4f8ff; border:1px solid #d8e4ff; border-radius:12px; padding:14px; margin-bottom:20px;">
+                    <div style="font-size:13px; font-weight:800; color:#123b7a; margin-bottom:6px;">Bank Transfer Details</div>
+                    <div style="font-size:12px; color:#345; line-height:1.7; white-space:pre-wrap;"><?= nl2br(htmlspecialchars($settings['bank_transfer_details'])) ?></div>
+                </div>
+            <?php endif; ?>
 
             <div style="background:#fafafa; border:1px solid #ededed; border-radius:12px; padding:14px; margin-bottom:20px;">
                 <div style="display:flex; justify-content:space-between; gap:12px; margin-bottom:8px;">
@@ -491,6 +504,7 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
         if (orderMode === 'payhere') {
             submitButton.textContent = 'Continue to Card Payment';
             submitButton.classList.add('btn-payhere-submit');
+            submitButton.style.background = '';
         } else if (orderMode === 'whatsapp') {
             submitButton.textContent = 'Continue to WhatsApp';
             submitButton.classList.remove('btn-payhere-submit');
@@ -499,10 +513,19 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
             submitButton.textContent = 'Continue to KOKO';
             submitButton.classList.remove('btn-payhere-submit');
             submitButton.style.background = '#c48b11';
+        } else if (orderMode === 'bank_transfer') {
+            submitButton.textContent = 'Place Bank Transfer Order';
+            submitButton.classList.remove('btn-payhere-submit');
+            submitButton.style.background = '#1f5aa6';
         } else {
             submitButton.textContent = 'Place COD Order';
             submitButton.classList.remove('btn-payhere-submit');
             submitButton.style.background = '#111';
+        }
+
+        const bankDetailsBox = document.getElementById('bankTransferDetailsBox');
+        if (bankDetailsBox) {
+            bankDetailsBox.style.display = orderMode === 'bank_transfer' ? 'block' : 'none';
         }
 
         document.getElementById('orderModal').style.display = 'flex';
@@ -563,6 +586,11 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
 
         if (orderMode === 'koko') {
             submitOrderToKoko(data);
+            return;
+        }
+
+        if (orderMode === 'bank_transfer') {
+            submitOrderToBankTransfer(data);
             return;
         }
 
@@ -638,6 +666,36 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = '<?= BASE_URL ?>order/startKoko';
+        form.style.display = 'none';
+
+        const fields = {
+            customer_name: data.name,
+            email: data.email,
+            address: data.address,
+            city: data.city,
+            district: data.district,
+            phone: data.phone1,
+            phone_alt: data.phone2,
+            note: data.note
+        };
+
+        Object.keys(fields).forEach(function (key) {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = key;
+            input.value = fields[key] || '';
+            form.appendChild(input);
+        });
+
+        document.body.appendChild(form);
+        if (typeof showGlobalLoader === 'function') showGlobalLoader();
+        form.submit();
+    }
+
+    function submitOrderToBankTransfer(data) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '<?= BASE_URL ?>order/startBankTransfer';
         form.style.display = 'none';
 
         const fields = {

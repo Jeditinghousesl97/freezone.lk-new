@@ -1106,6 +1106,48 @@ class Product extends BaseModel
         return true;
     }
 
+    public function restoreStockForLineItem($productId, $qty, $variantKey = '')
+    {
+        $qty = max(1, (int) $qty);
+        $product = $this->getById($productId);
+        if (!$product) {
+            return false;
+        }
+
+        $snapshot = $this->getStockSnapshot($product);
+        if ($snapshot['has_variant_stock']) {
+            $variantMap = $this->getVariantStockMap($productId);
+            $variant = $variantMap[trim((string) $variantKey)] ?? null;
+            if (!$variant) {
+                return false;
+            }
+
+            if ($variant['stock_mode'] === 'track_stock') {
+                $stmt = $this->conn->prepare("UPDATE product_variant_stock
+                    SET stock_qty = stock_qty + :qty
+                    WHERE id = :id");
+                return $stmt->execute([
+                    ':qty' => $qty,
+                    ':id' => $variant['id']
+                ]);
+            }
+
+            return true;
+        }
+
+        if ($snapshot['stock_mode'] === 'track_stock') {
+            $stmt = $this->conn->prepare("UPDATE products
+                SET stock_qty = stock_qty + :qty
+                WHERE id = :id");
+            return $stmt->execute([
+                ':qty' => $qty,
+                ':id' => $productId
+            ]);
+        }
+
+        return true;
+    }
+
     public function getStockOverview()
     {
         $products = $this->getAll();

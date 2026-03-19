@@ -50,6 +50,8 @@ class MyShopController extends BaseController
             'privacy_policy_content',
             'cod_enabled',
             'whatsapp_ordering_enabled',
+            'bank_transfer_enabled',
+            'bank_transfer_details',
         ];
 
         $settings = $this->settingModel->getMultiple($keys);
@@ -80,7 +82,8 @@ class MyShopController extends BaseController
                 'hero_slide_3_link',
                 'refund_policy_content',
                 'terms_conditions_content',
-                'privacy_policy_content'
+                'privacy_policy_content',
+                'bank_transfer_details'
             ];
 
             foreach ($allowedKeys as $key) {
@@ -91,6 +94,7 @@ class MyShopController extends BaseController
 
             $this->settingModel->set('cod_enabled', !empty($_POST['cod_enabled']) ? '1' : '0');
             $this->settingModel->set('whatsapp_ordering_enabled', !empty($_POST['whatsapp_ordering_enabled']) ? '1' : '0');
+            $this->settingModel->set('bank_transfer_enabled', !empty($_POST['bank_transfer_enabled']) ? '1' : '0');
 
             for ($i = 1; $i <= 3; $i++) {
                 $imageKey = 'hero_slide_' . $i . '_image';

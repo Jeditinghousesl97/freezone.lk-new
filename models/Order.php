@@ -36,6 +36,7 @@ class Order extends BaseModel
                 payment_gateway VARCHAR(50) NOT NULL DEFAULT 'payhere',
                 payment_status VARCHAR(40) NOT NULL DEFAULT 'pending',
                 order_status VARCHAR(40) NOT NULL DEFAULT 'pending',
+                stock_applied TINYINT(1) NOT NULL DEFAULT 0,
                 courier_service VARCHAR(150) DEFAULT NULL,
                 tracking_number VARCHAR(150) DEFAULT NULL,
                 admin_seen_at TIMESTAMP NULL DEFAULT NULL,
@@ -48,6 +49,7 @@ class Order extends BaseModel
         ");
 
         $this->ensureColumnExists('orders', 'order_status', "ALTER TABLE orders ADD COLUMN order_status VARCHAR(40) NOT NULL DEFAULT 'pending' AFTER payment_status");
+        $this->ensureColumnExists('orders', 'stock_applied', "ALTER TABLE orders ADD COLUMN stock_applied TINYINT(1) NOT NULL DEFAULT 0 AFTER order_status");
         $this->ensureColumnExists('orders', 'courier_service', "ALTER TABLE orders ADD COLUMN courier_service VARCHAR(150) DEFAULT NULL AFTER order_status");
         $this->ensureColumnExists('orders', 'tracking_number', "ALTER TABLE orders ADD COLUMN tracking_number VARCHAR(150) DEFAULT NULL AFTER courier_service");
         $this->ensureColumnExists('orders', 'admin_seen_at', "ALTER TABLE orders ADD COLUMN admin_seen_at TIMESTAMP NULL DEFAULT NULL AFTER tracking_number");
@@ -62,6 +64,7 @@ class Order extends BaseModel
                 product_id INT DEFAULT NULL,
                 product_title VARCHAR(255) NOT NULL,
                 variant_text VARCHAR(255) DEFAULT NULL,
+                variant_key VARCHAR(255) DEFAULT NULL,
                 qty INT NOT NULL DEFAULT 1,
                 unit_price DECIMAL(10,2) NOT NULL DEFAULT 0.00,
                 line_total DECIMAL(10,2) NOT NULL DEFAULT 0.00,
@@ -70,6 +73,7 @@ class Order extends BaseModel
                 CONSTRAINT fk_order_items_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
+        $this->ensureColumnExists('order_items', 'variant_key', "ALTER TABLE order_items ADD COLUMN variant_key VARCHAR(255) DEFAULT NULL AFTER variant_text");
 
         $this->conn->exec("
             CREATE TABLE IF NOT EXISTS payment_transactions (
@@ -142,11 +146,11 @@ class Order extends BaseModel
                 INSERT INTO orders (
                     order_number, customer_name, first_name, last_name, email, phone, phone_alt,
                     address, city, district, postal_code, country, note, subtotal_amount, shipping_fee, chargeable_weight_grams, total_amount, currency,
-                    payment_method, payment_gateway, payment_status, order_status
+                    payment_method, payment_gateway, payment_status, order_status, stock_applied
                 ) VALUES (
                     :order_number, :customer_name, :first_name, :last_name, :email, :phone, :phone_alt,
                     :address, :city, :district, :postal_code, :country, :note, :subtotal_amount, :shipping_fee, :chargeable_weight_grams, :total_amount, :currency,
-                    :payment_method, :payment_gateway, :payment_status, :order_status
+                    :payment_method, :payment_gateway, :payment_status, :order_status, :stock_applied
                 )
             ");
 
@@ -172,16 +176,17 @@ class Order extends BaseModel
                 ':payment_method' => $paymentMethod,
                 ':payment_gateway' => $paymentGateway,
                 ':payment_status' => $paymentStatus,
-                ':order_status' => $orderStatus
+                ':order_status' => $orderStatus,
+                ':stock_applied' => !empty($options['stock_applied']) ? 1 : 0
             ]);
 
             $orderId = (int) $this->conn->lastInsertId();
 
             $itemStmt = $this->conn->prepare("
                 INSERT INTO order_items (
-                    order_id, product_id, product_title, variant_text, qty, unit_price, line_total, image_url
+                    order_id, product_id, product_title, variant_text, variant_key, qty, unit_price, line_total, image_url
                 ) VALUES (
-                    :order_id, :product_id, :product_title, :variant_text, :qty, :unit_price, :line_total, :image_url
+                    :order_id, :product_id, :product_title, :variant_text, :variant_key, :qty, :unit_price, :line_total, :image_url
                 )
             ");
 
@@ -193,6 +198,7 @@ class Order extends BaseModel
                     ':product_id' => !empty($item['id']) ? (int) $item['id'] : null,
                     ':product_title' => $item['title'] ?? 'Product',
                     ':variant_text' => $item['variants'] ?? '',
+                    ':variant_key' => trim((string) ($item['variant_key'] ?? '')) ?: null,
                     ':qty' => $qty,
                     ':unit_price' => number_format($price, 2, '.', ''),
                     ':line_total' => number_format($price * $qty, 2, '.', ''),
@@ -512,6 +518,20 @@ class Order extends BaseModel
 
         return $stmt->execute([
             ':order_status' => $status,
+            ':order_number' => $orderNumber
+        ]);
+    }
+
+    public function updateStockApplied($orderNumber, $applied)
+    {
+        $stmt = $this->conn->prepare("
+            UPDATE orders
+            SET stock_applied = :stock_applied
+            WHERE order_number = :order_number
+        ");
+
+        return $stmt->execute([
+            ':stock_applied' => !empty($applied) ? 1 : 0,
             ':order_number' => $orderNumber
         ]);
     }
