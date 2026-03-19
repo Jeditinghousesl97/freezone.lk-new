@@ -839,13 +839,13 @@
                             <tr>
                                 <th>Combination</th>
                                 <th>Price</th>
+                                <th>Sale Price</th>
                                 <th>Weight (g)</th>
                                 <th>Image</th>
                                 <th>SKU</th>
                                 <th>Mode</th>
                                 <th>Qty</th>
                                 <th>Low Stock</th>
-                                <th>Status</th>
                                 <th>Active</th>
                                 <th></th>
                             </tr>
@@ -939,7 +939,20 @@
     <script>
         const initialVariantStockRows = <?= json_encode($product['variant_stocks'] ?? [], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
         let variantStockRows = Array.isArray(initialVariantStockRows) ? initialVariantStockRows : [];
+        variantStockRows = variantStockRows.map(row => {
+            if (row && row.stock_mode === 'manual_out_of_stock') {
+                return {
+                    ...row,
+                    stock_mode: 'always_in_stock',
+                    is_active: false,
+                    manual_stock_status: 'in_stock'
+                };
+            }
+            return row;
+        });
         const baseVariantPrice = <?= json_encode((float) ($product['sale_price'] ?? $product['price'] ?? 0)) ?>;
+        const baseVariantRegularPrice = <?= json_encode((float) ($product['price'] ?? 0)) ?>;
+        const baseVariantSalePrice = <?= json_encode(!empty($product['sale_price']) ? (float) $product['sale_price'] : null) ?>;
         const baseVariantWeight = <?= json_encode((int) ($product['weight_grams'] ?? 0)) ?>;
         const productForm = document.getElementById('productForm');
         const draftAlert = document.getElementById('draftAlert');
@@ -1141,10 +1154,11 @@
             tbody.innerHTML = variantStockRows.map((row, index) => `
                 <tr>
                     <td data-label="Combination">
-                        <div style="font-weight:700; color:#111;">${row.combination_label || row.combination_key}</div>
+                        <div style="font-weight:800; font-size:15px; color:#128244; background:#edf9f0; border:1px solid #d8f0dd; border-radius:12px; padding:9px 10px;">${escapeHtml(row.combination_label || row.combination_key)}</div>
                         <div style="font-size:11px; color:#888; margin-top:4px;">${row.combination_key}</div>
                     </td>
-                    <td data-label="Price"><input type="number" min="0" step="0.01" value="${Number(row.variant_price ?? baseVariantPrice)}" onchange="updateVariantRow(${index}, 'variant_price', this.value)"></td>
+                    <td data-label="Price"><input type="number" min="0" step="0.01" value="${Number(row.variant_price ?? baseVariantRegularPrice)}" onchange="updateVariantRow(${index}, 'variant_price', this.value)"></td>
+                    <td data-label="Sale Price"><input type="number" min="0" step="0.01" value="${row.variant_sale_price !== null && row.variant_sale_price !== undefined ? Number(row.variant_sale_price) : (baseVariantSalePrice !== null ? Number(baseVariantSalePrice) : '')}" onchange="updateVariantRow(${index}, 'variant_sale_price', this.value)"></td>
                     <td data-label="Weight (g)"><input type="number" min="0" step="1" value="${Number(row.variant_weight_grams ?? baseVariantWeight)}" onchange="updateVariantRow(${index}, 'variant_weight_grams', this.value)"></td>
                     <td data-label="Image">
                         <div style="display:flex; flex-direction:column; gap:6px;">
@@ -1156,20 +1170,13 @@
                     </td>
                     <td data-label="SKU"><input type="text" value="${escapeHtml(row.sku || '')}" onchange="updateVariantRow(${index}, 'sku', this.value)"></td>
                     <td data-label="Mode">
-                        <select onchange="updateVariantRow(${index}, 'stock_mode', this.value)">
-                            <option value="always_in_stock" ${row.stock_mode === 'always_in_stock' ? 'selected' : ''}>Always In Stock</option>
+                        <select onchange="updateVariantMode(${index}, this.value)">
+                            <option value="always_in_stock" ${(row.stock_mode || 'always_in_stock') === 'always_in_stock' ? 'selected' : ''}>Always In Stock</option>
                             <option value="track_stock" ${row.stock_mode === 'track_stock' ? 'selected' : ''}>Track Stock</option>
-                            <option value="manual_out_of_stock" ${row.stock_mode === 'manual_out_of_stock' ? 'selected' : ''}>Manual Status</option>
                         </select>
                     </td>
-                    <td data-label="Qty"><input type="number" min="0" step="1" value="${Number(row.stock_qty || 0)}" onchange="updateVariantRow(${index}, 'stock_qty', this.value)"></td>
-                    <td data-label="Low Stock"><input type="number" min="0" step="1" value="${Number(row.low_stock_threshold || 5)}" onchange="updateVariantRow(${index}, 'low_stock_threshold', this.value)"></td>
-                    <td data-label="Status">
-                        <select onchange="updateVariantRow(${index}, 'manual_stock_status', this.value)">
-                            <option value="in_stock" ${(row.manual_stock_status || 'in_stock') === 'in_stock' ? 'selected' : ''}>In Stock</option>
-                            <option value="out_of_stock" ${(row.manual_stock_status || 'in_stock') === 'out_of_stock' ? 'selected' : ''}>Out of Stock</option>
-                        </select>
-                    </td>
+                    <td data-label="Qty">${renderVariantStockField(index, 'stock_qty', row)}</td>
+                    <td data-label="Low Stock">${renderVariantStockField(index, 'low_stock_threshold', row)}</td>
                     <td data-label="Active" style="text-align:center;">
                         <input type="checkbox" ${row.is_active ? 'checked' : ''} onchange="updateVariantRow(${index}, 'is_active', this.checked)">
                     </td>
@@ -1194,12 +1201,33 @@
             if (!variantStockRows[index]) return;
             variantStockRows[index][key] = ['stock_qty', 'low_stock_threshold', 'variant_weight_grams'].includes(key)
                 ? Number(value || 0)
-                : (key === 'variant_price' ? Number(value || 0) : value);
+                : (['variant_price', 'variant_sale_price'].includes(key)
+                    ? (value === '' ? null : Number(value || 0))
+                    : value);
             if (key === 'is_active') {
                 variantStockRows[index][key] = !!value;
             }
             syncVariantStocksJson();
             scheduleDraftSave();
+        }
+
+        function updateVariantMode(index, value) {
+            if (!variantStockRows[index]) return;
+            variantStockRows[index].stock_mode = value === 'track_stock' ? 'track_stock' : 'always_in_stock';
+            variantStockRows[index].manual_stock_status = 'in_stock';
+            renderVariantStockRows();
+            scheduleDraftSave();
+        }
+
+        function renderVariantStockField(index, key, row) {
+            const isTracked = String(row.stock_mode || 'always_in_stock') === 'track_stock';
+            if (!isTracked) {
+                return `<div style="font-size:11px; color:#999; padding:11px 0;">Only for Track Stock</div>`;
+            }
+            const value = key === 'low_stock_threshold'
+                ? Number(row.low_stock_threshold || 5)
+                : Number(row.stock_qty || 0);
+            return `<input type="number" min="0" step="1" value="${value}" onchange="updateVariantRow(${index}, '${key}', this.value)">`;
         }
 
         function updateVariantImageMeta(index, input) {
@@ -1271,8 +1299,6 @@
 
             const combos = cartesianProduct(groups);
             const existingKeys = new Set(variantStockRows.map(row => row.combination_key));
-            const currentStockMode = document.getElementById('stockModeInput')?.value || 'track_stock';
-
             combos.forEach(combo => {
                 const combinationKey = normalizeVariantKey(combo);
                 if (existingKeys.has(combinationKey)) {
@@ -1282,15 +1308,16 @@
                 variantStockRows.push({
                     combination_key: combinationKey,
                     combination_label: combo.map(item => `${item.variation_name}: ${item.variation_value}`).join(' / '),
-                    variant_price: baseVariantPrice,
+                    variant_price: baseVariantRegularPrice,
+                    variant_sale_price: baseVariantSalePrice,
                     variant_weight_grams: baseVariantWeight,
                     image_path: '',
                     image_url: '',
                     sku: '',
-                    stock_mode: currentStockMode === 'manual_out_of_stock' ? 'manual_out_of_stock' : currentStockMode,
+                    stock_mode: 'always_in_stock',
                     stock_qty: 0,
                     low_stock_threshold: 5,
-                    manual_stock_status: currentStockMode === 'manual_out_of_stock' ? 'out_of_stock' : 'in_stock',
+                    manual_stock_status: 'in_stock',
                     is_active: true,
                     values: combo
                 });

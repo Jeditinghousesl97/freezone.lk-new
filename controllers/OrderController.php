@@ -7,6 +7,7 @@ require_once 'helpers/DeliveryHelper.php';
 require_once 'helpers/SeoHelper.php';
 require_once 'helpers/OrderEmailService.php';
 require_once 'helpers/OrderSmsService.php';
+require_once 'helpers/StockAlertService.php';
 require_once 'helpers/KokoGateway.php';
 require_once 'helpers/ImageHelper.php';
 
@@ -18,6 +19,7 @@ class OrderController extends BaseController
     private $deliverySettingModel;
     private $orderEmailService;
     private $orderSmsService;
+    private $stockAlertService;
 
     public function __construct()
     {
@@ -27,6 +29,7 @@ class OrderController extends BaseController
         $this->deliverySettingModel = new DeliverySetting();
         $this->orderEmailService = new OrderEmailService();
         $this->orderSmsService = new OrderSmsService();
+        $this->stockAlertService = new StockAlertService();
     }
 
     private function smsQueueToken()
@@ -306,6 +309,7 @@ class OrderController extends BaseController
                 trim((string) ($item['variant_key'] ?? ''))
             );
         }
+        $this->stockAlertService->syncAlertsForItems($items);
     }
 
     private function buildSingleProductItem(array $product, $qty, $variantText, $variantKey = '')

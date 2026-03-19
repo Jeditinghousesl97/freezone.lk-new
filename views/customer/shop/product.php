@@ -765,6 +765,8 @@ if ($sgImg):
         additionalKg: <?= json_encode((float) ($settings['delivery_all_additional_kg'] ?? 0)) ?>
     };
     const baseProductPrice = <?= json_encode((float) $productUnitPrice) ?>;
+    const baseProductRegularPrice = <?= json_encode((float) ($product['price'] ?? 0)) ?>;
+    const baseProductSalePrice = <?= json_encode((!empty($product['sale_price']) && (float) $product['sale_price'] < (float) $product['price']) ? (float) $product['sale_price'] : null) ?>;
     const baseProductWeight = <?= json_encode((int) ($product['weight_grams'] ?? 0)) ?>;
     const productFreeShipping = <?= !empty($product['free_shipping']) ? 'true' : 'false' ?>;
     const defaultProductImageUrl = <?= json_encode($mainImg) ?>;
@@ -874,10 +876,29 @@ if ($sgImg):
 
     function getCurrentUnitPrice() {
         const activeVariant = getActiveVariantRow();
+        if (activeVariant && activeVariant.variant_sale_price !== null && activeVariant.variant_sale_price !== undefined && activeVariant.variant_sale_price !== '') {
+            return Number(activeVariant.variant_sale_price || 0);
+        }
         if (activeVariant && activeVariant.variant_price !== null && activeVariant.variant_price !== undefined && activeVariant.variant_price !== '') {
             return Number(activeVariant.variant_price || 0);
         }
         return Number(baseProductPrice || 0);
+    }
+
+    function getCurrentRegularPrice() {
+        const activeVariant = getActiveVariantRow();
+        if (activeVariant && activeVariant.variant_price !== null && activeVariant.variant_price !== undefined && activeVariant.variant_price !== '') {
+            return Number(activeVariant.variant_price || 0);
+        }
+        return Number(baseProductRegularPrice || 0);
+    }
+
+    function getCurrentSalePrice() {
+        const activeVariant = getActiveVariantRow();
+        if (activeVariant && activeVariant.variant_sale_price !== null && activeVariant.variant_sale_price !== undefined && activeVariant.variant_sale_price !== '') {
+            return Number(activeVariant.variant_sale_price || 0);
+        }
+        return baseProductSalePrice !== null ? Number(baseProductSalePrice || 0) : null;
     }
 
     function getCurrentWeight() {
@@ -903,9 +924,17 @@ if ($sgImg):
             return;
         }
 
-        currentPriceEl.textContent = formatMoney(getCurrentUnitPrice());
+        const currentPrice = getCurrentUnitPrice();
+        const regularPrice = getCurrentRegularPrice();
+        const salePrice = getCurrentSalePrice();
+        currentPriceEl.textContent = formatMoney(currentPrice);
         if (oldPriceEl) {
-            oldPriceEl.style.display = getActiveVariantRow() ? 'none' : '';
+            if (salePrice !== null && salePrice < regularPrice) {
+                oldPriceEl.style.display = '';
+                oldPriceEl.textContent = formatMoney(regularPrice);
+            } else {
+                oldPriceEl.style.display = 'none';
+            }
         }
     }
 
@@ -928,10 +957,6 @@ if ($sgImg):
     function isVariantRowPurchasable(row) {
         if (!row || !Number(row.is_active)) {
             return false;
-        }
-
-        if (row.stock_mode === 'manual_out_of_stock') {
-            return String(row.manual_stock_status || 'in_stock') === 'in_stock';
         }
 
         if (row.stock_mode === 'track_stock') {
@@ -1025,8 +1050,6 @@ if ($sgImg):
         if (activeVariant) {
             if (activeVariant.stock_mode === 'track_stock' && Number(activeVariant.stock_qty || 0) <= 0) {
                 updateProductStockNotice('Out of stock', 'error');
-            } else if (activeVariant.stock_mode === 'manual_out_of_stock' && String(activeVariant.manual_stock_status || 'in_stock') !== 'in_stock') {
-                updateProductStockNotice('Out of stock', 'error');
             } else {
                 updateProductStockNotice('In stock', 'success');
             }
@@ -1051,10 +1074,6 @@ if ($sgImg):
             const activeVariant = getActiveVariantRow();
             if (!activeVariant) {
                 return { ok: false, message: 'This stock option is out of stock.' };
-            }
-
-            if (activeVariant.stock_mode === 'manual_out_of_stock' && activeVariant.manual_stock_status !== 'in_stock') {
-                return { ok: false, message: 'Selected stock is out of stock.' };
             }
 
             if (activeVariant.stock_mode === 'track_stock' && Number(activeVariant.stock_qty || 0) < qty) {

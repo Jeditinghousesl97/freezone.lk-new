@@ -7,6 +7,7 @@ require_once 'models/Category.php';
 require_once 'models/SizeGuide.php';
 require_once 'models/Variation.php';
 require_once 'helpers/ImageHelper.php';
+require_once 'helpers/StockAlertService.php';
 
 class ProductController extends BaseController
 {
@@ -15,6 +16,7 @@ class ProductController extends BaseController
     private $categoryModel;
     private $sizeGuideModel;
     private $variationModel;
+    private $stockAlertService;
 
     public function __construct()
     {
@@ -22,6 +24,7 @@ class ProductController extends BaseController
         $this->categoryModel = new Category();
         $this->sizeGuideModel = new SizeGuide();
         $this->variationModel = new Variation();
+        $this->stockAlertService = new StockAlertService();
     }
 
     private function parseVariantStocksFromRequest()
@@ -250,7 +253,9 @@ class ProductController extends BaseController
 
 
             // 8. Save
-            if ($this->productModel->create($data)) {
+            $newProductId = (int) $this->productModel->create($data);
+            if ($newProductId > 0) {
+                $this->stockAlertService->syncProductAlerts($newProductId);
                 $this->redirect('product/index');
             } else {
                 echo "<div style='color:red; padding:20px; font-family:sans-serif;'>
@@ -424,6 +429,7 @@ class ProductController extends BaseController
             // var_dump($result); die("Model Update Result");
 
             if ($result) {
+                $this->stockAlertService->syncProductAlerts((int) $id);
                 $newVariantImageMap = [];
                 foreach (($data['variant_stocks'] ?? []) as $variantStock) {
                     $combinationKey = trim((string) ($variantStock['combination_key'] ?? ''));
