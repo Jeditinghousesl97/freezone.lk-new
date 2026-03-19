@@ -310,12 +310,13 @@ class OrderController extends BaseController
 
     private function buildSingleProductItem(array $product, $qty, $variantText, $variantKey = '')
     {
-        $unitPrice = (!empty($product['sale_price']) && (float) $product['sale_price'] < (float) $product['price'])
-            ? (float) $product['sale_price']
-            : (float) $product['price'];
+        $variantData = $this->productModel->getResolvedVariantData($product, $variantKey);
+        $unitPrice = (float) ($variantData['price'] ?? 0);
 
         $imageUrl = '';
-        if (!empty($product['main_image'])) {
+        if (!empty($variantData['image_path'])) {
+            $imageUrl = ImageHelper::uploadUrl($variantData['image_path'], '');
+        } elseif (!empty($product['main_image'])) {
             $imageUrl = ImageHelper::uploadUrl($product['main_image'], '');
         }
 
@@ -327,7 +328,7 @@ class OrderController extends BaseController
             'img' => $imageUrl,
             'variants' => $variantText,
             'variant_key' => trim((string) $variantKey),
-            'weight_grams' => max(0, (int) ($product['weight_grams'] ?? 0)),
+            'weight_grams' => max(0, (int) ($variantData['weight_grams'] ?? 0)),
             'is_free_shipping' => !empty($product['free_shipping']) ? 1 : 0
         ]];
     }
@@ -367,12 +368,13 @@ class OrderController extends BaseController
             return [null, null];
         }
 
-        $unitPrice = (!empty($product['sale_price']) && (float) $product['sale_price'] < (float) $product['price'])
-            ? (float) $product['sale_price']
-            : (float) $product['price'];
+        $variantData = $this->productModel->getResolvedVariantData($product, $variantKey);
+        $unitPrice = (float) ($variantData['price'] ?? 0);
 
         $imageUrl = '';
-        if (!empty($product['main_image'])) {
+        if (!empty($variantData['image_path'])) {
+            $imageUrl = ImageHelper::uploadUrl($variantData['image_path'], '');
+        } elseif (!empty($product['main_image'])) {
             $imageUrl = ImageHelper::uploadUrl($product['main_image'], '');
         }
 
@@ -384,7 +386,7 @@ class OrderController extends BaseController
             'img' => $imageUrl,
             'variants' => $variantText,
             'variant_key' => trim((string) $variantKey),
-            'weight_grams' => max(0, (int) ($product['weight_grams'] ?? 0)),
+            'weight_grams' => max(0, (int) ($variantData['weight_grams'] ?? 0)),
             'is_free_shipping' => !empty($product['free_shipping']) ? 1 : 0
         ]]];
     }

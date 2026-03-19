@@ -50,6 +50,9 @@ class Product extends BaseModel
             combination_key VARCHAR(255) NOT NULL,
             combination_label VARCHAR(255) NOT NULL,
             sku VARCHAR(120) DEFAULT NULL,
+            variant_price DECIMAL(10,2) DEFAULT NULL,
+            variant_weight_grams INT NOT NULL DEFAULT 0,
+            image_path VARCHAR(255) DEFAULT NULL,
             stock_mode VARCHAR(30) NOT NULL DEFAULT 'track_stock',
             stock_qty INT NOT NULL DEFAULT 0,
             low_stock_threshold INT NOT NULL DEFAULT 5,
@@ -69,6 +72,10 @@ class Product extends BaseModel
             KEY idx_variant_stock_values_variant (variant_stock_id),
             KEY idx_variant_stock_values_variation (variation_id, variation_value_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        $this->ensureColumnExists('product_variant_stock', 'variant_price', "ALTER TABLE product_variant_stock ADD COLUMN variant_price DECIMAL(10,2) DEFAULT NULL AFTER sku");
+        $this->ensureColumnExists('product_variant_stock', 'variant_weight_grams', "ALTER TABLE product_variant_stock ADD COLUMN variant_weight_grams INT NOT NULL DEFAULT 0 AFTER variant_price");
+        $this->ensureColumnExists('product_variant_stock', 'image_path', "ALTER TABLE product_variant_stock ADD COLUMN image_path VARCHAR(255) DEFAULT NULL AFTER variant_weight_grams");
     }
 
     private function normalizeStockMode($mode)
@@ -113,9 +120,9 @@ class Product extends BaseModel
         }
 
         $insertStock = $this->conn->prepare("INSERT INTO product_variant_stock
-            (product_id, combination_key, combination_label, sku, stock_mode, stock_qty, low_stock_threshold, manual_stock_status, is_active)
+            (product_id, combination_key, combination_label, sku, variant_price, variant_weight_grams, image_path, stock_mode, stock_qty, low_stock_threshold, manual_stock_status, is_active)
             VALUES
-            (:product_id, :combination_key, :combination_label, :sku, :stock_mode, :stock_qty, :low_stock_threshold, :manual_stock_status, :is_active)");
+            (:product_id, :combination_key, :combination_label, :sku, :variant_price, :variant_weight_grams, :image_path, :stock_mode, :stock_qty, :low_stock_threshold, :manual_stock_status, :is_active)");
         $insertValue = $this->conn->prepare("INSERT INTO product_variant_stock_values
             (variant_stock_id, variation_id, variation_value_id)
             VALUES
@@ -150,6 +157,9 @@ class Product extends BaseModel
                 ':combination_key' => $combinationKey,
                 ':combination_label' => trim((string) ($variantStock['combination_label'] ?? $combinationKey)),
                 ':sku' => trim((string) ($variantStock['sku'] ?? '')) ?: null,
+                ':variant_price' => $this->normalizeVariantPrice($variantStock['variant_price'] ?? null),
+                ':variant_weight_grams' => max(0, (int) ($variantStock['variant_weight_grams'] ?? 0)),
+                ':image_path' => trim((string) ($variantStock['image_path'] ?? '')) ?: null,
                 ':stock_mode' => $this->normalizeStockMode($variantStock['stock_mode'] ?? 'track_stock'),
                 ':stock_qty' => max(0, (int) ($variantStock['stock_qty'] ?? 0)),
                 ':low_stock_threshold' => max(0, (int) ($variantStock['low_stock_threshold'] ?? 5)),
@@ -166,6 +176,15 @@ class Product extends BaseModel
                 ]);
             }
         }
+    }
+
+    private function normalizeVariantPrice($price)
+    {
+        if ($price === null || $price === '') {
+            return null;
+        }
+
+        return max(0, (float) $price);
     }
 
     public function getAll($search = null)
@@ -760,6 +779,9 @@ class Product extends BaseModel
                     'combination_key' => (string) $row['combination_key'],
                     'combination_label' => (string) $row['combination_label'],
                     'sku' => (string) ($row['sku'] ?? ''),
+                    'variant_price' => $row['variant_price'] !== null ? (float) $row['variant_price'] : null,
+                    'variant_weight_grams' => (int) ($row['variant_weight_grams'] ?? 0),
+                    'image_path' => (string) ($row['image_path'] ?? ''),
                     'stock_mode' => (string) $row['stock_mode'],
                     'stock_qty' => (int) $row['stock_qty'],
                     'low_stock_threshold' => (int) $row['low_stock_threshold'],
@@ -790,6 +812,46 @@ class Product extends BaseModel
             $map[$row['combination_key']] = $row;
         }
         return $map;
+    }
+
+    public function getVariantRowByKey($productId, $variantKey)
+    {
+        $variantKey = trim((string) $variantKey);
+        if ($variantKey === '') {
+            return null;
+        }
+
+        $map = $this->getVariantStockMap($productId);
+        return $map[$variantKey] ?? null;
+    }
+
+    public function getResolvedVariantData(array $product, $variantKey = '')
+    {
+        $basePrice = (!empty($product['sale_price']) && (float) $product['sale_price'] < (float) $product['price'])
+            ? (float) $product['sale_price']
+            : (float) $product['price'];
+        $resolved = [
+            'price' => $basePrice,
+            'weight_grams' => max(0, (int) ($product['weight_grams'] ?? 0)),
+            'image_path' => (string) ($product['main_image'] ?? ''),
+            'variant_row' => null
+        ];
+
+        $variant = $this->getVariantRowByKey((int) ($product['id'] ?? 0), $variantKey);
+        if (!$variant) {
+            return $resolved;
+        }
+
+        if ($variant['variant_price'] !== null) {
+            $resolved['price'] = (float) $variant['variant_price'];
+        }
+        $resolved['weight_grams'] = max(0, (int) ($variant['variant_weight_grams'] ?? 0));
+        if (!empty($variant['image_path'])) {
+            $resolved['image_path'] = (string) $variant['image_path'];
+        }
+
+        $resolved['variant_row'] = $variant;
+        return $resolved;
     }
 
     public function getStockSnapshot(array $product)

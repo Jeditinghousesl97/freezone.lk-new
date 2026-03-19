@@ -35,6 +35,55 @@ class ProductController extends BaseController
         return is_array($decoded) ? $decoded : [];
     }
 
+    private function normalizeVariantImageUploadMap()
+    {
+        $keys = $_POST['variant_image_keys'] ?? [];
+        $files = $_FILES['variant_image_files'] ?? null;
+        if (!is_array($keys) || !$files || !is_array($files['name'] ?? null)) {
+            return [];
+        }
+
+        $uploads = [];
+        foreach ($keys as $index => $combinationKey) {
+            $combinationKey = trim((string) $combinationKey);
+            if ($combinationKey === '') {
+                continue;
+            }
+
+            if (($files['error'][$index] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+                continue;
+            }
+
+            $storedName = ImageHelper::storeUploadedArrayFile($files, $index, 'variant_' . $index);
+            if ($storedName !== '') {
+                $uploads[$combinationKey] = $storedName;
+            }
+        }
+
+        return $uploads;
+    }
+
+    private function buildVariantStocksForSave()
+    {
+        $variantStocks = $this->parseVariantStocksFromRequest();
+        if (empty($variantStocks)) {
+            return [];
+        }
+
+        $uploadedImages = $this->normalizeVariantImageUploadMap();
+        foreach ($variantStocks as &$variantStock) {
+            $combinationKey = trim((string) ($variantStock['combination_key'] ?? ''));
+            if ($combinationKey !== '' && isset($uploadedImages[$combinationKey])) {
+                $variantStock['image_path'] = $uploadedImages[$combinationKey];
+            } else {
+                $variantStock['image_path'] = trim((string) ($variantStock['image_path'] ?? ''));
+            }
+        }
+        unset($variantStock);
+
+        return $variantStocks;
+    }
+
     public function index()
     {
         $search = $_GET['search'] ?? null;
@@ -61,6 +110,13 @@ class ProductController extends BaseController
             if (!empty($galleryImages)) {
                 foreach ($galleryImages as $img) {
                     $this->deleteFile($img);
+                }
+            }
+
+            $variantRows = $this->productModel->getVariantStockRows($id);
+            foreach ($variantRows as $variantRow) {
+                if (!empty($variantRow['image_path'])) {
+                    $this->deleteFile($variantRow['image_path']);
                 }
             }
         }
@@ -93,6 +149,8 @@ class ProductController extends BaseController
             'sizeGuides' => $sizeGuides,
             'variations' => $variations,
             'product' => [
+                'price' => 0,
+                'weight_grams' => 0,
                 'stock_mode' => 'always_in_stock',
                 'stock_qty' => 0,
                 'low_stock_threshold' => 5,
@@ -187,7 +245,7 @@ class ProductController extends BaseController
                 'gallery_images' => $galleryPaths,
                 'variations' => $formattedVars,
                 'categories' => $_POST['categories'] ?? [], // Capture array
-                'variant_stocks' => $this->parseVariantStocksFromRequest()
+                'variant_stocks' => $this->buildVariantStocksForSave()
             ];
 
 
@@ -223,6 +281,12 @@ class ProductController extends BaseController
         $product['gallery_image_records'] = $this->productModel->getGalleryImageRecords($id);
         $product['variations'] = $this->productModel->getVariations($id); // This returns grouped vars
         $product['variant_stocks'] = $this->productModel->getVariantStockRows($id);
+        foreach ($product['variant_stocks'] as &$variantStock) {
+            $variantStock['image_url'] = !empty($variantStock['image_path'])
+                ? ImageHelper::uploadUrl($variantStock['image_path'], '')
+                : '';
+        }
+        unset($variantStock);
         // We might need raw variation lines to pre-select, but let's see how the form expects it.
                 // The form writes to hidden inputs 'selected_variations[]' as 'varId_valId'.
         // We need to reconstruct that list.
@@ -312,6 +376,7 @@ class ProductController extends BaseController
 
             $removeGalleryImageIds = array_values(array_filter(array_map('intval', $_POST['remove_gallery_image_ids'] ?? [])));
             $galleryImagesToDelete = $this->productModel->getGalleryImageRecordsByIds($id, $removeGalleryImageIds);
+            $existingVariantMap = $this->productModel->getVariantStockMap((int) $id);
 
             // 6. Handle Variations
             $formattedVars = [];
@@ -349,7 +414,7 @@ class ProductController extends BaseController
                 'remove_gallery_image_ids' => $removeGalleryImageIds,
                 'variations' => $formattedVars,
                 'categories' => $_POST['categories'] ?? [],
-                'variant_stocks' => $this->parseVariantStocksFromRequest()
+                'variant_stocks' => $this->buildVariantStocksForSave()
             ];
 
 
@@ -359,6 +424,23 @@ class ProductController extends BaseController
             // var_dump($result); die("Model Update Result");
 
             if ($result) {
+                $newVariantImageMap = [];
+                foreach (($data['variant_stocks'] ?? []) as $variantStock) {
+                    $combinationKey = trim((string) ($variantStock['combination_key'] ?? ''));
+                    if ($combinationKey === '') {
+                        continue;
+                    }
+                    $newVariantImageMap[$combinationKey] = trim((string) ($variantStock['image_path'] ?? ''));
+                }
+
+                foreach ($existingVariantMap as $combinationKey => $variantRow) {
+                    $oldImagePath = trim((string) ($variantRow['image_path'] ?? ''));
+                    $newImagePath = $newVariantImageMap[$combinationKey] ?? '';
+                    if ($oldImagePath !== '' && $oldImagePath !== $newImagePath) {
+                        $this->deleteFile($oldImagePath);
+                    }
+                }
+
                 foreach ($galleryImagesToDelete as $galleryImage) {
                     if (!empty($galleryImage['image_path'])) {
                         $this->deleteFile($galleryImage['image_path']);

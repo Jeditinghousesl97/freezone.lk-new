@@ -196,20 +196,20 @@ $productUnitPrice = (!empty($product['sale_price']) && (float) $product['sale_pr
 
                 <!-- Price & Guide Row -->
                 <div class="pd-price-row" style="justify-content: flex-start; gap: 20px;">
-                    <div class="pd-prices" style="font-weight: 700;">
+                    <div class="pd-prices" id="productPriceBox" style="font-weight: 700;">
                         <?php
                         if (!empty($product['sale_price']) && $product['sale_price'] < $product['price']):
                             ?>
-                            <span class="pd-old-price" style="font-weight: 400;">
+                            <span class="pd-old-price" id="productOldPrice" style="font-weight: 400;">
                                 <?= $currency ?>
                                 <?= number_format($product['price'], 0) ?>
                             </span>
-                            <span class="pd-sale-price" style="font-weight: 800; color: #000;">
+                            <span class="pd-sale-price" id="productCurrentPrice" style="font-weight: 800; color: #000;">
                                 <?= $currency ?>
                                 <?= number_format($product['sale_price'], 0) ?>
                             </span>
                         <?php else: ?>
-                            <span class="pd-sale-price" style="font-weight: 800; color: #000;">
+                            <span class="pd-sale-price" id="productCurrentPrice" style="font-weight: 800; color: #000;">
                                 <?= $currency ?>
                                 <?= number_format($product['price'], 0) ?>
                             </span>
@@ -767,6 +767,7 @@ if ($sgImg):
     const baseProductPrice = <?= json_encode((float) $productUnitPrice) ?>;
     const baseProductWeight = <?= json_encode((int) ($product['weight_grams'] ?? 0)) ?>;
     const productFreeShipping = <?= !empty($product['free_shipping']) ? 'true' : 'false' ?>;
+    const defaultProductImageUrl = <?= json_encode($mainImg) ?>;
 
     function formatMoney(amount) {
         return currencySymbol + ' ' + Number(amount || 0).toLocaleString(undefined, { maximumFractionDigits: 0 });
@@ -790,8 +791,8 @@ if ($sgImg):
     function calculateSingleShippingQuote(districtValue) {
         const qty = parseInt(document.getElementById('qtyInput').value, 10) || 1;
         const district = normalizeDistrict(districtValue);
-        const subtotal = baseProductPrice * qty;
-        const chargeableWeight = productFreeShipping ? 0 : (Math.max(0, baseProductWeight) * qty);
+        const subtotal = getCurrentUnitPrice() * qty;
+        const chargeableWeight = productFreeShipping ? 0 : (Math.max(0, getCurrentWeight()) * qty);
         let firstKg = Number(deliverySettings.firstKg || 0);
         let additionalKg = Number(deliverySettings.additionalKg || 0);
         let hasRate = true;
@@ -869,6 +870,59 @@ if ($sgImg):
     function getActiveVariantRow() {
         const variantKey = getSelectedVariantKey();
         return variantStockRows.find(row => row.combination_key === variantKey && Number(row.is_active)) || null;
+    }
+
+    function getCurrentUnitPrice() {
+        const activeVariant = getActiveVariantRow();
+        if (activeVariant && activeVariant.variant_price !== null && activeVariant.variant_price !== undefined && activeVariant.variant_price !== '') {
+            return Number(activeVariant.variant_price || 0);
+        }
+        return Number(baseProductPrice || 0);
+    }
+
+    function getCurrentWeight() {
+        const activeVariant = getActiveVariantRow();
+        if (activeVariant && activeVariant.variant_weight_grams !== undefined && activeVariant.variant_weight_grams !== null) {
+            return Number(activeVariant.variant_weight_grams || 0);
+        }
+        return Number(baseProductWeight || 0);
+    }
+
+    function getCurrentImage() {
+        const activeVariant = getActiveVariantRow();
+        if (activeVariant && activeVariant.image_url) {
+            return activeVariant.image_url;
+        }
+        return defaultProductImageUrl;
+    }
+
+    function updateDisplayedPrice() {
+        const currentPriceEl = document.getElementById('productCurrentPrice');
+        const oldPriceEl = document.getElementById('productOldPrice');
+        if (!currentPriceEl) {
+            return;
+        }
+
+        currentPriceEl.textContent = formatMoney(getCurrentUnitPrice());
+        if (oldPriceEl) {
+            oldPriceEl.style.display = getActiveVariantRow() ? 'none' : '';
+        }
+    }
+
+    function updateDisplayedVariantImage() {
+        const imageUrl = getCurrentImage();
+        const mainImg = document.querySelector('.gallery-slider .gallery-img.current');
+        if (!mainImg || !imageUrl) {
+            return;
+        }
+
+        const picture = mainImg.closest('picture');
+        if (picture) {
+            picture.querySelectorAll('source').forEach(function (source) {
+                source.setAttribute('srcset', imageUrl);
+            });
+        }
+        mainImg.setAttribute('src', imageUrl);
     }
 
     function isVariantRowPurchasable(row) {
@@ -981,6 +1035,10 @@ if ($sgImg):
         } else {
             updateProductStockNotice('', '');
         }
+
+        updateDisplayedPrice();
+        updateDisplayedVariantImage();
+        updateSingleOrderTotals();
     }
 
     function validateCurrentSelection(qty) {
@@ -1366,7 +1424,7 @@ if ($sgImg):
         //  Gather Details
         const id = <?= $product['id'] ?>;
         const title = "<?= addslashes($product['title']) ?>";
-        const price = <?= $product['sale_price'] ?: $product['price'] ?>;
+        const price = getCurrentUnitPrice();
         const qty = parseInt(document.getElementById('qtyInput').value) || 1;
         const selectionCheck = validateCurrentSelection(qty);
         if (!selectionCheck.ok) {
@@ -1375,8 +1433,7 @@ if ($sgImg):
             return;
         }
 
-        <?php $imgUrl = ImageHelper::uploadUrl($product['main_image'] ?? '', 'https://via.placeholder.com/150'); ?>
-        const img = "<?= $imgUrl ?>";
+        const img = getCurrentImage();
 
         // Format Variations String
         let variantStr = getVariantText();

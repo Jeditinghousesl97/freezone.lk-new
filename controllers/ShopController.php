@@ -9,6 +9,7 @@ require_once 'models/Variation.php';
 require_once 'models/Setting.php';
 require_once 'models/DeliverySetting.php';
 require_once 'helpers/DeliveryHelper.php';
+require_once 'helpers/ImageHelper.php';
 require_once 'helpers/SeoHelper.php';
 
 class ShopController extends BaseController
@@ -141,6 +142,12 @@ class ShopController extends BaseController
         $gallery = $this->productModel->getGalleryImages($id);
         $variations = $this->productModel->getVariations($id);
         $variantStockRows = $this->productModel->getVariantStockRows($id);
+        foreach ($variantStockRows as &$variantRow) {
+            $variantRow['image_url'] = !empty($variantRow['image_path'])
+                ? ImageHelper::uploadUrl($variantRow['image_path'], '')
+                : '';
+        }
+        unset($variantRow);
         $stockSnapshot = $this->productModel->getStockSnapshot($product);
         $relatedProducts = $this->productModel->getRelated($product['category_id'], $id, 3);
 

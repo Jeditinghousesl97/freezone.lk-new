@@ -838,6 +838,9 @@
                         <thead>
                             <tr>
                                 <th>Combination</th>
+                                <th>Price</th>
+                                <th>Weight (g)</th>
+                                <th>Image</th>
                                 <th>SKU</th>
                                 <th>Mode</th>
                                 <th>Qty</th>
@@ -849,7 +852,7 @@
                         </thead>
                         <tbody id="variantStockTableBody">
                             <tr id="variantStockEmptyState">
-                                <td colspan="8" style="color:#777;">No exact combinations yet. Select variation values, then generate the combinations you actually sell.</td>
+                                <td colspan="11" style="color:#777;">No exact combinations yet. Select variation values, then generate the combinations you actually sell.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -936,6 +939,8 @@
     <script>
         const initialVariantStockRows = <?= json_encode($product['variant_stocks'] ?? [], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
         let variantStockRows = Array.isArray(initialVariantStockRows) ? initialVariantStockRows : [];
+        const baseVariantPrice = <?= json_encode((float) ($product['sale_price'] ?? $product['price'] ?? 0)) ?>;
+        const baseVariantWeight = <?= json_encode((int) ($product['weight_grams'] ?? 0)) ?>;
         const productForm = document.getElementById('productForm');
         const draftAlert = document.getElementById('draftAlert');
         const draftAlertText = document.getElementById('draftAlertText');
@@ -1128,7 +1133,7 @@
             if (!tbody) return;
 
             if (!variantStockRows.length) {
-                tbody.innerHTML = `<tr id="variantStockEmptyState"><td colspan="8" style="color:#777;">No exact combinations yet. Select variation values, then generate the combinations you actually sell.</td></tr>`;
+                tbody.innerHTML = `<tr id="variantStockEmptyState"><td colspan="11" style="color:#777;">No exact combinations yet. Select variation values, then generate the combinations you actually sell.</td></tr>`;
                 syncVariantStocksJson();
                 return;
             }
@@ -1138,6 +1143,16 @@
                     <td data-label="Combination">
                         <div style="font-weight:700; color:#111;">${row.combination_label || row.combination_key}</div>
                         <div style="font-size:11px; color:#888; margin-top:4px;">${row.combination_key}</div>
+                    </td>
+                    <td data-label="Price"><input type="number" min="0" step="0.01" value="${Number(row.variant_price ?? baseVariantPrice)}" onchange="updateVariantRow(${index}, 'variant_price', this.value)"></td>
+                    <td data-label="Weight (g)"><input type="number" min="0" step="1" value="${Number(row.variant_weight_grams ?? baseVariantWeight)}" onchange="updateVariantRow(${index}, 'variant_weight_grams', this.value)"></td>
+                    <td data-label="Image">
+                        <div style="display:flex; flex-direction:column; gap:6px;">
+                            ${row.image_url ? `<img src="${escapeHtml(row.image_url)}" alt="Variant image" style="width:48px; height:48px; object-fit:cover; border-radius:10px; border:1px solid #e5e5e5;">` : `<div style="width:48px; height:48px; border-radius:10px; border:1px dashed #d8d8d8; display:flex; align-items:center; justify-content:center; color:#999; font-size:10px;">No image</div>`}
+                            <input type="hidden" name="variant_image_keys[]" value="${escapeHtml(row.combination_key || '')}">
+                            <input type="file" name="variant_image_files[]" accept="image/*" onchange="updateVariantImageMeta(${index}, this)">
+                            <div style="font-size:11px; color:#777;">${row.image_path ? escapeHtml(row.image_path) : 'Uses product image on storefront if empty.'}</div>
+                        </div>
                     </td>
                     <td data-label="SKU"><input type="text" value="${escapeHtml(row.sku || '')}" onchange="updateVariantRow(${index}, 'sku', this.value)"></td>
                     <td data-label="Mode">
@@ -1177,10 +1192,23 @@
 
         function updateVariantRow(index, key, value) {
             if (!variantStockRows[index]) return;
-            variantStockRows[index][key] = (key === 'stock_qty' || key === 'low_stock_threshold') ? Number(value || 0) : value;
+            variantStockRows[index][key] = ['stock_qty', 'low_stock_threshold', 'variant_weight_grams'].includes(key)
+                ? Number(value || 0)
+                : (key === 'variant_price' ? Number(value || 0) : value);
             if (key === 'is_active') {
                 variantStockRows[index][key] = !!value;
             }
+            syncVariantStocksJson();
+            scheduleDraftSave();
+        }
+
+        function updateVariantImageMeta(index, input) {
+            if (!variantStockRows[index]) return;
+            const file = input?.files?.[0] || null;
+            if (!file) return;
+
+            variantStockRows[index].image_path = file.name;
+            variantStockRows[index].image_url = '';
             syncVariantStocksJson();
             scheduleDraftSave();
         }
@@ -1243,6 +1271,7 @@
 
             const combos = cartesianProduct(groups);
             const existingKeys = new Set(variantStockRows.map(row => row.combination_key));
+            const currentStockMode = document.getElementById('stockModeInput')?.value || 'track_stock';
 
             combos.forEach(combo => {
                 const combinationKey = normalizeVariantKey(combo);
@@ -1253,11 +1282,15 @@
                 variantStockRows.push({
                     combination_key: combinationKey,
                     combination_label: combo.map(item => `${item.variation_name}: ${item.variation_value}`).join(' / '),
+                    variant_price: baseVariantPrice,
+                    variant_weight_grams: baseVariantWeight,
+                    image_path: '',
+                    image_url: '',
                     sku: '',
-                    stock_mode: 'track_stock',
+                    stock_mode: currentStockMode === 'manual_out_of_stock' ? 'manual_out_of_stock' : currentStockMode,
                     stock_qty: 0,
                     low_stock_threshold: 5,
-                    manual_stock_status: 'in_stock',
+                    manual_stock_status: currentStockMode === 'manual_out_of_stock' ? 'out_of_stock' : 'in_stock',
                     is_active: true,
                     values: combo
                 });
@@ -1283,6 +1316,7 @@
             const stockModeHintBox = document.getElementById('stockModeHintBox');
             const selectedGroups = getSelectedVariationGroups();
             const hasVariantSelections = selectedGroups.length > 0 || variantStockRows.length > 0;
+            const shouldShowVariantPanel = (stockMode === 'track_stock' || stockMode === 'always_in_stock') && hasVariantSelections;
             const isTrackingStock = stockMode === 'track_stock';
 
             if (manualStockStatusHidden) {
@@ -1292,12 +1326,12 @@
                 simplePanel.style.display = isTrackingStock && !hasVariantSelections ? 'block' : 'none';
             }
             if (variantPanel) {
-                variantPanel.style.display = isTrackingStock && hasVariantSelections ? 'block' : 'none';
+                variantPanel.style.display = shouldShowVariantPanel ? 'block' : 'none';
             }
             if (stockModeHintBox) {
                 stockModeHintBox.textContent = stockMode === 'manual_out_of_stock'
                     ? 'This product will appear as out of stock on the website.'
-                    : (isTrackingStock ? 'Exact variation stock matrix for tracked products' : 'This product will stay available without quantity tracking.');
+                    : (shouldShowVariantPanel ? 'Exact variation matrix for the selected variant combinations.' : (isTrackingStock ? 'Track quantity for this simple product.' : 'This product will stay available without quantity tracking.'));
             }
         }
 

@@ -20,17 +20,18 @@ class CartController extends BaseController
                 continue;
             }
 
-            $livePrice = (!empty($product['sale_price']) && (float) $product['sale_price'] < (float) $product['price'])
-                ? (float) $product['sale_price']
-                : (float) $product['price'];
+            $variantData = $productModel->getResolvedVariantData($product, (string) ($item['variant_key'] ?? ''));
+            $livePrice = (float) ($variantData['price'] ?? 0);
 
             $item['price'] = $livePrice;
             $item['title'] = $product['title'] ?? ($item['title'] ?? 'Product');
-            $item['weight_grams'] = max(0, (int) ($product['weight_grams'] ?? 0));
+            $item['weight_grams'] = max(0, (int) ($variantData['weight_grams'] ?? 0));
             $item['is_free_shipping'] = !empty($product['free_shipping']) ? 1 : 0;
             $item['variant_key'] = (string) ($item['variant_key'] ?? '');
 
-            if (empty($item['img']) && !empty($product['main_image'])) {
+            if (!empty($variantData['image_path'])) {
+                $item['img'] = ImageHelper::uploadUrl($variantData['image_path'], (string) ($item['img'] ?? ''));
+            } elseif (empty($item['img']) && !empty($product['main_image'])) {
                 $item['img'] = ImageHelper::uploadUrl($product['main_image'], '');
             }
 
@@ -140,14 +141,15 @@ class CartController extends BaseController
 
         // Add new if not found
         if (!$found) {
+            $variantData = $productModel->getResolvedVariantData($product, $variantKey);
             $imageUrl = $input['img'] ?? '';
-            if (!empty($product['main_image'])) {
+            if (!empty($variantData['image_path'])) {
+                $imageUrl = ImageHelper::uploadUrl($variantData['image_path'], $imageUrl);
+            } elseif (!empty($product['main_image'])) {
                 $imageUrl = ImageHelper::uploadUrl($product['main_image'], $imageUrl);
             }
 
-            $livePrice = (!empty($product['sale_price']) && (float) $product['sale_price'] < (float) $product['price'])
-                ? (float) $product['sale_price']
-                : (float) $product['price'];
+            $livePrice = (float) ($variantData['price'] ?? 0);
 
             $_SESSION['cart'][] = [
                 'id' => (int) $product['id'],
@@ -157,7 +159,7 @@ class CartController extends BaseController
                 'variants' => $input['variants'] ?? '',
                 'variant_key' => $variantKey,
                 'qty' => $qtyToAdd,
-                'weight_grams' => max(0, (int) ($product['weight_grams'] ?? 0)),
+                'weight_grams' => max(0, (int) ($variantData['weight_grams'] ?? 0)),
                 'is_free_shipping' => !empty($product['free_shipping']) ? 1 : 0
             ];
         }
