@@ -129,7 +129,7 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
                         Delivery fee updates when you choose your district in the order form.
                     </div>
 
-                    <div style="display:grid; gap:12px;">
+                    <div class="payment-sheet-options">
                         <?php
                         $codEnabled = !empty($settings['cod_enabled']);
                         $shopWhatsappTarget = preg_replace('/[^0-9]/', '', (string) ($settings['shop_whatsapp'] ?? ''));
@@ -139,35 +139,63 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
                         $whatsappEnabled = !empty($settings['whatsapp_ordering_enabled']) && $shopWhatsappTarget !== '';
                         ?>
                         <?php if ($whatsappEnabled): ?>
-                            <button onclick="openOrderModal('whatsapp')" class="cart-payment-btn cart-payment-btn-whatsapp">
-                                <i class="fab fa-whatsapp" style="font-size: 18px;"></i>
-                                Order via WhatsApp
+                            <button type="button" onclick="openOrderModal('whatsapp')" class="payment-method-card method-whatsapp">
+                                <span class="payment-method-icon"><i class="fab fa-whatsapp"></i></span>
+                                <span class="payment-method-copy">
+                                    <strong>WhatsApp Order</strong>
+                                    <small>Send your order details directly to the shop on WhatsApp.</small>
+                                </span>
+                                <span class="payment-method-arrow"><i class="fas fa-chevron-right"></i></span>
                             </button>
                         <?php endif; ?>
                         <?php if ($codEnabled): ?>
-                            <button onclick="openOrderModal('cod')" class="cart-payment-btn cart-payment-btn-cod">
-                                <img src="<?= BASE_URL ?>assets/icons/payment-gateways/buttons/cod.png" alt="Cash on Delivery" class="cart-payment-logo">
-                                Order with Cash on Delivery
+                            <button type="button" onclick="openOrderModal('cod')" class="payment-method-card method-cod">
+                                <span class="payment-method-icon">
+                                    <img src="<?= BASE_URL ?>assets/icons/payment-gateways/buttons/cod.png" alt="Cash on Delivery" class="payment-method-logo">
+                                </span>
+                                <span class="payment-method-copy">
+                                    <strong>Cash on Delivery</strong>
+                                    <small>Place the order now and pay when it is delivered.</small>
+                                </span>
+                                <span class="payment-method-arrow"><i class="fas fa-chevron-right"></i></span>
                             </button>
                         <?php endif; ?>
 
                         <?php if (!empty($settings['payhere_enabled'])): ?>
-                            <button onclick="openOrderModal('payhere')" class="btn-payhere-standalone cart-payment-btn cart-payment-btn-payhere">
-                                <img src="<?= BASE_URL ?>assets/icons/payment-gateways/buttons/payhere.png" alt="PayHere" class="cart-payment-logo">
-                                Pay Online with Card Payment
+                            <button type="button" onclick="openOrderModal('payhere')" class="payment-method-card method-payhere">
+                                <span class="payment-method-icon">
+                                    <img src="<?= BASE_URL ?>assets/icons/payment-gateways/buttons/payhere.png" alt="PayHere" class="payment-method-logo">
+                                </span>
+                                <span class="payment-method-copy">
+                                    <strong>Card Payment</strong>
+                                    <small>Pay online securely before your order is confirmed.</small>
+                                </span>
+                                <span class="payment-method-arrow"><i class="fas fa-chevron-right"></i></span>
                             </button>
                         <?php endif; ?>
 
                         <?php if (!empty($settings['koko_enabled'])): ?>
-                            <button onclick="openOrderModal('koko')" class="cart-payment-btn cart-payment-btn-koko">
-                                <img src="<?= BASE_URL ?>assets/icons/payment-gateways/buttons/koko.png" alt="KOKO" class="cart-payment-logo">
-                                Pay in 3 with KOKO
+                            <button type="button" onclick="openOrderModal('koko')" class="payment-method-card method-koko">
+                                <span class="payment-method-icon">
+                                    <img src="<?= BASE_URL ?>assets/icons/payment-gateways/buttons/koko.png" alt="KOKO" class="payment-method-logo">
+                                </span>
+                                <span class="payment-method-copy">
+                                    <strong>KOKO Pay in 3</strong>
+                                    <small>Split your payment into 3 interest-free installments.</small>
+                                </span>
+                                <span class="payment-method-arrow"><i class="fas fa-chevron-right"></i></span>
                             </button>
                         <?php endif; ?>
                         <?php if (!empty($settings['bank_transfer_enabled'])): ?>
-                            <button onclick="openOrderModal('bank_transfer')" class="cart-payment-btn cart-payment-btn-bank">
-                                <img src="<?= BASE_URL ?>assets/icons/payment-gateways/buttons/bank.png" alt="Bank Transfer" class="cart-payment-logo">
-                                Bank Transfer
+                            <button type="button" onclick="openOrderModal('bank_transfer')" class="payment-method-card method-bank">
+                                <span class="payment-method-icon">
+                                    <img src="<?= BASE_URL ?>assets/icons/payment-gateways/buttons/bank.png" alt="Bank Transfer" class="payment-method-logo">
+                                </span>
+                                <span class="payment-method-copy">
+                                    <strong>Bank Transfer</strong>
+                                    <small>Place the order now and send the payment using the bank details provided.</small>
+                                </span>
+                                <span class="payment-method-arrow"><i class="fas fa-chevron-right"></i></span>
                             </button>
                         <?php endif; ?>
                     </div>
