@@ -483,7 +483,7 @@ p {
 }
 
 .koko-installment-logo {
-    width: 48px;
+    width: 29px;
     height: auto;
     object-fit: contain;
 }
@@ -696,7 +696,7 @@ p {
 
 .koko-installment-teaser-single {
     margin-top: 0;
-    font-size: 12px;
+    font-size: 14px;
 }
 
 .koko-installment-teaser-single .koko-installment-logo {
