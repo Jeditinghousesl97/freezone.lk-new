@@ -245,6 +245,10 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
                     <span style="font-size:13px; color:#777; font-weight:600;">Shipping Fee</span>
                     <span id="modalShippingDisplay" style="font-size:13px; color:#222; font-weight:700;">Select district</span>
                 </div>
+                <div id="modalHandlingFeeRow" style="display:none; justify-content:space-between; gap:12px; margin-bottom:8px;">
+                    <span style="font-size:13px; color:#777; font-weight:600;">Handling Fee</span>
+                    <span id="modalHandlingFeeDisplay" style="font-size:13px; color:#222; font-weight:700;"><?= htmlspecialchars($currency) ?> 0</span>
+                </div>
                 <div style="display:flex; justify-content:space-between; gap:12px; padding-top:8px; border-top:1px dashed #e1e1e1;">
                     <span style="font-size:14px; color:#111; font-weight:800;">Order Total</span>
                     <span id="modalGrandTotalDisplay" style="font-size:16px; color:#111; font-weight:800;"><?= htmlspecialchars($currency) ?> <?= number_format($subtotal ?? 0, 0) ?></span>
@@ -313,11 +317,17 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
         firstKg: <?= json_encode((float) ($settings['delivery_all_first_kg'] ?? 0)) ?>,
         additionalKg: <?= json_encode((float) ($settings['delivery_all_additional_kg'] ?? 0)) ?>
     };
+    const kokoHandlingFeePercentage = <?= json_encode((float) ($settings['koko_handling_fee_percentage'] ?? 0)) ?>;
     let orderMode = 'cod';
     const shopWhatsappNumber = '<?= htmlspecialchars($shopWhatsappTarget ?? '', ENT_QUOTES) ?>';
 
     function formatMoney(amount) {
-        return currencySymbol + ' ' + Number(amount || 0).toLocaleString(undefined, { maximumFractionDigits: 0 });
+        const numericAmount = Number(amount || 0);
+        const hasDecimals = Math.abs(numericAmount - Math.round(numericAmount)) > 0.001;
+        return currencySymbol + ' ' + numericAmount.toLocaleString(undefined, {
+            minimumFractionDigits: hasDecimals ? 2 : 0,
+            maximumFractionDigits: 2
+        });
     }
 
     function normalizeDistrict(value) {
@@ -333,6 +343,14 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
         }
 
         return '';
+    }
+
+    function calculateKokoHandlingFee(baseTotal) {
+        if (kokoHandlingFeePercentage <= 0) {
+            return 0;
+        }
+
+        return Number((((Number(baseTotal) || 0) * kokoHandlingFeePercentage) / 100).toFixed(2));
     }
 
     function calculateShippingQuote(items, districtValue) {
@@ -389,6 +407,8 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
         const modalShippingEl = document.getElementById('modalShippingDisplay');
         const cartGrandTotalEl = document.getElementById('cartGrandTotalDisplay');
         const modalGrandTotalEl = document.getElementById('modalGrandTotalDisplay');
+        const modalHandlingFeeRowEl = document.getElementById('modalHandlingFeeRow');
+        const modalHandlingFeeEl = document.getElementById('modalHandlingFeeDisplay');
         const estimateSubTotalEl = document.getElementById('estimateSubTotalDisplay');
         const estimateShippingEl = document.getElementById('estimateShippingDisplay');
         const estimateGrandTotalEl = document.getElementById('estimateGrandTotalDisplay');
@@ -414,7 +434,13 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
         cartShippingEl.textContent = shippingText;
         modalShippingEl.textContent = shippingText;
         cartGrandTotalEl.textContent = formatMoney(quote.hasRate || quote.chargeableWeight === 0 ? quote.total : quote.subtotal);
-        modalGrandTotalEl.textContent = formatMoney(quote.hasRate || quote.chargeableWeight === 0 ? quote.total : quote.subtotal);
+        const modalBaseTotal = quote.hasRate || quote.chargeableWeight === 0 ? quote.total : quote.subtotal;
+        const modalHandlingFee = orderMode === 'koko' ? calculateKokoHandlingFee(modalBaseTotal) : 0;
+        if (modalHandlingFeeRowEl && modalHandlingFeeEl) {
+            modalHandlingFeeRowEl.style.display = modalHandlingFee > 0 ? 'flex' : 'none';
+            modalHandlingFeeEl.textContent = formatMoney(modalHandlingFee);
+        }
+        modalGrandTotalEl.textContent = formatMoney(modalBaseTotal + modalHandlingFee);
         if (estimateSubTotalEl && estimateShippingEl && estimateGrandTotalEl) {
             estimateSubTotalEl.textContent = formatMoney(quote.subtotal);
             estimateShippingEl.textContent = shippingText;

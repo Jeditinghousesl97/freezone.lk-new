@@ -430,6 +430,31 @@ class OrderController extends BaseController
         );
     }
 
+    private function getKokoHandlingFeePercentage(array $settings)
+    {
+        return max(0, (float) ($settings['koko_handling_fee_percentage'] ?? 0));
+    }
+
+    private function calculateKokoHandlingFee($baseTotal, array $settings)
+    {
+        $rate = $this->getKokoHandlingFeePercentage($settings);
+        if ($rate <= 0 || $baseTotal <= 0) {
+            return 0.0;
+        }
+
+        return round(((float) $baseTotal * $rate) / 100, 2);
+    }
+
+    private function enrichQuoteWithKokoHandlingFee(array $quote, array $settings)
+    {
+        $baseTotal = (float) ($quote['subtotal'] ?? 0) + (float) ($quote['shipping_fee'] ?? 0);
+        $handlingFee = $this->calculateKokoHandlingFee($baseTotal, $settings);
+        $quote['handling_fee'] = $handlingFee;
+        $quote['total'] = $baseTotal + $handlingFee;
+
+        return $quote;
+    }
+
     private function requireAdminSession()
     {
         if (!isset($_SESSION['user_id'])) {
@@ -1104,11 +1129,13 @@ class OrderController extends BaseController
             $_SESSION['order_error'] = 'Please select a valid district to calculate delivery.';
             $this->redirect('cart');
         }
+        $pricingQuote = $this->enrichQuoteWithKokoHandlingFee($shippingQuote, $settings);
 
         $order = $this->orderModel->createFromCart($customer, $cart, $settings, [
-            'subtotal_amount' => $shippingQuote['subtotal'],
-            'shipping_fee' => $shippingQuote['shipping_fee'],
-            'chargeable_weight_grams' => $shippingQuote['chargeable_weight_grams'],
+            'subtotal_amount' => $pricingQuote['subtotal'],
+            'shipping_fee' => $pricingQuote['shipping_fee'],
+            'handling_fee' => $pricingQuote['handling_fee'],
+            'chargeable_weight_grams' => $pricingQuote['chargeable_weight_grams'],
             'payment_method' => 'koko',
             'payment_gateway' => 'koko',
             'payment_status' => 'pending',
@@ -1445,11 +1472,13 @@ class OrderController extends BaseController
             $_SESSION['order_error'] = 'Please select a valid district to calculate delivery.';
             $this->redirect('shop/product/' . $productId);
         }
+        $pricingQuote = $this->enrichQuoteWithKokoHandlingFee($shippingQuote, $settings);
 
         $order = $this->orderModel->createFromItems($customer, $items, $settings, [
-            'subtotal_amount' => $shippingQuote['subtotal'],
-            'shipping_fee' => $shippingQuote['shipping_fee'],
-            'chargeable_weight_grams' => $shippingQuote['chargeable_weight_grams'],
+            'subtotal_amount' => $pricingQuote['subtotal'],
+            'shipping_fee' => $pricingQuote['shipping_fee'],
+            'handling_fee' => $pricingQuote['handling_fee'],
+            'chargeable_weight_grams' => $pricingQuote['chargeable_weight_grams'],
             'payment_method' => 'koko',
             'payment_gateway' => 'koko',
             'payment_status' => 'pending',

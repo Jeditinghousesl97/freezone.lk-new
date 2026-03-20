@@ -99,6 +99,7 @@ class SettingsController extends BaseController
             'koko_description',
             'koko_merchant_id',
             'koko_api_key',
+            'koko_handling_fee_percentage',
             'koko_public_key',
             'koko_private_key',
             'koko_callback_secret',
@@ -227,6 +228,7 @@ class SettingsController extends BaseController
                 'koko_title',
                 'koko_description',
                 'koko_merchant_id',
+                'koko_handling_fee_percentage',
                 'koko_public_key',
                 'sms_base_url',
                 'sms_user_id',
@@ -279,6 +281,11 @@ class SettingsController extends BaseController
             if (isset($_POST['koko_callback_secret']) && trim((string) $_POST['koko_callback_secret']) !== '') {
                 $this->settingModel->set('koko_callback_secret', trim((string) $_POST['koko_callback_secret']));
             }
+
+            $this->settingModel->set(
+                'koko_handling_fee_percentage',
+                number_format(max(0, (float) ($_POST['koko_handling_fee_percentage'] ?? 0)), 2, '.', '')
+            );
 
             if (isset($_POST['sms_api_key']) && trim((string) $_POST['sms_api_key']) !== '') {
                 $this->settingModel->set('sms_api_key', trim((string) $_POST['sms_api_key']));

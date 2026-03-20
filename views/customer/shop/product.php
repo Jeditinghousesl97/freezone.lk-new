@@ -740,6 +740,10 @@ if ($sgImg):
                     <span style="font-size:13px; color:#777; font-weight:600;">Shipping Fee</span>
                     <span id="modalShippingDisplay" style="font-size:13px; color:#222; font-weight:700;">Select district</span>
                 </div>
+                <div id="modalHandlingFeeRow" style="display:none; justify-content:space-between; gap:12px; margin-bottom:8px;">
+                    <span style="font-size:13px; color:#777; font-weight:600;">Handling Fee</span>
+                    <span id="modalHandlingFeeDisplay" style="font-size:13px; color:#222; font-weight:700;"><?= htmlspecialchars($currency) ?> 0</span>
+                </div>
                 <div style="display:flex; justify-content:space-between; gap:12px; padding-top:8px; border-top:1px dashed #e1e1e1;">
                     <span style="font-size:14px; color:#111; font-weight:800;">Order Total</span>
                     <span id="modalGrandTotalDisplay" style="font-size:16px; color:#111; font-weight:800;"><?= htmlspecialchars($currency) ?> <?= number_format($productUnitPrice, 0) ?></span>
@@ -782,6 +786,7 @@ if ($sgImg):
         firstKg: <?= json_encode((float) ($settings['delivery_all_first_kg'] ?? 0)) ?>,
         additionalKg: <?= json_encode((float) ($settings['delivery_all_additional_kg'] ?? 0)) ?>
     };
+    const kokoHandlingFeePercentage = <?= json_encode((float) ($settings['koko_handling_fee_percentage'] ?? 0)) ?>;
     const baseProductPrice = <?= json_encode((float) $productUnitPrice) ?>;
     const baseProductRegularPrice = <?= json_encode((float) ($product['price'] ?? 0)) ?>;
     const baseProductSalePrice = <?= json_encode((!empty($product['sale_price']) && (float) $product['sale_price'] < (float) $product['price']) ? (float) $product['sale_price'] : null) ?>;
@@ -790,7 +795,12 @@ if ($sgImg):
     const defaultProductImageUrl = <?= json_encode($mainImg) ?>;
 
     function formatMoney(amount) {
-        return currencySymbol + ' ' + Number(amount || 0).toLocaleString(undefined, { maximumFractionDigits: 0 });
+        const numericAmount = Number(amount || 0);
+        const hasDecimals = Math.abs(numericAmount - Math.round(numericAmount)) > 0.001;
+        return currencySymbol + ' ' + numericAmount.toLocaleString(undefined, {
+            minimumFractionDigits: hasDecimals ? 2 : 0,
+            maximumFractionDigits: 2
+        });
     }
 
     function normalizeDistrict(value) {
@@ -806,6 +816,14 @@ if ($sgImg):
         }
 
         return '';
+    }
+
+    function calculateKokoHandlingFee(baseTotal) {
+        if (kokoHandlingFeePercentage <= 0) {
+            return 0;
+        }
+
+        return Number((((Number(baseTotal) || 0) * kokoHandlingFeePercentage) / 100).toFixed(2));
     }
 
     function calculateSingleShippingQuote(districtValue) {
@@ -848,6 +866,8 @@ if ($sgImg):
         const subtotalEl = document.getElementById('modalSubTotalDisplay');
         const shippingEl = document.getElementById('modalShippingDisplay');
         const totalEl = document.getElementById('modalGrandTotalDisplay');
+        const handlingFeeRowEl = document.getElementById('modalHandlingFeeRow');
+        const handlingFeeEl = document.getElementById('modalHandlingFeeDisplay');
         if (!subtotalEl || !shippingEl || !totalEl) {
             return calculateSingleShippingQuote('');
         }
@@ -856,7 +876,13 @@ if ($sgImg):
         const quote = calculateSingleShippingQuote(districtInput ? districtInput.value : (localStorage.getItem('cus_district') || ''));
         subtotalEl.textContent = formatMoney(quote.subtotal);
         shippingEl.textContent = quote.chargeableWeight === 0 ? 'Free' : (quote.hasRate ? formatMoney(quote.shipping) : 'Select district');
-        totalEl.textContent = formatMoney(quote.hasRate || quote.chargeableWeight === 0 ? quote.total : quote.subtotal);
+        const baseTotal = quote.hasRate || quote.chargeableWeight === 0 ? quote.total : quote.subtotal;
+        const handlingFee = orderMode === 'koko' ? calculateKokoHandlingFee(baseTotal) : 0;
+        if (handlingFeeRowEl && handlingFeeEl) {
+            handlingFeeRowEl.style.display = handlingFee > 0 ? 'flex' : 'none';
+            handlingFeeEl.textContent = formatMoney(handlingFee);
+        }
+        totalEl.textContent = formatMoney(baseTotal + handlingFee);
         return quote;
     }
 

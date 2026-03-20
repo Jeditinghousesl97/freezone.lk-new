@@ -551,6 +551,14 @@
                 <label class="label">Gateway Description</label>
                 <textarea name="koko_description" class="input-box" rows="3" placeholder="Pay in 3 interest free installments with Koko."><?= htmlspecialchars($settings['koko_description'] ?? 'Pay in 3 interest free installments with Koko.') ?></textarea>
 
+                <label class="label">KOKO Handling Fee (%)</label>
+                <input type="number" name="koko_handling_fee_percentage" class="input-box" min="0" step="0.01"
+                    placeholder="0.00"
+                    value="<?= htmlspecialchars($settings['koko_handling_fee_percentage'] ?? '0.00') ?>">
+                <p style="margin:-6px 0 14px; font-size:11px; color:#777; line-height:1.7;">
+                    Applied only when the customer chooses KOKO. The percentage is calculated on the order total before the handling fee is added.
+                </p>
+
                 <label class="label">KOKO Merchant ID</label>
                 <input type="text" name="koko_merchant_id" class="input-box" placeholder="Merchant ID"
                     value="<?= htmlspecialchars($settings['koko_merchant_id'] ?? '') ?>">

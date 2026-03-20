@@ -29,6 +29,7 @@ class Order extends BaseModel
                 note TEXT DEFAULT NULL,
                 subtotal_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
                 shipping_fee DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+                handling_fee DECIMAL(10,2) NOT NULL DEFAULT 0.00,
                 chargeable_weight_grams INT NOT NULL DEFAULT 0,
                 total_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
                 currency VARCHAR(10) NOT NULL DEFAULT 'LKR',
@@ -55,6 +56,7 @@ class Order extends BaseModel
         $this->ensureColumnExists('orders', 'admin_seen_at', "ALTER TABLE orders ADD COLUMN admin_seen_at TIMESTAMP NULL DEFAULT NULL AFTER tracking_number");
         $this->ensureColumnExists('orders', 'subtotal_amount', "ALTER TABLE orders ADD COLUMN subtotal_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER note");
         $this->ensureColumnExists('orders', 'shipping_fee', "ALTER TABLE orders ADD COLUMN shipping_fee DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER subtotal_amount");
+        $this->ensureColumnExists('orders', 'handling_fee', "ALTER TABLE orders ADD COLUMN handling_fee DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER shipping_fee");
         $this->ensureColumnExists('orders', 'chargeable_weight_grams', "ALTER TABLE orders ADD COLUMN chargeable_weight_grams INT NOT NULL DEFAULT 0 AFTER shipping_fee");
 
         $this->conn->exec("
@@ -130,6 +132,7 @@ class Order extends BaseModel
             ];
             $subtotalAmount = isset($options['subtotal_amount']) ? (float) $options['subtotal_amount'] : 0.0;
             $shippingFee = isset($options['shipping_fee']) ? (float) $options['shipping_fee'] : 0.0;
+            $handlingFee = isset($options['handling_fee']) ? (float) $options['handling_fee'] : 0.0;
             $chargeableWeightGrams = isset($options['chargeable_weight_grams']) ? (int) $options['chargeable_weight_grams'] : 0;
 
             if ($subtotalAmount <= 0) {
@@ -140,16 +143,16 @@ class Order extends BaseModel
                 }
             }
 
-            $totalAmount = $subtotalAmount + $shippingFee;
+            $totalAmount = $subtotalAmount + $shippingFee + $handlingFee;
 
             $stmt = $this->conn->prepare("
                 INSERT INTO orders (
                     order_number, customer_name, first_name, last_name, email, phone, phone_alt,
-                    address, city, district, postal_code, country, note, subtotal_amount, shipping_fee, chargeable_weight_grams, total_amount, currency,
+                    address, city, district, postal_code, country, note, subtotal_amount, shipping_fee, handling_fee, chargeable_weight_grams, total_amount, currency,
                     payment_method, payment_gateway, payment_status, order_status, stock_applied
                 ) VALUES (
                     :order_number, :customer_name, :first_name, :last_name, :email, :phone, :phone_alt,
-                    :address, :city, :district, :postal_code, :country, :note, :subtotal_amount, :shipping_fee, :chargeable_weight_grams, :total_amount, :currency,
+                    :address, :city, :district, :postal_code, :country, :note, :subtotal_amount, :shipping_fee, :handling_fee, :chargeable_weight_grams, :total_amount, :currency,
                     :payment_method, :payment_gateway, :payment_status, :order_status, :stock_applied
                 )
             ");
@@ -170,6 +173,7 @@ class Order extends BaseModel
                 ':note' => $customer['note'],
                 ':subtotal_amount' => number_format($subtotalAmount, 2, '.', ''),
                 ':shipping_fee' => number_format($shippingFee, 2, '.', ''),
+                ':handling_fee' => number_format($handlingFee, 2, '.', ''),
                 ':chargeable_weight_grams' => $chargeableWeightGrams,
                 ':total_amount' => number_format($totalAmount, 2, '.', ''),
                 ':currency' => $currency,
