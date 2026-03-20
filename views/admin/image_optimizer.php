@@ -45,6 +45,7 @@
         <a href="<?= BASE_URL ?>settings/edit" class="imgopt-btn secondary">Image Settings</a>
         <a href="<?= BASE_URL ?>admin/serverCheck" class="imgopt-btn secondary">Server Check</a>
         <form method="POST" style="display:inline-flex;">
+            <?= csrf_input() ?>
             <input type="hidden" name="reset_opcache" value="1">
             <button type="submit" class="imgopt-btn secondary">Reset PHP Opcache</button>
         </form>
@@ -96,6 +97,7 @@
             <?= htmlspecialchars((string) ($cloudflare_status['message'] ?? '')) ?>
         </div>
         <form method="POST" class="imgopt-form">
+            <?= csrf_input() ?>
             <input type="hidden" name="migrate_cloudflare" value="1">
             <div class="imgopt-field">
                 <label for="migration_limit">Files Per Batch</label>
@@ -148,6 +150,7 @@
 
             <?php if (empty($migration_summary['complete']) && (int) ($migration_summary['next_offset'] ?? 0) < (int) ($migration_summary['total'] ?? 0)): ?>
                 <form method="POST" class="imgopt-form" style="margin-top:14px;">
+                    <?= csrf_input() ?>
                     <input type="hidden" name="migrate_cloudflare" value="1">
                     <input type="hidden" name="migration_limit" value="<?= (int) ($migration_summary['limit'] ?? ($migration_limit ?? 25)) ?>">
                     <input type="hidden" name="migration_offset" value="<?= (int) ($migration_summary['next_offset'] ?? 0) ?>">
@@ -177,6 +180,7 @@
             <strong>What this does:</strong> restores missing images that your website already references from Cloudflare R2 into local <code>assets/uploads</code>. Frontend image loading will automatically use the local copy again once restored.
         </div>
         <form method="POST" class="imgopt-form">
+            <?= csrf_input() ?>
             <input type="hidden" name="restore_local_from_cloudflare" value="1">
             <div class="imgopt-field">
                 <label for="restore_limit">Files Per Batch</label>
@@ -225,6 +229,7 @@
 
             <?php if (empty($restore_summary['complete']) && (int) ($restore_summary['next_offset'] ?? 0) < (int) ($restore_summary['total'] ?? 0)): ?>
                 <form method="POST" class="imgopt-form" style="margin-top:14px;">
+                    <?= csrf_input() ?>
                     <input type="hidden" name="restore_local_from_cloudflare" value="1">
                     <input type="hidden" name="restore_limit" value="<?= (int) ($restore_summary['limit'] ?? ($restore_limit ?? 25)) ?>">
                     <input type="hidden" name="restore_offset" value="<?= (int) ($restore_summary['next_offset'] ?? 0) ?>">
@@ -248,6 +253,7 @@
     <div class="imgopt-panel" style="margin-bottom:16px;">
         <h3 style="margin:0 0 12px;">Run Optimizer</h3>
         <form method="POST" class="imgopt-form">
+            <?= csrf_input() ?>
             <div class="imgopt-field">
                 <label for="run_mode">Run Mode</label>
                 <select name="run_mode" id="run_mode">
@@ -315,6 +321,7 @@
 
             <?php if (empty($run_summary['complete']) && (int) ($run_summary['next_offset'] ?? 0) < (int) ($run_summary['total'] ?? 0)): ?>
                 <form method="POST" class="imgopt-form" style="margin-top:14px;">
+                    <?= csrf_input() ?>
                     <input type="hidden" name="run_mode" value="<?= htmlspecialchars((string) ($mode ?? 'missing')) ?>">
                     <input type="hidden" name="limit" value="<?= (int) ($run_summary['limit'] ?? ($batch_limit ?? 25)) ?>">
                     <input type="hidden" name="offset" value="<?= (int) ($run_summary['next_offset'] ?? 0) ?>">
@@ -338,6 +345,7 @@
     <div class="imgopt-panel" style="margin-bottom:16px;">
         <h3 style="margin:0 0 12px;">Inspect One Image</h3>
         <form method="POST" class="imgopt-form">
+            <?= csrf_input() ?>
             <div class="imgopt-field">
                 <label for="inspect_image">Paste Image URL or Filename</label>
                 <input
