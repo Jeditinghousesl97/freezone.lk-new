@@ -819,12 +819,12 @@ p {
 }
 
 .cart-payment-logo {
-    width: 28px;
-    height: 28px;
+    width: 34px;
+    height: 34px;
     object-fit: contain;
-    border-radius: 8px;
+    border-radius: 6px;
     background: rgba(255, 255, 255, 0.18);
-    padding: 2px;
+    padding: 1px;
     flex-shrink: 0;
 }
 
@@ -947,7 +947,7 @@ p {
 .payment-method-icon {
     width: 46px;
     height: 46px;
-    border-radius: 16px;
+    border-radius: 14px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -955,8 +955,8 @@ p {
 }
 
 .payment-method-logo {
-    width: 28px;
-    height: 28px;
+    width: 36px;
+    height: 36px;
     object-fit: contain;
     display: block;
 }
