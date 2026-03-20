@@ -734,7 +734,13 @@
                                         if (floatingCart) floatingCart.style.display = 'flex';
                                     }
                                 } else {
-                                    alert('Failed to add to cart');
+                                    const message = String(data.message || '');
+                                    if (message.toLowerCase().includes('variation')) {
+                                        window.location.href = '<?= BASE_URL ?>shop/product/' + encodeURIComponent(id);
+                                        return;
+                                    }
+
+                                    alert(message || 'Failed to add to cart');
                                 }
                             })
                             .catch(error => {
