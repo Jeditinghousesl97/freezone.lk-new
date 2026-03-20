@@ -78,6 +78,7 @@
             </p>
 
             <form action="<?= BASE_URL ?>settings/authenticate" method="POST">
+                <?= csrf_input() ?>
                 <label class="pwd-label">Enter Password to Continue</label>
                 <input type="password" name="password" class="pwd-input" placeholder="******************" required
                     autofocus>

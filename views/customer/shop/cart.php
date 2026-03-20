@@ -486,7 +486,7 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
     function removeFromCart(index) {
         fetch('<?= BASE_URL ?>cart/remove', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: csrfHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({ index: index })
         })
         .then(r => r.json())
@@ -507,7 +507,7 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
 
         fetch('<?= BASE_URL ?>cart/updateQty', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: csrfHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({ index: index, qty: nextQty })
         })
         .then(r => r.json())
@@ -527,7 +527,7 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
 
         fetch('<?= BASE_URL ?>cart/clear', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
+            headers: csrfHeaders({ 'Content-Type': 'application/json' })
         })
         .then(r => r.json())
         .then(data => {
@@ -544,6 +544,19 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
         }
 
         orderMode = mode || 'cod';
+        const previewQuote = updateShippingDisplays();
+        trackAnalyticsEvent('begin_checkout', {
+            currency: window.APP_CURRENCY,
+            value: Number((previewQuote && previewQuote.total) || 0),
+            items: cartData.map(function (item) {
+                return buildAnalyticsItem(item);
+            })
+        }, 'InitiateCheckout', {
+            content_ids: cartData.map(function (item) { return String(item.id || ''); }),
+            content_type: 'product',
+            value: Number((previewQuote && previewQuote.total) || 0),
+            currency: window.APP_CURRENCY
+        });
 
         if (localStorage.getItem('cus_name')) document.getElementById('ordName').value = localStorage.getItem('cus_name');
         if (localStorage.getItem('cus_email')) document.getElementById('ordEmail').value = localStorage.getItem('cus_email');
@@ -681,6 +694,11 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
             form.appendChild(input);
         });
 
+        appendCsrfToken(form);
+        trackAnalyticsEvent('add_payment_info', {
+            currency: window.APP_CURRENCY,
+            payment_type: 'payhere'
+        });
         document.body.appendChild(form);
         if (typeof showGlobalLoader === 'function') showGlobalLoader();
         form.submit();
@@ -711,6 +729,11 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
             form.appendChild(input);
         });
 
+        appendCsrfToken(form);
+        trackAnalyticsEvent('add_payment_info', {
+            currency: window.APP_CURRENCY,
+            payment_type: 'cod'
+        });
         document.body.appendChild(form);
         if (typeof showGlobalLoader === 'function') showGlobalLoader();
         form.submit();
@@ -741,6 +764,11 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
             form.appendChild(input);
         });
 
+        appendCsrfToken(form);
+        trackAnalyticsEvent('add_payment_info', {
+            currency: window.APP_CURRENCY,
+            payment_type: 'koko'
+        });
         document.body.appendChild(form);
         if (typeof showGlobalLoader === 'function') showGlobalLoader();
         form.submit();
@@ -771,6 +799,11 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
             form.appendChild(input);
         });
 
+        appendCsrfToken(form);
+        trackAnalyticsEvent('add_payment_info', {
+            currency: window.APP_CURRENCY,
+            payment_type: 'bank_transfer'
+        });
         document.body.appendChild(form);
         if (typeof showGlobalLoader === 'function') showGlobalLoader();
         form.submit();

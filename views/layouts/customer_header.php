@@ -18,6 +18,14 @@
     $metaRobots = isset($seo_robots) ? $seo_robots : 'index,follow';
     $metaType = isset($seo_type) && $seo_type === 'product' ? 'product' : 'website';
     $shopName = !empty($settings['shop_name']) ? $settings['shop_name'] : 'Online Shop';
+    $customerCssVersion = @filemtime(ROOT_PATH . 'assets/css/customer.css') ?: time();
+    $desktopCssVersion = @filemtime(ROOT_PATH . 'assets/css/customer-desktop-refresh.css') ?: time();
+    $currencyCode = !empty($settings['currency_symbol']) ? preg_replace('/[^A-Z]/', '', strtoupper((string) $settings['currency_symbol'])) : 'LKR';
+    if (strlen($currencyCode) !== 3) {
+        $currencyCode = 'LKR';
+    }
+    $googleAnalyticsId = trim((string) ($settings['google_analytics_id'] ?? ''));
+    $metaPixelId = preg_replace('/[^0-9]/', '', (string) ($settings['meta_pixel_id'] ?? ''));
     ?>
     <meta name="description" content="<?= htmlspecialchars($metaDescription) ?>">
     <meta name="robots" content="<?= htmlspecialchars($metaRobots) ?>">
@@ -47,8 +55,8 @@
     <?php if (!empty($settings['shop_favicon'])): ?>
         <link rel="icon" type="image/x-icon" href="<?= htmlspecialchars(ImageHelper::settingsImageUrl($settings['shop_favicon'], str_replace('/Ecom-CMS/', BASE_URL, $settings['shop_favicon']))) ?>">
     <?php endif; ?>
-    <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/customer.css?v=<?= time() ?>">
-    <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/customer-desktop-refresh.css?v=<?= time() ?>">
+    <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/customer.css?v=<?= $customerCssVersion ?>">
+    <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/customer-desktop-refresh.css?v=<?= $desktopCssVersion ?>">
     <!-- Font Awesome for Icons (Optional, or use images) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
@@ -62,6 +70,133 @@
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="<?= $gFontLink ?>" rel="stylesheet">
     <?php endif; ?>
+
+    <?php if ($googleAnalyticsId !== ''): ?>
+        <script async src="https://www.googletagmanager.com/gtag/js?id=<?= htmlspecialchars($googleAnalyticsId) ?>"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag() { dataLayer.push(arguments); }
+            gtag('js', new Date());
+            gtag('config', '<?= htmlspecialchars($googleAnalyticsId, ENT_QUOTES) ?>', {
+                send_page_view: true
+            });
+        </script>
+    <?php endif; ?>
+
+    <?php if ($metaPixelId !== ''): ?>
+        <script>
+            !function (f, b, e, v, n, t, s) {
+                if (f.fbq) return;
+                n = f.fbq = function () {
+                    n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
+                };
+                if (!f._fbq) f._fbq = n;
+                n.push = n;
+                n.loaded = !0;
+                n.version = '2.0';
+                n.queue = [];
+                t = b.createElement(e);
+                t.async = !0;
+                t.src = v;
+                s = b.getElementsByTagName(e)[0];
+                s.parentNode.insertBefore(t, s);
+            }(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
+            fbq('init', '<?= htmlspecialchars($metaPixelId, ENT_QUOTES) ?>');
+            fbq('track', 'PageView');
+        </script>
+        <noscript>
+            <img height="1" width="1" style="display:none"
+                src="https://www.facebook.com/tr?id=<?= htmlspecialchars($metaPixelId) ?>&ev=PageView&noscript=1" alt="">
+        </noscript>
+    <?php endif; ?>
+
+    <script>
+        window.APP_CSRF_TOKEN = '<?= htmlspecialchars(csrf_token(), ENT_QUOTES) ?>';
+        window.APP_BASE_URL = '<?= htmlspecialchars(BASE_URL, ENT_QUOTES) ?>';
+        window.APP_CURRENCY = '<?= htmlspecialchars($currencyCode, ENT_QUOTES) ?>';
+
+        window.appendCsrfToken = function (form) {
+            if (!form || !window.APP_CSRF_TOKEN) {
+                return form;
+            }
+
+            var existing = form.querySelector('input[name="_csrf"]');
+            if (!existing) {
+                existing = document.createElement('input');
+                existing.type = 'hidden';
+                existing.name = '_csrf';
+                form.appendChild(existing);
+            }
+
+            existing.value = window.APP_CSRF_TOKEN;
+            return form;
+        };
+
+        window.csrfHeaders = function (headers) {
+            var nextHeaders = headers || {};
+            nextHeaders['X-CSRF-Token'] = window.APP_CSRF_TOKEN;
+            return nextHeaders;
+        };
+
+        window.trackAnalyticsEvent = function (eventName, params, metaEventName, metaParams) {
+            var payload = params || {};
+
+            try {
+                window.dataLayer = window.dataLayer || [];
+                window.dataLayer.push(Object.assign({ event: eventName }, payload));
+            } catch (e) {
+                console.warn('dataLayer push failed', e);
+            }
+
+            if (typeof window.gtag === 'function') {
+                try {
+                    window.gtag('event', eventName, payload);
+                } catch (e) {
+                    console.warn('GA tracking failed', e);
+                }
+            }
+
+            if (typeof window.fbq === 'function' && metaEventName) {
+                try {
+                    window.fbq('track', metaEventName, metaParams || payload);
+                } catch (e) {
+                    console.warn('Meta tracking failed', e);
+                }
+            }
+        };
+
+        window.trackPurchaseOnce = function (orderNumber, payload, metaParams) {
+            if (!orderNumber) {
+                window.trackAnalyticsEvent('purchase', payload, 'Purchase', metaParams || payload);
+                return;
+            }
+
+            var storageKey = 'purchase_tracked_' + orderNumber;
+            try {
+                if (window.localStorage.getItem(storageKey)) {
+                    return;
+                }
+            } catch (e) {
+            }
+
+            window.trackAnalyticsEvent('purchase', payload, 'Purchase', metaParams || payload);
+
+            try {
+                window.localStorage.setItem(storageKey, '1');
+            } catch (e) {
+            }
+        };
+
+        window.buildAnalyticsItem = function (item) {
+            return {
+                item_id: String(item.id || ''),
+                item_name: String(item.title || item.name || 'Product'),
+                item_variant: String(item.variant || item.variants || ''),
+                price: Number(item.price || 0),
+                quantity: Number(item.quantity || item.qty || 1)
+            };
+        };
+    </script>
 
     <!-- Dynamic Global Styles -->
 <style>
@@ -712,12 +847,34 @@
                         // Send AJAX Request
                         fetch('<?= BASE_URL ?>cart/add', {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers: csrfHeaders({ 'Content-Type': 'application/json' }),
                             body: JSON.stringify(payload)
                         })
                             .then(response => response.json())
                             .then(data => {
                                 if (data.success) {
+                                    trackAnalyticsEvent('add_to_cart', {
+                                        currency: window.APP_CURRENCY,
+                                        value: Number(price || 0),
+                                        items: [buildAnalyticsItem({
+                                            id: id,
+                                            title: title,
+                                            price: price,
+                                            quantity: 1
+                                        })]
+                                    }, 'AddToCart', {
+                                        content_ids: [String(id)],
+                                        content_name: title,
+                                        content_type: 'product',
+                                        value: Number(price || 0),
+                                        currency: window.APP_CURRENCY,
+                                        contents: [{
+                                            id: String(id),
+                                            quantity: 1,
+                                            item_price: Number(price || 0)
+                                        }]
+                                    });
+
                                     if (typeof showCartToast === 'function') showCartToast();
 
                                     // Update Badge Counts

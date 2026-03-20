@@ -44,6 +44,16 @@ require_once 'views/layouts/customer_header.php';
             } catch (e) {
                 console.warn('Could not save customer order lookup details.');
             }
+
+            trackAnalyticsEvent('place_order', {
+                currency: '<?= htmlspecialchars($order['currency'] ?? 'LKR', ENT_QUOTES) ?>',
+                transaction_id: '<?= htmlspecialchars($order['order_number'] ?? '', ENT_QUOTES) ?>',
+                value: <?= json_encode((float) ($order['total_amount'] ?? 0)) ?>,
+                payment_type: 'Bank Transfer'
+            }, 'Lead', {
+                value: <?= json_encode((float) ($order['total_amount'] ?? 0)) ?>,
+                currency: '<?= htmlspecialchars($order['currency'] ?? 'LKR', ENT_QUOTES) ?>'
+            });
         })();
     </script>
 <?php endif; ?>

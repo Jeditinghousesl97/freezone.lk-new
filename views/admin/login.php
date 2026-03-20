@@ -149,6 +149,7 @@
         <?php endif; ?>
 
         <form action="<?= BASE_URL ?>auth/authenticate" method="POST">
+            <?= csrf_input() ?>
             <div class="form-group">
                 <label for="username">Username</label>
                 <input type="text" id="username" name="username" required placeholder="Enter username">

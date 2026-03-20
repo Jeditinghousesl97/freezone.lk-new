@@ -1177,6 +1177,23 @@ if ($sgImg):
             alert(selectionCheck.message);
             return;
         }
+        trackAnalyticsEvent('begin_checkout', {
+            currency: window.APP_CURRENCY,
+            value: Number(getCurrentUnitPrice() || 0) * Number(parseInt(document.getElementById('qtyInput').value, 10) || 1),
+            items: [buildAnalyticsItem({
+                id: <?= (int) $product['id'] ?>,
+                title: "<?= addslashes($product['title']) ?>",
+                variant: getVariantText(),
+                price: getCurrentUnitPrice(),
+                quantity: parseInt(document.getElementById('qtyInput').value, 10) || 1
+            })]
+        }, 'InitiateCheckout', {
+            content_ids: ['<?= (int) $product['id'] ?>'],
+            content_name: "<?= addslashes($product['title']) ?>",
+            content_type: 'product',
+            value: Number(getCurrentUnitPrice() || 0) * Number(parseInt(document.getElementById('qtyInput').value, 10) || 1),
+            currency: window.APP_CURRENCY
+        });
         document.getElementById('paymentMethodSheet').style.display = 'flex';
     }
 
@@ -1365,6 +1382,12 @@ if ($sgImg):
             form.appendChild(input);
         });
 
+        appendCsrfToken(form);
+        trackAnalyticsEvent('add_payment_info', {
+            currency: window.APP_CURRENCY,
+            payment_type: 'payhere',
+            value: Number(getCurrentUnitPrice() || 0) * Number(qty || 1)
+        });
         document.body.appendChild(form);
         if (typeof showGlobalLoader === 'function') showGlobalLoader();
         form.submit();
@@ -1403,6 +1426,12 @@ if ($sgImg):
             form.appendChild(input);
         });
 
+        appendCsrfToken(form);
+        trackAnalyticsEvent('add_payment_info', {
+            currency: window.APP_CURRENCY,
+            payment_type: 'cod',
+            value: Number(getCurrentUnitPrice() || 0) * Number(qty || 1)
+        });
         document.body.appendChild(form);
         if (typeof showGlobalLoader === 'function') showGlobalLoader();
         form.submit();
@@ -1441,6 +1470,12 @@ if ($sgImg):
             form.appendChild(input);
         });
 
+        appendCsrfToken(form);
+        trackAnalyticsEvent('add_payment_info', {
+            currency: window.APP_CURRENCY,
+            payment_type: 'koko',
+            value: Number(getCurrentUnitPrice() || 0) * Number(qty || 1)
+        });
         document.body.appendChild(form);
         if (typeof showGlobalLoader === 'function') showGlobalLoader();
         form.submit();
@@ -1479,6 +1514,12 @@ if ($sgImg):
             form.appendChild(input);
         });
 
+        appendCsrfToken(form);
+        trackAnalyticsEvent('add_payment_info', {
+            currency: window.APP_CURRENCY,
+            payment_type: 'bank_transfer',
+            value: Number(getCurrentUnitPrice() || 0) * Number(qty || 1)
+        });
         document.body.appendChild(form);
         if (typeof showGlobalLoader === 'function') showGlobalLoader();
         form.submit();
@@ -1551,6 +1592,24 @@ if ($sgImg):
         }
 
         updateSingleOrderTotals();
+
+        trackAnalyticsEvent('view_item', {
+            currency: window.APP_CURRENCY,
+            value: Number(getCurrentUnitPrice() || 0),
+            items: [buildAnalyticsItem({
+                id: <?= (int) $product['id'] ?>,
+                title: "<?= addslashes($product['title']) ?>",
+                variant: getVariantText(),
+                price: getCurrentUnitPrice(),
+                quantity: 1
+            })]
+        }, 'ViewContent', {
+            content_ids: ['<?= (int) $product['id'] ?>'],
+            content_name: "<?= addslashes($product['title']) ?>",
+            content_type: 'product',
+            value: Number(getCurrentUnitPrice() || 0),
+            currency: window.APP_CURRENCY
+        });
     });
 
 
@@ -1591,14 +1650,37 @@ if ($sgImg):
         // Send AJAX Request
         fetch('<?= BASE_URL ?>cart/add', {
             method: 'POST',
-            headers: {
+            headers: csrfHeaders({
                 'Content-Type': 'application/json',
-            },
+            }),
             body: JSON.stringify(payload)
         })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
+                    trackAnalyticsEvent('add_to_cart', {
+                        currency: window.APP_CURRENCY,
+                        value: Number(price || 0) * Number(qty || 1),
+                        items: [buildAnalyticsItem({
+                            id: id,
+                            title: title,
+                            variant: variantStr,
+                            price: price,
+                            quantity: qty
+                        })]
+                    }, 'AddToCart', {
+                        content_ids: [String(id)],
+                        content_name: title,
+                        content_type: 'product',
+                        value: Number(price || 0) * Number(qty || 1),
+                        currency: window.APP_CURRENCY,
+                        contents: [{
+                            id: String(id),
+                            quantity: Number(qty || 1),
+                            item_price: Number(price || 0)
+                        }]
+                    });
+
                     if (typeof showCartToast === 'function') showCartToast();
 
                     const bubbleCount = document.querySelector('.floating-cart-count');

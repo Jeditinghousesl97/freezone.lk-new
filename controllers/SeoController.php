@@ -70,6 +70,10 @@ class SeoController extends BaseController
         echo "User-agent: *\n";
         echo "Allow: /\n";
         echo "Disallow: " . BASE_URL . "cart\n";
+        echo "Disallow: " . BASE_URL . "auth/\n";
+        echo "Disallow: " . BASE_URL . "admin/\n";
+        echo "Disallow: " . BASE_URL . "settings/\n";
+        echo "Disallow: " . BASE_URL . "order/\n";
         echo "Sitemap: " . SeoHelper::absoluteUrl(BASE_URL . 'sitemap.xml') . "\n";
         exit;
     }

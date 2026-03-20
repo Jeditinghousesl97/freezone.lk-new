@@ -66,6 +66,7 @@ class AuthController extends BaseController
             if ($user) {
                 // SUCCESS: Login verified
                 // Store user info in Session
+                session_regenerate_id(true);
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['role'] = $user['role'];
                 $_SESSION['username'] = $user['username'];
@@ -96,6 +97,13 @@ class AuthController extends BaseController
      */
     public function logout()
     {
+        $_SESSION = [];
+
+        if (ini_get('session.use_cookies')) {
+            $params = session_get_cookie_params();
+            setcookie(session_name(), '', time() - 42000, $params['path'], $params['domain'], (bool) $params['secure'], (bool) $params['httponly']);
+        }
+
         session_destroy();
         $this->redirect('auth/login');
     }

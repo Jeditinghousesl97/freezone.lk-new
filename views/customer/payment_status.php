@@ -89,6 +89,26 @@ $displayStatus = $isSuccess
             } catch (e) {
                 console.warn('Could not save customer order lookup details.');
             }
+
+            <?php if ($isSuccess): ?>
+            trackPurchaseOnce('<?= htmlspecialchars($order['order_number'] ?? '', ENT_QUOTES) ?>', {
+                currency: '<?= htmlspecialchars($order['currency'] ?? 'LKR', ENT_QUOTES) ?>',
+                transaction_id: '<?= htmlspecialchars($order['order_number'] ?? '', ENT_QUOTES) ?>',
+                value: <?= json_encode((float) ($order['total_amount'] ?? 0)) ?>,
+                shipping: <?= json_encode((float) ($order['shipping_fee'] ?? 0)) ?>,
+                payment_type: '<?= htmlspecialchars($gatewayName, ENT_QUOTES) ?>'
+            }, {
+                value: <?= json_encode((float) ($order['total_amount'] ?? 0)) ?>,
+                currency: '<?= htmlspecialchars($order['currency'] ?? 'LKR', ENT_QUOTES) ?>'
+            });
+            <?php elseif ($isFailed): ?>
+            trackAnalyticsEvent('payment_failed', {
+                currency: '<?= htmlspecialchars($order['currency'] ?? 'LKR', ENT_QUOTES) ?>',
+                transaction_id: '<?= htmlspecialchars($order['order_number'] ?? '', ENT_QUOTES) ?>',
+                payment_type: '<?= htmlspecialchars($gatewayName, ENT_QUOTES) ?>',
+                value: <?= json_encode((float) ($order['total_amount'] ?? 0)) ?>
+            });
+            <?php endif; ?>
         })();
     </script>
 <?php endif; ?>

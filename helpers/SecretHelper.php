@@ -49,7 +49,15 @@ class SecretHelper
 
     private static function key()
     {
-        $envKey = getenv('APP_SECRET');
+        $envKey = '';
+        if (function_exists('app_config_value')) {
+            $envKey = (string) app_config_value('APP_SECRET', '');
+        }
+
+        if ($envKey === '') {
+            $envKey = (string) getenv('APP_SECRET');
+        }
+
         if (!empty($envKey)) {
             return hash('sha256', $envKey, true);
         }
@@ -58,6 +66,9 @@ class SecretHelper
             defined('DB_HOST') ? DB_HOST : '',
             defined('DB_NAME') ? DB_NAME : '',
             defined('DB_USER') ? DB_USER : '',
+            defined('DB_PASS') ? DB_PASS : '',
+            defined('BASE_URL') ? BASE_URL : '',
+            (string) ($_SERVER['SERVER_NAME'] ?? ''),
             defined('ROOT_PATH') ? ROOT_PATH : __DIR__
         ]);
 

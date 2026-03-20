@@ -1964,7 +1964,7 @@ class OrderController extends BaseController
         } elseif (
             ($order['payment_status'] ?? 'pending') === 'pending'
             && $normalizedStatus !== 'pending'
-            && ($trnIdRaw !== '' || in_array($normalizedStatus, ['failed', 'cancelled'], true))
+            && in_array($normalizedStatus, ['failed', 'cancelled'], true)
         ) {
             $message = 'KOKO payment status updated from return URL while waiting for callback confirmation.';
             $order = $this->applyKokoPaymentResult($order, $normalizedStatus, $trnIdRaw, $statusRaw, $message, $_REQUEST, 'return_fallback');
@@ -1972,6 +1972,17 @@ class OrderController extends BaseController
                 'order_id' => $order['id'] ?? null,
                 'order_number' => $order['order_number'] ?? null,
                 'payment_status' => $normalizedStatus,
+                'status' => $statusRaw,
+                'trnId' => $trnIdRaw,
+                'signature_present' => $signatureParam !== ''
+            ]);
+        } elseif (
+            ($order['payment_status'] ?? 'pending') === 'pending'
+            && $normalizedStatus === 'paid'
+        ) {
+            $this->logKokoEvent('return_paid_waiting_for_verified_confirmation', [
+                'order_id' => $order['id'] ?? null,
+                'order_number' => $order['order_number'] ?? null,
                 'status' => $statusRaw,
                 'trnId' => $trnIdRaw,
                 'signature_present' => $signatureParam !== ''

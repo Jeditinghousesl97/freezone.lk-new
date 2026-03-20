@@ -28,36 +28,23 @@ class SettingsController extends BaseController
     // 1. Gatekeeper / Main Entry
     public function index()
     {
-        if (isset($_SESSION['dev_access_granted']) && $_SESSION['dev_access_granted'] === true) {
+        if (isset($_SESSION['user_id'])) {
             $this->redirect('settings/edit');
             return;
         }
-        $this->view('admin/settings/gatekeeper', ['title' => 'Settings - Authenticate']);
+        $this->redirect('auth/login');
     }
 
     // 2. Show Login Form
     public function login()
     {
-        $this->view('admin/settings/login', ['title' => 'Settings - Login']);
+        $this->redirect('auth/login');
     }
 
     // 3. Process Login
     public function authenticate()
     {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $password = $_POST['password'] ?? '';
-
-            // Developer Password from requirements
-            if ($password === 'Asseminate@01') {
-                $_SESSION['dev_access_granted'] = true;
-                $this->redirect('settings/edit');
-            } else {
-                $this->view('admin/settings/login', [
-                    'title' => 'Settings - Login',
-                    'error' => 'Incorrect Password. Please try again.'
-                ]);
-            }
-        }
+        $this->redirect('auth/login');
     }
 
     // 4. Show The Form (Restricted)
@@ -75,6 +62,8 @@ class SettingsController extends BaseController
             'shop_about',
             'currency_symbol',
             'shop_whatsapp',
+            'google_analytics_id',
+            'meta_pixel_id',
             'cloudflare_images_enabled',
             'local_image_optimization_enabled',
             'cloudflare_r2_account_id',
@@ -215,6 +204,8 @@ class SettingsController extends BaseController
                 'shop_about',
                 'currency_symbol',
                 'shop_whatsapp',
+                'google_analytics_id',
+                'meta_pixel_id',
                 'cloudflare_r2_account_id',
                 'cloudflare_r2_bucket',
                 'cloudflare_r2_public_base_url',
@@ -533,14 +524,13 @@ class SettingsController extends BaseController
     // 8. Exit Developer Mode
     public function exit_dev()
     {
-        unset($_SESSION['dev_access_granted']);
-        $this->redirect('settings/index');
+        $this->redirect('settings/edit');
     }
 
     private function checkAuth()
     {
-        if (!isset($_SESSION['dev_access_granted']) || $_SESSION['dev_access_granted'] !== true) {
-            $this->redirect('settings/index');
+        if (!isset($_SESSION['user_id'])) {
+            $this->redirect('auth/login');
             exit;
         }
     }

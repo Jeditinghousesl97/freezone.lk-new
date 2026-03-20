@@ -200,6 +200,7 @@
     <?php require_once ROOT_PATH . 'helpers/ImageHelper.php'; ?>
 
     <form action="<?= BASE_URL ?>settings/update" method="POST" enctype="multipart/form-data">
+        <?= csrf_input() ?>
         <div class="container" style="padding-bottom:100px;">
 
             <style>
@@ -389,6 +390,19 @@
             <label class="label">Currency Symbol</label>
             <input type="text" name="currency_symbol" class="input-box" placeholder="LKR"
                 value="<?= htmlspecialchars($settings['currency_symbol'] ?? '') ?>">
+
+            <div class="integration-box">
+                <h3 style="margin:0 0 14px;">Analytics & Social Tracking</h3>
+                <p style="font-size:12px; color:#777; margin:0 0 16px;">Add your tracking IDs once here. The storefront will automatically load GA4, Meta Pixel, ecommerce events, and social-share friendly metadata.</p>
+
+                <label class="label">Google Analytics 4 Measurement ID</label>
+                <input type="text" name="google_analytics_id" class="input-box" placeholder="G-XXXXXXXXXX"
+                    value="<?= htmlspecialchars($settings['google_analytics_id'] ?? '') ?>">
+
+                <label class="label">Meta Pixel ID</label>
+                <input type="text" name="meta_pixel_id" class="input-box" placeholder="123456789012345"
+                    value="<?= htmlspecialchars($settings['meta_pixel_id'] ?? '') ?>">
+            </div>
 
             <div class="integration-box">
                 <h3 style="margin:0 0 14px;">Cloudflare Image Delivery</h3>
