@@ -446,6 +446,17 @@ p {
     margin-top: 6px;
 }
 
+.free-shipping-badge-overlay {
+    position: absolute;
+    left: 10px;
+    bottom: 10px;
+    margin-top: 0;
+    z-index: 5;
+    box-shadow: 0 6px 16px rgba(23, 131, 61, 0.18);
+    background: rgba(232, 248, 236, 0.96);
+    backdrop-filter: blur(4px);
+}
+
 .product-price-box {
     margin-top: 5px;
     font-size: 13px;
