@@ -2,11 +2,15 @@
 // Hide Default Mobile Header for Single Product Page (Task 3.1)
 $hide_mobile_welcome = true;
 require_once ROOT_PATH . 'helpers/ImageHelper.php';
+require_once ROOT_PATH . 'helpers/KokoPricingHelper.php';
 require_once 'views/layouts/customer_header.php';
 $currency = $settings['currency_symbol'] ?? 'LKR';
 $productUnitPrice = (!empty($product['sale_price']) && (float) $product['sale_price'] < (float) $product['price'])
     ? (float) $product['sale_price']
     : (float) $product['price'];
+$kokoTeaserData = KokoPricingHelper::isEnabled($settings ?? [])
+    ? KokoPricingHelper::getInstallmentData($productUnitPrice, $settings ?? [])
+    : null;
 ?>
 <style>
     .var-pill.is-disabled {
@@ -196,23 +200,33 @@ $productUnitPrice = (!empty($product['sale_price']) && (float) $product['sale_pr
 
                 <!-- Price & Guide Row -->
                 <div class="pd-price-row" style="justify-content: flex-start; gap: 20px;">
-                    <div class="pd-prices" id="productPriceBox" style="font-weight: 700;">
-                        <?php
-                        if (!empty($product['sale_price']) && $product['sale_price'] < $product['price']):
-                            ?>
-                            <span class="pd-old-price" id="productOldPrice" style="font-weight: 400;">
-                                <?= $currency ?>
-                                <?= number_format($product['price'], 0) ?>
-                            </span>
-                            <span class="pd-sale-price" id="productCurrentPrice" style="font-weight: 800; color: #000;">
-                                <?= $currency ?>
-                                <?= number_format($product['sale_price'], 0) ?>
-                            </span>
-                        <?php else: ?>
-                            <span class="pd-sale-price" id="productCurrentPrice" style="font-weight: 800; color: #000;">
-                                <?= $currency ?>
-                                <?= number_format($product['price'], 0) ?>
-                            </span>
+                    <div class="pd-price-stack">
+                        <div class="pd-prices" id="productPriceBox" style="font-weight: 700;">
+                            <?php
+                            if (!empty($product['sale_price']) && $product['sale_price'] < $product['price']):
+                                ?>
+                                <span class="pd-old-price" id="productOldPrice" style="font-weight: 400;">
+                                    <?= $currency ?>
+                                    <?= number_format($product['price'], 0) ?>
+                                </span>
+                                <span class="pd-sale-price" id="productCurrentPrice" style="font-weight: 800; color: #000;">
+                                    <?= $currency ?>
+                                    <?= number_format($product['sale_price'], 0) ?>
+                                </span>
+                            <?php else: ?>
+                                <span class="pd-sale-price" id="productCurrentPrice" style="font-weight: 800; color: #000;">
+                                    <?= $currency ?>
+                                    <?= number_format($product['price'], 0) ?>
+                                </span>
+                            <?php endif; ?>
+                        </div>
+                        <?php if (!empty($kokoTeaserData)): ?>
+                            <div class="koko-installment-teaser koko-installment-teaser-single" id="productKokoPlan" aria-label="KOKO installment plan">
+                                <span class="koko-installment-text" id="productKokoPlanText">
+                                    or 3 x <?= $currency ?> <?= number_format((float) $kokoTeaserData['installment_amount'], 2) ?>
+                                </span>
+                                <img src="<?= BASE_URL ?>assets/icons/payment-gateways/koko-home.png" alt="KOKO" class="koko-installment-logo">
+                            </div>
                         <?php endif; ?>
                     </div>
 
@@ -811,6 +825,14 @@ if ($sgImg):
         });
     }
 
+    function formatKokoInstallment(amount) {
+        const numericAmount = Number(amount || 0);
+        return currencySymbol + ' ' + numericAmount.toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+    }
+
     function normalizeDistrict(value) {
         const needle = (value || '').trim().toLowerCase();
         if (!needle) {
@@ -988,6 +1010,28 @@ if ($sgImg):
                 oldPriceEl.style.display = 'none';
             }
         }
+        updateDisplayedKokoPlan(currentPrice);
+    }
+
+    function updateDisplayedKokoPlan(basePrice) {
+        const kokoPlan = document.getElementById('productKokoPlan');
+        const kokoPlanText = document.getElementById('productKokoPlanText');
+        if (!kokoPlan || !kokoPlanText) {
+            return;
+        }
+
+        const normalizedBasePrice = Number(basePrice || 0);
+        if (normalizedBasePrice <= 0) {
+            kokoPlan.style.display = 'none';
+            return;
+        }
+
+        const handlingFee = kokoHandlingFeePercentage > 0
+            ? normalizedBasePrice * (kokoHandlingFeePercentage / 100)
+            : 0;
+        const installmentAmount = (normalizedBasePrice + handlingFee) / 3;
+        kokoPlanText.textContent = 'or 3 x ' + formatKokoInstallment(installmentAmount);
+        kokoPlan.style.display = 'inline-flex';
     }
 
     function updateDisplayedVariantImage() {

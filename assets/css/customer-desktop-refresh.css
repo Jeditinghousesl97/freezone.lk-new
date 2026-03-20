@@ -560,6 +560,15 @@
         flex-wrap: wrap;
     }
 
+    .koko-installment-teaser {
+        margin-top: 2px;
+        font-size: 12px;
+    }
+
+    .koko-installment-logo {
+        width: 56px;
+    }
+
     .current-price,
     .current-price.price-sale {
         font-size: 18px !important;

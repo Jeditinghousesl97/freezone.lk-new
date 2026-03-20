@@ -466,6 +466,28 @@ p {
     gap: 5px;
 }
 
+.koko-installment-teaser {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    color: #5d4c31;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.25;
+    flex-wrap: wrap;
+}
+
+.koko-installment-text {
+    color: #6a5430;
+}
+
+.koko-installment-logo {
+    width: 48px;
+    height: auto;
+    object-fit: contain;
+}
+
 .old-price {
     text-decoration: line-through;
     color: #ccc;
@@ -663,6 +685,22 @@ p {
     display: flex;
     align-items: center;
     gap: 10px;
+}
+
+.pd-price-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.koko-installment-teaser-single {
+    margin-top: 0;
+    font-size: 12px;
+}
+
+.koko-installment-teaser-single .koko-installment-logo {
+    width: 58px;
 }
 
 .pd-old-price {

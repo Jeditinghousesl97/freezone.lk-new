@@ -3,6 +3,7 @@
 // Expects $prod array available AND $settings array (global or passed)
 // We need to ensure $settings is available here. In Home view it is.
 require_once ROOT_PATH . 'helpers/ImageHelper.php';
+require_once ROOT_PATH . 'helpers/KokoPricingHelper.php';
 
 $currency = isset($settings['currency_symbol']) ? $settings['currency_symbol'] : 'LKR';
 // Fallback to LKR if not set, but database usually has it.
@@ -13,6 +14,13 @@ $imagePath = ImageHelper::uploadUrl(
 );
 
 $isOnSale = !empty($prod['sale_price']) && $prod['sale_price'] < $prod['price'];
+$kokoTeaser = null;
+if (KokoPricingHelper::isEnabled($settings ?? [])) {
+    $kokoBasePrice = KokoPricingHelper::getEffectiveProductPrice($prod);
+    if ($kokoBasePrice > 0) {
+        $kokoTeaser = KokoPricingHelper::getInstallmentData($kokoBasePrice, $settings ?? []);
+    }
+}
 ?>
 
 <div class="product-card">
@@ -65,6 +73,14 @@ $isOnSale = !empty($prod['sale_price']) && $prod['sale_price'] < $prod['price'];
                 <span class="current-price"><?= $currency ?>     <?= number_format($prod['price'], 0) ?></span>
             <?php endif; ?>
         </div>
+        <?php if (!empty($kokoTeaser)): ?>
+            <div class="koko-installment-teaser" aria-label="KOKO installment plan">
+                <span class="koko-installment-text">
+                    or 3 x <?= $currency ?> <?= number_format((float) $kokoTeaser['installment_amount'], 2) ?>
+                </span>
+                <img src="<?= BASE_URL ?>assets/icons/payment-gateways/koko-home.png" alt="KOKO" class="koko-installment-logo">
+            </div>
+        <?php endif; ?>
 
         <!-- Category Info (Parent | Child) -->
         <div class="product-category">
