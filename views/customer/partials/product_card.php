@@ -76,7 +76,7 @@ if (KokoPricingHelper::isEnabled($settings ?? [])) {
         <?php if (!empty($kokoTeaser)): ?>
             <div class="koko-installment-teaser" aria-label="KOKO installment plan">
                 <span class="koko-installment-text">
-                    or 3 x <?= $currency ?> <?= number_format((float) $kokoTeaser['installment_amount'], 2) ?>
+                    or 3 x <?= $currency ?> <?= number_format((float) $kokoTeaser['installment_amount'], 0) ?>
                 </span>
                 <img src="<?= BASE_URL ?>assets/icons/payment-gateways/koko-home.png" alt="KOKO" class="koko-installment-logo">
             </div>
