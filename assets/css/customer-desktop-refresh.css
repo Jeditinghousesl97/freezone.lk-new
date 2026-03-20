@@ -616,6 +616,48 @@
         background: rgba(28, 21, 15, 0.92) !important;
     }
 
+    #cartFooter .payment-sheet-options {
+        gap: 12px !important;
+    }
+
+    #cartFooter .payment-method-card {
+        grid-template-columns: 52px minmax(0, 1fr) 18px;
+        gap: 14px;
+        padding: 14px 18px;
+        border-radius: 20px;
+        align-items: center;
+    }
+
+    #cartFooter .payment-method-icon {
+        width: 52px;
+        height: 52px;
+        border-radius: 14px;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+
+    #cartFooter .payment-method-logo {
+        width: 32px;
+        height: 32px;
+        max-width: 32px;
+        max-height: 32px;
+        object-fit: contain;
+    }
+
+    #cartFooter .payment-method-copy {
+        min-width: 0;
+    }
+
+    #cartFooter .payment-method-copy strong {
+        font-size: 15px;
+        line-height: 1.2;
+    }
+
+    #cartFooter .payment-method-copy small {
+        font-size: 12px;
+        line-height: 1.45;
+    }
+
     .scroll-btn {
         width: 46px !important;
         height: 46px !important;
