@@ -207,6 +207,39 @@
             resize: vertical;
             line-height: 1.6;
         }
+
+        @media (min-width: 992px) {
+            .container {
+                padding-top: 34px;
+                padding-bottom: 40px;
+            }
+
+            .assets-row {
+                max-width: 760px;
+            }
+
+            .asset-box {
+                border-radius: 20px;
+                height: 170px;
+                box-shadow: 0 16px 34px rgba(17, 24, 39, 0.06);
+                border: 1px solid rgba(17, 24, 39, 0.05);
+            }
+
+            .gray-form-card {
+                border-radius: 24px;
+                padding: 28px;
+                box-shadow: 0 18px 36px rgba(17, 24, 39, 0.07);
+            }
+
+            .slider-admin-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+
+            .slider-admin-card {
+                border-radius: 18px;
+                padding: 16px;
+            }
+        }
     </style>
 </head>
 

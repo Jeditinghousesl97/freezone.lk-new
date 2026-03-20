@@ -91,6 +91,24 @@
             font-weight: bold;
             z-index: 10;
         }
+
+        @media (min-width: 992px) {
+            .container {
+                max-width: 980px;
+                padding: 34px 30px 40px;
+            }
+
+            .upload-area {
+                border-radius: 22px;
+                padding: 56px 28px;
+                margin-bottom: 24px;
+            }
+
+            .preview-grid {
+                grid-template-columns: repeat(5, minmax(0, 1fr));
+                gap: 14px;
+            }
+        }
     </style>
 </head>
 
@@ -206,6 +224,7 @@
             showGlobalLoader();
 
             const formData = new FormData();
+            formData.append('_csrf', '<?= htmlspecialchars(csrf_token(), ENT_QUOTES) ?>');
             selectedFiles.forEach(file => {
                 formData.append("images[]", file);
             });

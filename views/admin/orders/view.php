@@ -38,6 +38,24 @@
             box-sizing: border-box;
             margin-top: 6px;
         }
+
+        @media (min-width: 992px) {
+            .order-details-grid {
+                grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+                gap: 20px !important;
+            }
+
+            .order-details-card {
+                border-radius: 24px !important;
+                padding: 24px !important;
+                box-shadow: 0 16px 36px rgba(17, 24, 39, 0.06) !important;
+                border: 1px solid rgba(17, 24, 39, 0.05);
+            }
+
+            .order-items-card {
+                grid-column: 1 / -1;
+            }
+        }
     </style>
 </head>
 <body>
@@ -54,8 +72,8 @@
             <a href="<?= BASE_URL ?>order/manage" style="text-decoration:none; color:#007aff; font-weight:700;">Back to Orders</a>
         </div>
 
-        <div style="display:grid; gap:18px;">
-            <div style="background:#fff; border-radius:18px; padding:20px; box-shadow:0 4px 20px rgba(0,0,0,0.04);">
+        <div class="order-details-grid" style="display:grid; gap:18px;">
+            <div class="order-details-card" style="background:#fff; border-radius:18px; padding:20px; box-shadow:0 4px 20px rgba(0,0,0,0.04);">
                 <h3 style="margin:0 0 14px;">Payment Summary</h3>
                 <div style="display:grid; gap:10px; font-size:14px;">
                     <div><strong>Status:</strong> <?= htmlspecialchars(ucfirst(str_replace('_', ' ', $order['payment_status'] ?? 'pending'))) ?></div>
@@ -108,7 +126,7 @@
                 </div>
             </div>
 
-            <div style="background:#fff; border-radius:18px; padding:20px; box-shadow:0 4px 20px rgba(0,0,0,0.04);">
+            <div class="order-details-card" style="background:#fff; border-radius:18px; padding:20px; box-shadow:0 4px 20px rgba(0,0,0,0.04);">
                 <h3 style="margin:0 0 14px;">Customer Details</h3>
                 <div style="display:grid; gap:10px; font-size:14px;">
                     <div><strong>Name:</strong> <?= htmlspecialchars($order['customer_name']) ?></div>
@@ -124,7 +142,7 @@
                 </div>
             </div>
 
-            <div style="background:#fff; border-radius:18px; padding:20px; box-shadow:0 4px 20px rgba(0,0,0,0.04);">
+            <div class="order-details-card order-items-card" style="background:#fff; border-radius:18px; padding:20px; box-shadow:0 4px 20px rgba(0,0,0,0.04);">
                 <h3 style="margin:0 0 14px;">Items</h3>
                 <div style="display:grid; gap:14px;">
                     <?php if (empty($order['items'])): ?>

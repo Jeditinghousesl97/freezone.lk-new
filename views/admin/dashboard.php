@@ -137,6 +137,31 @@
             color: rgba(255,255,255,0.7);
         }
 
+        @media (min-width: 992px) {
+            .welcome-section {
+                gap: 18px !important;
+            }
+
+            .welcome-title {
+                font-size: 36px;
+            }
+
+            .welcome-sub {
+                font-size: 15px;
+            }
+
+            .dash-card {
+                border-radius: 24px;
+                padding: 24px;
+                box-shadow: 0 16px 36px rgba(17, 24, 39, 0.06);
+                border: 1px solid rgba(17, 24, 39, 0.05);
+            }
+
+            .chart-shell {
+                padding: 22px;
+            }
+        }
+
     </style>
 </head>
 

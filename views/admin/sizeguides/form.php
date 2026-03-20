@@ -61,6 +61,23 @@
             color: #666;
             margin: 8px 0 0;
         }
+
+        @media (min-width: 992px) {
+            .container {
+                max-width: 820px;
+                padding: 34px 30px 40px;
+            }
+
+            .upload-area {
+                border-radius: 18px;
+                padding: 46px 24px;
+            }
+
+            .guide-preview {
+                max-width: 320px;
+                border-radius: 16px;
+            }
+        }
     </style>
 </head>
 

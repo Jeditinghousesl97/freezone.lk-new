@@ -5,6 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($title) ?></title>
     <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/admin.css?v=<?= time() ?>">
+    <style>
+        @media (min-width: 992px) {
+            .reports-filter-card {
+                border-radius: 24px !important;
+                padding: 22px !important;
+                box-shadow: 0 16px 36px rgba(17, 24, 39, 0.06) !important;
+                border: 1px solid rgba(17, 24, 39, 0.05);
+            }
+
+            .reports-summary-grid {
+                grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+            }
+
+            .reports-table-card {
+                border-radius: 24px !important;
+                padding: 22px !important;
+                box-shadow: 0 16px 36px rgba(17, 24, 39, 0.06) !important;
+                border: 1px solid rgba(17, 24, 39, 0.05);
+            }
+        }
+    </style>
 </head>
 <body>
     <?php include 'views/admin/partials/loader.php'; ?>
@@ -20,7 +41,7 @@
             </div>
         </div>
 
-        <form method="GET" action="<?= BASE_URL ?>order/reports" style="background:#fff; border-radius:18px; padding:18px; box-shadow:0 4px 20px rgba(0,0,0,0.04); margin-bottom:18px;">
+        <form method="GET" action="<?= BASE_URL ?>order/reports" class="reports-filter-card" style="background:#fff; border-radius:18px; padding:18px; box-shadow:0 4px 20px rgba(0,0,0,0.04); margin-bottom:18px;">
             <div style="display:grid; gap:12px;">
                 <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:12px;">
                     <select name="payment_method" style="width:100%; padding:12px 14px; border:1px solid #ddd; border-radius:10px; box-sizing:border-box;">
@@ -66,7 +87,7 @@
             </div>
         </form>
 
-        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:12px; margin-bottom:18px;">
+        <div class="reports-summary-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:12px; margin-bottom:18px;">
             <div style="background:#fff; border-radius:16px; padding:16px; box-shadow:0 4px 18px rgba(0,0,0,0.04);">
                 <div style="font-size:11px; color:#888; margin-bottom:6px;">Gross Order Value</div>
                 <div style="font-size:22px; font-weight:800; color:#111;"><?= htmlspecialchars($settings['currency_symbol'] ?? 'LKR') ?> <?= number_format((float) ($finance['gross_total'] ?? 0), 2) ?></div>
@@ -86,7 +107,7 @@
             </div>
         </div>
 
-        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:12px; margin-bottom:18px;">
+        <div class="reports-summary-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:12px; margin-bottom:18px;">
             <div style="background:#fff4cf; border-radius:16px; padding:16px; box-shadow:0 4px 18px rgba(0,0,0,0.04);">
                 <div style="font-size:11px; color:#8a6b00; margin-bottom:6px;">New Orders</div>
                 <div style="font-size:24px; font-weight:800; color:#111;"><?= (int) ($summary['new_orders'] ?? 0) ?></div>
@@ -105,7 +126,7 @@
             </div>
         </div>
 
-        <div style="background:#fff; border-radius:18px; padding:18px; box-shadow:0 4px 20px rgba(0,0,0,0.04);">
+        <div class="reports-table-card" style="background:#fff; border-radius:18px; padding:18px; box-shadow:0 4px 20px rgba(0,0,0,0.04);">
             <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:14px;">
                 <div>
                     <h3 style="margin:0;">Daily Report</h3>

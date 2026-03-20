@@ -5,11 +5,37 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($title) ?></title>
     <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/admin.css?v=<?= time() ?>">
+    <style>
+        @media (min-width: 992px) {
+            .orders-toolbar {
+                align-items: center !important;
+                margin-bottom: 24px !important;
+            }
+
+            .orders-filter-card {
+                border-radius: 24px !important;
+                padding: 22px !important;
+                box-shadow: 0 16px 36px rgba(17, 24, 39, 0.06) !important;
+                border: 1px solid rgba(17, 24, 39, 0.05);
+            }
+
+            .orders-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 18px !important;
+            }
+
+            .order-card {
+                border-radius: 22px !important;
+                padding: 20px !important;
+                box-shadow: 0 16px 34px rgba(17, 24, 39, 0.06) !important;
+            }
+        }
+    </style>
 </head>
 <body>
     <?php include 'views/admin/partials/loader.php'; ?>
     <div class="container">
-        <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; gap:12px; flex-wrap:wrap;">
+        <div class="page-header orders-toolbar" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; gap:12px; flex-wrap:wrap;">
             <div>
                 <h2 style="margin:0;">Orders</h2>
                 <p style="margin:4px 0 0; font-size:12px; color:#888;">Track new orders, filter them quickly, and export exactly what you need.</p>
@@ -17,7 +43,7 @@
             <a href="<?= BASE_URL ?>admin/dashboard" style="text-decoration:none; color:#007aff; font-weight:700;">Back to Dashboard</a>
         </div>
 
-        <form method="GET" action="<?= BASE_URL ?>order/manage" style="background:#fff; border-radius:18px; padding:18px; box-shadow:0 4px 20px rgba(0,0,0,0.04); margin-bottom:18px;">
+        <form method="GET" action="<?= BASE_URL ?>order/manage" class="orders-filter-card" style="background:#fff; border-radius:18px; padding:18px; box-shadow:0 4px 20px rgba(0,0,0,0.04); margin-bottom:18px;">
             <div style="display:grid; gap:12px;">
                 <input type="text" name="search" value="<?= htmlspecialchars($filters['search'] ?? '') ?>" placeholder="Search by order no, customer, email, or phone" style="width:100%; padding:12px 14px; border:1px solid #ddd; border-radius:10px; box-sizing:border-box;">
 
@@ -73,10 +99,10 @@
         <?php if (empty($orders)): ?>
             <div style="padding:24px; background:#fff; border-radius:16px; color:#777;">No orders found for the selected filters.</div>
         <?php else: ?>
-            <div style="display:grid; gap:14px;">
+            <div class="orders-grid" style="display:grid; gap:14px;">
                 <?php foreach ($orders as $order): ?>
                     <?php $isNew = empty($order['admin_seen_at']); ?>
-                    <a href="<?= BASE_URL ?>order/details/<?= urlencode($order['order_number']) ?>" style="display:block; text-decoration:none; color:inherit; background:<?= $isNew ? '#fffaf0' : '#fff' ?>; border-radius:18px; padding:18px; box-shadow:0 4px 20px rgba(0,0,0,0.04); border:<?= $isNew ? '1px solid #f1d28a' : '1px solid transparent' ?>;">
+                    <a href="<?= BASE_URL ?>order/details/<?= urlencode($order['order_number']) ?>" class="order-card" style="display:block; text-decoration:none; color:inherit; background:<?= $isNew ? '#fffaf0' : '#fff' ?>; border-radius:18px; padding:18px; box-shadow:0 4px 20px rgba(0,0,0,0.04); border:<?= $isNew ? '1px solid #f1d28a' : '1px solid transparent' ?>;">
                         <div style="display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap;">
                             <div>
                                 <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">

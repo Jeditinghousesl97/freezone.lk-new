@@ -25,6 +25,24 @@
         .stock-btn { display:inline-flex; align-items:center; justify-content:center; padding:10px 12px; border-radius:10px; text-decoration:none; font-size:12px; font-weight:700; }
         .stock-btn.primary { background:#007aff; color:#fff; }
         .stock-btn.secondary { background:#f3f3f3; color:#333; }
+
+        @media (min-width: 992px) {
+            .stock-summary-grid {
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+            }
+
+            .stock-list {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 18px;
+            }
+
+            .stock-item {
+                border-radius: 22px;
+                padding: 20px;
+                box-shadow: 0 16px 34px rgba(17, 24, 39, 0.06);
+                border: 1px solid rgba(17, 24, 39, 0.05);
+            }
+        }
     </style>
 </head>
 <body>

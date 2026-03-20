@@ -189,3 +189,95 @@ body {
 .toggle-btn:not(.active) .toggle-circle {
     background-color: #ffffff;
 }
+
+@media (min-width: 992px) {
+    body.admin-has-nav {
+        background:
+            radial-gradient(circle at top left, rgba(0, 123, 255, 0.06), transparent 28%),
+            radial-gradient(circle at bottom right, rgba(255, 59, 105, 0.05), transparent 24%),
+            #f6f8fb;
+        padding-left: 250px;
+        padding-bottom: 32px;
+    }
+
+    body.admin-has-nav .container {
+        max-width: none;
+        width: auto;
+        margin: 0;
+        padding: 30px 30px 34px;
+    }
+
+    body.admin-has-nav .page-header {
+        margin-bottom: 28px;
+    }
+
+    body.admin-has-nav .page-title {
+        font-size: 30px;
+    }
+
+    body.admin-has-nav .shop-subtitle {
+        font-size: 15px;
+    }
+
+    body.admin-has-nav .stats-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 18px;
+    }
+
+    body.admin-has-nav .stat-card {
+        border-radius: 22px;
+        padding: 24px 20px;
+        box-shadow: 0 12px 30px rgba(17, 24, 39, 0.06);
+        border: 1px solid rgba(17, 24, 39, 0.05);
+    }
+
+    body.admin-has-nav .stat-number {
+        font-size: 38px;
+    }
+
+    body.admin-has-nav .stat-label {
+        font-size: 13px;
+    }
+
+    body.admin-has-nav .product-list-container {
+        border-radius: 24px;
+        padding: 18px 22px;
+        box-shadow: 0 14px 36px rgba(17, 24, 39, 0.06);
+        border: 1px solid rgba(17, 24, 39, 0.05);
+    }
+
+    body.admin-has-nav .product-item {
+        padding: 18px 0;
+    }
+
+    body.admin-has-nav .product-thumb,
+    body.admin-has-nav .prod-thumb {
+        width: 64px;
+        height: 64px;
+        border-radius: 18px;
+        margin-right: 0;
+    }
+
+    body.admin-has-nav .product-name,
+    body.admin-has-nav .prod-title {
+        font-size: 16px;
+    }
+
+    body.admin-has-nav .product-category,
+    body.admin-has-nav .prod-cat {
+        font-size: 13px;
+    }
+
+    body.admin-has-nav .trash-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        font-size: 17px;
+    }
+
+    body.admin-has-nav .form-control {
+        padding: 14px 16px;
+        font-size: 15px;
+        border-radius: 12px;
+    }
+}

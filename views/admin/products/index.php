@@ -135,6 +135,42 @@
             font-size: 12px;
             color: #888;
         }
+
+        @media (min-width: 992px) {
+            .page-header {
+                margin-bottom: 28px;
+            }
+
+            .add-btn-blue {
+                padding: 12px 20px;
+                border-radius: 999px;
+                box-shadow: 0 10px 22px rgba(0, 122, 255, 0.18);
+            }
+
+            .search-container {
+                max-width: 560px;
+            }
+
+            .list-header {
+                padding: 14px 18px;
+                border-radius: 16px;
+                font-size: 14px;
+            }
+
+            .product-list {
+                background: #fff;
+                border-radius: 24px;
+                padding: 18px 22px;
+                box-shadow: 0 16px 36px rgba(17, 24, 39, 0.06);
+                border: 1px solid rgba(17, 24, 39, 0.05);
+            }
+
+            .prod-item {
+                gap: 18px;
+                padding: 14px 0;
+                margin-bottom: 0;
+            }
+        }
     </style>
 </head>
 

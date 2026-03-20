@@ -58,6 +58,23 @@
             color: #888;
             font-size: 14px;
         }
+
+        @media (min-width: 992px) {
+            .container {
+                max-width: 920px;
+                padding: 34px 30px 40px;
+            }
+
+            .create-btn {
+                border-radius: 999px;
+                padding: 12px 22px;
+                box-shadow: 0 10px 22px rgba(212, 172, 13, 0.2);
+            }
+
+            .var-item {
+                padding: 16px 0 18px;
+            }
+        }
     </style>
 </head>
 

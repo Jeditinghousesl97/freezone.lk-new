@@ -87,6 +87,32 @@
             align-items: center;
             text-decoration: none;
         }
+
+        @media (min-width: 992px) {
+            .container {
+                max-width: 860px;
+                padding: 34px 30px 40px;
+            }
+
+            .category-list {
+                border-radius: 24px;
+                padding: 20px 22px;
+                box-shadow: 0 16px 36px rgba(17, 24, 39, 0.06);
+                border: 1px solid rgba(17, 24, 39, 0.05);
+            }
+
+            .cat-item {
+                padding: 18px 0;
+            }
+
+            .cat-name {
+                font-size: 18px;
+            }
+
+            .sub-cat-name {
+                font-size: 15px;
+            }
+        }
     </style>
 </head>
 

@@ -609,6 +609,50 @@
                 display: none;
             }
         }
+
+        @media (min-width: 992px) {
+            .container {
+                max-width: 1120px;
+                padding: 34px 30px 40px;
+            }
+
+            .header-bar {
+                margin-bottom: 28px;
+            }
+
+            .section-label {
+                font-size: 15px;
+                margin-top: 24px;
+            }
+
+            .images-container,
+            .price-row,
+            .stock-grid {
+                gap: 18px;
+            }
+
+            .main-img-box,
+            .gallery-box {
+                min-height: 180px;
+                border-radius: 18px;
+            }
+
+            .input-box {
+                font-size: 15px;
+                padding: 14px 16px;
+                border-radius: 12px;
+            }
+
+            .existing-gallery-grid {
+                grid-template-columns: repeat(5, minmax(0, 1fr));
+            }
+
+            .stock-panel {
+                border-radius: 18px;
+                padding: 18px;
+                box-shadow: 0 16px 36px rgba(17, 24, 39, 0.06);
+            }
+        }
     </style>
 </head>
 

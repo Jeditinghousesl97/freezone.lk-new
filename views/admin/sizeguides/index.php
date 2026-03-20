@@ -92,6 +92,25 @@
             align-items: center;
             text-decoration: none;
         }
+
+        @media (min-width: 992px) {
+            .container {
+                max-width: 900px;
+                padding: 34px 30px 40px;
+            }
+
+            .guide-item {
+                border-radius: 18px;
+                padding: 16px 18px;
+                box-shadow: 0 16px 34px rgba(17, 24, 39, 0.06);
+            }
+
+            .guide-thumb {
+                width: 64px;
+                height: 64px;
+                border-radius: 14px;
+            }
+        }
     </style>
 </head>
 

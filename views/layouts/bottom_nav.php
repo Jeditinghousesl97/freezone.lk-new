@@ -55,4 +55,48 @@ $current_page = $current_page ?? 'dashboard';
     .nav-item.active .nav-icon-img {
         opacity: 1;
     }
+
+    @media (min-width: 992px) {
+        .bottom-nav {
+            top: 0;
+            bottom: 0;
+            left: 0;
+            width: 220px;
+            padding: 24px 14px;
+            border-top: none;
+            border-right: 1px solid #edf0f5;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: stretch;
+            gap: 8px;
+            box-shadow: 10px 0 30px rgba(17, 24, 39, 0.04);
+            background: rgba(255, 255, 255, 0.96);
+            backdrop-filter: blur(16px);
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-align: left;
+            padding: 12px 14px;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .nav-item span {
+            white-space: nowrap;
+        }
+
+        .nav-icon-img {
+            margin: 0;
+            width: 22px;
+            height: 22px;
+            flex-shrink: 0;
+        }
+    }
 </style>
+
+<script>
+    document.body.classList.add('admin-has-nav');
+</script>

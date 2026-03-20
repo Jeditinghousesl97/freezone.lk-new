@@ -104,6 +104,18 @@
         .input-row .input-box {
             margin-bottom: 0;
         }
+
+        @media (min-width: 992px) {
+            .container {
+                max-width: 820px;
+                padding: 34px 30px 40px;
+            }
+
+            .value-item {
+                border-radius: 14px;
+                padding: 14px 16px;
+            }
+        }
     </style>
 </head>
 

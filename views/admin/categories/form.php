@@ -83,6 +83,22 @@
             text-decoration: none;
             font-size: 14px;
         }
+
+        @media (min-width: 992px) {
+            .container {
+                max-width: 820px;
+                padding: 34px 30px 40px;
+            }
+
+            .upload-area {
+                border-radius: 18px;
+                padding: 46px 24px;
+            }
+
+            .category-toggle-group {
+                max-width: 520px;
+            }
+        }
     </style>
 </head>
 

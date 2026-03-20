@@ -115,6 +115,25 @@
             font-weight: bold;
             cursor: pointer;
         }
+
+        @media (min-width: 992px) {
+            .feedback-grid {
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+                gap: 18px;
+                padding-bottom: 24px;
+            }
+
+            .fb-item {
+                border-radius: 20px;
+                box-shadow: 0 16px 34px rgba(17, 24, 39, 0.06);
+            }
+
+            .add-btn-blue {
+                padding: 12px 20px;
+                border-radius: 999px;
+                box-shadow: 0 10px 22px rgba(0, 122, 255, 0.18);
+            }
+        }
     </style>
 </head>
 

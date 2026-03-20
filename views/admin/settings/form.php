@@ -193,6 +193,44 @@
             color: #333;
             border: 1px solid #ececec;
         }
+
+        @media (min-width: 992px) {
+            .header-bar {
+                margin-bottom: 30px;
+            }
+
+            .logo-img {
+                height: 46px;
+            }
+
+            .input-box {
+                font-size: 15px;
+                padding: 14px 16px;
+                border-radius: 12px;
+            }
+
+            .img-row {
+                align-items: stretch;
+            }
+
+            .img-upload-box {
+                height: 160px;
+                border-radius: 18px;
+            }
+
+            .integration-box,
+            .user-mgmt-box {
+                border-radius: 22px;
+                padding: 24px;
+                box-shadow: 0 16px 36px rgba(17, 24, 39, 0.06);
+                border-color: rgba(17, 24, 39, 0.06);
+            }
+
+            .btn-global-styles,
+            .btn-delivery-settings {
+                max-width: 320px;
+            }
+        }
     </style>
 </head>
 
