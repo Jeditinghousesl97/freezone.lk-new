@@ -146,27 +146,27 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
                         <?php endif; ?>
                         <?php if ($codEnabled): ?>
                             <button onclick="openOrderModal('cod')" class="cart-payment-btn cart-payment-btn-cod">
-                                <i class="fas fa-box" style="font-size: 18px;"></i>
+                                <img src="<?= BASE_URL ?>assets/icons/payment-gateways/buttons/cod.png" alt="Cash on Delivery" class="cart-payment-logo">
                                 Order with Cash on Delivery
                             </button>
                         <?php endif; ?>
 
                         <?php if (!empty($settings['payhere_enabled'])): ?>
                             <button onclick="openOrderModal('payhere')" class="btn-payhere-standalone cart-payment-btn cart-payment-btn-payhere">
-                                <i class="fas fa-credit-card" style="font-size: 18px;"></i>
+                                <img src="<?= BASE_URL ?>assets/icons/payment-gateways/buttons/payhere.png" alt="PayHere" class="cart-payment-logo">
                                 Pay Online with Card Payment
                             </button>
                         <?php endif; ?>
 
                         <?php if (!empty($settings['koko_enabled'])): ?>
                             <button onclick="openOrderModal('koko')" class="cart-payment-btn cart-payment-btn-koko">
-                                <i class="fas fa-wallet" style="font-size: 18px;"></i>
+                                <img src="<?= BASE_URL ?>assets/icons/payment-gateways/buttons/koko.png" alt="KOKO" class="cart-payment-logo">
                                 Pay in 3 with KOKO
                             </button>
                         <?php endif; ?>
                         <?php if (!empty($settings['bank_transfer_enabled'])): ?>
-                            <button onclick="openOrderModal('bank_transfer')" class="cart-payment-btn" style="background:#1f5aa6; color:#fff;">
-                                <i class="fas fa-building-columns" style="font-size: 18px;"></i>
+                            <button onclick="openOrderModal('bank_transfer')" class="cart-payment-btn cart-payment-btn-bank">
+                                <img src="<?= BASE_URL ?>assets/icons/payment-gateways/buttons/bank.png" alt="Bank Transfer" class="cart-payment-logo">
                                 Bank Transfer
                             </button>
                         <?php endif; ?>

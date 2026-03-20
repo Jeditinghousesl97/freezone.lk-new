@@ -777,6 +777,11 @@ class Product extends BaseModel
         return $grouped;
     }
 
+    public function productRequiresVariationSelection($productId)
+    {
+        return !empty($this->getVariations($productId));
+    }
+
     public function getVariantStockRows($productId)
     {
         $sql = "SELECT pvs.*, pvsv.variation_id, pvsv.variation_value_id, v.name AS variation_name, vv.value AS variation_value
@@ -1028,13 +1033,13 @@ class Product extends BaseModel
         }
 
         $qty = max(1, (int) $qty);
+        $variantKey = trim((string) $variantKey);
+        if ($this->productRequiresVariationSelection($productId) && $variantKey === '') {
+            return ['ok' => false, 'message' => 'Please choose a valid product variation.'];
+        }
+
         $snapshot = $this->getStockSnapshot($product);
         if ($snapshot['has_variant_stock']) {
-            $variantKey = trim((string) $variantKey);
-            if ($variantKey === '') {
-                return ['ok' => false, 'message' => 'Please choose a valid product variation.'];
-            }
-
             $variantMap = $this->getVariantStockMap($productId);
             $variant = $variantMap[$variantKey] ?? null;
             if (!$variant || empty($variant['is_active'])) {

@@ -608,7 +608,9 @@ if ($sgImg):
 
             <?php if ($codEnabled): ?>
                 <button type="button" class="payment-method-card method-cod" onclick="choosePaymentMethod('cod')">
-                    <span class="payment-method-icon"><i class="fas fa-box"></i></span>
+                    <span class="payment-method-icon">
+                        <img src="<?= BASE_URL ?>assets/icons/payment-gateways/buttons/cod.png" alt="Cash on Delivery" class="payment-method-logo">
+                    </span>
                     <span class="payment-method-copy">
                         <strong>Cash on Delivery</strong>
                         <small>Place the order now and pay when it is delivered.</small>
@@ -619,7 +621,9 @@ if ($sgImg):
 
             <?php if (!empty($settings['payhere_enabled'])): ?>
                 <button type="button" class="payment-method-card method-payhere" onclick="choosePaymentMethod('payhere')">
-                    <span class="payment-method-icon"><i class="fas fa-credit-card"></i></span>
+                    <span class="payment-method-icon">
+                        <img src="<?= BASE_URL ?>assets/icons/payment-gateways/buttons/payhere.png" alt="PayHere" class="payment-method-logo">
+                    </span>
                     <span class="payment-method-copy">
                         <strong>Card Payment</strong>
                         <small>Pay online securely before your order is confirmed.</small>
@@ -630,7 +634,9 @@ if ($sgImg):
 
             <?php if (!empty($settings['koko_enabled'])): ?>
                 <button type="button" class="payment-method-card method-koko" onclick="choosePaymentMethod('koko')">
-                    <span class="payment-method-icon"><i class="fas fa-wallet"></i></span>
+                    <span class="payment-method-icon">
+                        <img src="<?= BASE_URL ?>assets/icons/payment-gateways/buttons/koko.png" alt="KOKO" class="payment-method-logo">
+                    </span>
                     <span class="payment-method-copy">
                         <strong>KOKO Pay in 3</strong>
                         <small>Split your payment into 3 interest-free installments.</small>
@@ -640,8 +646,10 @@ if ($sgImg):
             <?php endif; ?>
 
             <?php if (!empty($settings['bank_transfer_enabled'])): ?>
-                <button type="button" class="payment-method-card" onclick="choosePaymentMethod('bank_transfer')">
-                    <span class="payment-method-icon"><i class="fas fa-building-columns"></i></span>
+                <button type="button" class="payment-method-card method-bank" onclick="choosePaymentMethod('bank_transfer')">
+                    <span class="payment-method-icon">
+                        <img src="<?= BASE_URL ?>assets/icons/payment-gateways/buttons/bank.png" alt="Bank Transfer" class="payment-method-logo">
+                    </span>
                     <span class="payment-method-copy">
                         <strong>Bank Transfer</strong>
                         <small>Place the order now and send the payment using the bank details provided.</small>
@@ -1110,6 +1118,11 @@ if ($sgImg):
 
     function validateCurrentSelection(qty) {
         qty = qty || (parseInt(document.getElementById('qtyInput').value) || 1);
+        const requiredVariationCount = getRequiredVariationCount();
+        if (requiredVariationCount && Object.keys(selectedVariations).length < requiredVariationCount) {
+            return { ok: false, message: 'Please choose all required product variations.' };
+        }
+
         if (Array.isArray(variantStockRows) && variantStockRows.length) {
             if (!getSelectedVariantKey()) {
                 return { ok: false, message: 'Please choose a valid stock option.' };

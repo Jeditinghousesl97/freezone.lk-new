@@ -48,6 +48,11 @@ $displayStatus = $isSuccess
             <div style="display:grid; gap:12px; background:#fafafa; border-radius:20px; padding:20px;">
                 <div><strong>Order Number:</strong> <?= htmlspecialchars($order['order_number']) ?></div>
                 <div><strong>Customer:</strong> <?= htmlspecialchars($order['customer_name']) ?></div>
+                <div><strong>Subtotal:</strong> <?= htmlspecialchars($order['currency']) ?> <?= number_format((float) ($order['subtotal_amount'] ?? 0), 2) ?></div>
+                <div><strong>Shipping Fee:</strong> <?= htmlspecialchars($order['currency']) ?> <?= number_format((float) ($order['shipping_fee'] ?? 0), 2) ?></div>
+                <?php if ((float) ($order['handling_fee'] ?? 0) > 0): ?>
+                    <div><strong>Handling Fee:</strong> <?= htmlspecialchars($order['currency']) ?> <?= number_format((float) ($order['handling_fee'] ?? 0), 2) ?></div>
+                <?php endif; ?>
                 <div><strong>Amount:</strong> <?= htmlspecialchars($order['currency']) ?> <?= number_format((float) ($order['total_amount'] ?? 0), 2) ?></div>
                 <div><strong>Payment Status:</strong> <?= htmlspecialchars($displayStatus) ?></div>
                 <div><strong>Gateway:</strong> <?= htmlspecialchars($gatewayName) ?></div>

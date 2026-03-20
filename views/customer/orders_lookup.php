@@ -86,6 +86,23 @@ require_once 'views/layouts/customer_header.php';
                 </div>
             </div>
 
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 18px;">
+                <div style="background:#fafafa; border-radius:16px; padding:14px;">
+                    <div style="font-size:12px; color:#777; margin-bottom:6px;">Subtotal</div>
+                    <div style="font-size:15px; font-weight:800; color:#111;"><?= htmlspecialchars($order['currency']) ?> <?= number_format((float) ($order['subtotal_amount'] ?? 0), 2) ?></div>
+                </div>
+                <div style="background:#fafafa; border-radius:16px; padding:14px;">
+                    <div style="font-size:12px; color:#777; margin-bottom:6px;">Shipping Fee</div>
+                    <div style="font-size:15px; font-weight:800; color:#111;"><?= htmlspecialchars($order['currency']) ?> <?= number_format((float) ($order['shipping_fee'] ?? 0), 2) ?></div>
+                </div>
+                <?php if ((float) ($order['handling_fee'] ?? 0) > 0): ?>
+                    <div style="background:#fafafa; border-radius:16px; padding:14px;">
+                        <div style="font-size:12px; color:#777; margin-bottom:6px;">Handling Fee</div>
+                        <div style="font-size:15px; font-weight:800; color:#111;"><?= htmlspecialchars($order['currency']) ?> <?= number_format((float) ($order['handling_fee'] ?? 0), 2) ?></div>
+                    </div>
+                <?php endif; ?>
+            </div>
+
             <div style="display:grid; gap:12px;">
                 <?php foreach (($order['items'] ?? []) as $item): ?>
                     <div style="display:flex; align-items:center; gap:12px; background:#fafafa; border-radius:18px; padding:12px;">
