@@ -494,18 +494,26 @@ class OrderController extends BaseController
     private function resolveKokoOrderFromRequest($orderIdRaw)
     {
         $orderId = (int) trim((string) $orderIdRaw);
-        if ($orderId <= 0) {
-            return null;
+        if ($orderId > 0) {
+            $order = $this->orderModel->getById($orderId);
+            if ($order) {
+                return $order;
+            }
         }
 
-        return $this->orderModel->getById($orderId);
+        $orderNumber = trim((string) ($_REQUEST['order'] ?? ($_SESSION['pending_order_number'] ?? '')));
+        if ($orderNumber !== '') {
+            return $this->orderModel->getByOrderNumber($orderNumber);
+        }
+
+        return null;
     }
 
     private function extractKokoStatusPayload(array $response)
     {
         $candidates = [$response];
 
-        foreach (['data', 'response', 'result'] as $nestedKey) {
+        foreach (['data', 'response', 'result', 'content'] as $nestedKey) {
             if (isset($response[$nestedKey]) && is_array($response[$nestedKey])) {
                 $candidates[] = $response[$nestedKey];
             }
@@ -1924,7 +1932,11 @@ class OrderController extends BaseController
                 'status' => $statusRaw,
                 'trnId' => $trnIdRaw
             ]);
-        } elseif (($order['payment_status'] ?? 'pending') === 'pending' && $normalizedStatus !== 'pending' && $trnIdRaw !== '') {
+        } elseif (
+            ($order['payment_status'] ?? 'pending') === 'pending'
+            && $normalizedStatus !== 'pending'
+            && ($trnIdRaw !== '' || in_array($normalizedStatus, ['failed', 'cancelled'], true))
+        ) {
             $message = 'KOKO payment status updated from return URL while waiting for callback confirmation.';
             $order = $this->applyKokoPaymentResult($order, $normalizedStatus, $trnIdRaw, $statusRaw, $message, $_REQUEST, 'return_fallback');
             $this->logKokoEvent('return_applied_fallback', [
