@@ -195,6 +195,32 @@ class OrderController extends BaseController
         );
     }
 
+    private function logKokoEvent($event, array $context = [])
+    {
+        $logDir = ROOT_PATH . 'storage/logs/';
+        if (!is_dir($logDir)) {
+            mkdir($logDir, 0775, true);
+        }
+
+        $maskedContext = $context;
+        foreach (['signature', 'koko_public_key', 'koko_private_key', 'koko_api_key'] as $sensitiveKey) {
+            if (!empty($maskedContext[$sensitiveKey])) {
+                $maskedContext[$sensitiveKey] = '[redacted]';
+            }
+        }
+
+        file_put_contents(
+            $logDir . 'koko.log',
+            json_encode([
+                'time' => date('c'),
+                'event' => $event,
+                'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
+                'context' => $maskedContext
+            ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . PHP_EOL,
+            FILE_APPEND | LOCK_EX
+        );
+    }
+
     private function logSmsWorkerEvent($event, array $context = [])
     {
         $logDir = ROOT_PATH . 'storage/logs/';
@@ -475,6 +501,40 @@ class OrderController extends BaseController
         return $this->orderModel->getById($orderId);
     }
 
+    private function extractKokoStatusPayload(array $response)
+    {
+        $candidates = [$response];
+
+        foreach (['data', 'response', 'result'] as $nestedKey) {
+            if (isset($response[$nestedKey]) && is_array($response[$nestedKey])) {
+                $candidates[] = $response[$nestedKey];
+            }
+        }
+
+        foreach ($candidates as $candidate) {
+            $orderIdRaw = (string) ($candidate['orderId'] ?? $candidate['order_id'] ?? '');
+            $statusRaw = (string) ($candidate['status'] ?? $candidate['paymentStatus'] ?? $candidate['payment_status'] ?? '');
+
+            if ($orderIdRaw !== '' || $statusRaw !== '') {
+                return [
+                    'orderId' => $orderIdRaw,
+                    'trnId' => (string) ($candidate['trnId'] ?? $candidate['trn_id'] ?? $candidate['transactionId'] ?? ''),
+                    'status' => $statusRaw,
+                    'desc' => (string) ($candidate['desc'] ?? $candidate['description'] ?? ''),
+                    'signature' => (string) ($candidate['signature'] ?? '')
+                ];
+            }
+        }
+
+        return [
+            'orderId' => '',
+            'trnId' => '',
+            'status' => '',
+            'desc' => '',
+            'signature' => ''
+        ];
+    }
+
     private function applyKokoPaymentResult(array $order, $paymentStatus, $paymentId, $statusCode, $message, array $payload, $transactionType)
     {
         $paymentStatus = trim((string) $paymentStatus);
@@ -554,16 +614,36 @@ class OrderController extends BaseController
         try {
             $response = KokoGateway::fetchOrderView((string) ($order['id'] ?? ''), $settings);
         } catch (Exception $e) {
+            $this->logKokoEvent('order_view_request_failed', [
+                'order_id' => $order['id'] ?? null,
+                'order_number' => $order['order_number'] ?? null,
+                'message' => $e->getMessage()
+            ]);
             return $order;
         }
 
-        $orderIdRaw = (string) ($response['orderId'] ?? '');
-        $trnIdRaw = (string) ($response['trnId'] ?? '');
-        $statusRaw = (string) ($response['status'] ?? '');
-        $descRaw = (string) ($response['desc'] ?? '');
-        $signatureParam = (string) ($response['signature'] ?? '');
+        $payload = $this->extractKokoStatusPayload($response);
+        $orderIdRaw = $payload['orderId'];
+        $trnIdRaw = $payload['trnId'];
+        $statusRaw = $payload['status'];
+        $descRaw = $payload['desc'];
+        $signatureParam = $payload['signature'];
 
         if ($orderIdRaw === '' || $statusRaw === '' || $signatureParam === '') {
+            $this->logKokoEvent('order_view_incomplete_payload', [
+                'order_id' => $order['id'] ?? null,
+                'order_number' => $order['order_number'] ?? null,
+                'response_keys' => array_keys($response)
+            ]);
+            return $order;
+        }
+
+        if ((string) ($order['id'] ?? '') !== $orderIdRaw) {
+            $this->logKokoEvent('order_view_order_mismatch', [
+                'expected_order_id' => (string) ($order['id'] ?? ''),
+                'received_order_id' => $orderIdRaw,
+                'order_number' => $order['order_number'] ?? null
+            ]);
             return $order;
         }
 
@@ -571,11 +651,34 @@ class OrderController extends BaseController
             && KokoGateway::verifyStatusSignature($orderIdRaw, $trnIdRaw, $statusRaw, $signatureParam, (string) ($settings['koko_public_key'] ?? ''));
 
         if (!$signatureValid) {
+            $this->logKokoEvent('order_view_invalid_signature', [
+                'order_id' => $order['id'] ?? null,
+                'order_number' => $order['order_number'] ?? null,
+                'status' => $statusRaw,
+                'trnId' => $trnIdRaw
+            ]);
             return $order;
         }
 
         $paymentStatus = KokoGateway::normalizeStatus($statusRaw);
+        if ($paymentStatus === 'pending') {
+            $this->logKokoEvent('order_view_pending', [
+                'order_id' => $order['id'] ?? null,
+                'order_number' => $order['order_number'] ?? null,
+                'status' => $statusRaw,
+                'trnId' => $trnIdRaw
+            ]);
+            return $order;
+        }
+
         $message = trim($descRaw) !== '' ? trim($descRaw) : ('KOKO payment status refreshed as ' . str_replace('_', ' ', $paymentStatus) . '.');
+        $this->logKokoEvent('order_view_applied', [
+            'order_id' => $order['id'] ?? null,
+            'order_number' => $order['order_number'] ?? null,
+            'payment_status' => $paymentStatus,
+            'status' => $statusRaw,
+            'trnId' => $trnIdRaw
+        ]);
 
         return $this->applyKokoPaymentResult(
             $order,
@@ -1733,6 +1836,10 @@ class OrderController extends BaseController
             }
 
             if (!hash_equals((string) $settings['koko_callback_secret'], $providedSecret)) {
+                $this->logKokoEvent('response_forbidden_invalid_secret', [
+                    'provided_secret_present' => $providedSecret !== '',
+                    'orderId' => $_REQUEST['orderId'] ?? null
+                ]);
                 http_response_code(403);
                 echo 'FORBIDDEN';
                 exit;
@@ -1747,6 +1854,11 @@ class OrderController extends BaseController
 
         $order = $this->resolveKokoOrderFromRequest($orderIdRaw);
         if (!$order) {
+            $this->logKokoEvent('response_order_not_found', [
+                'orderId' => $orderIdRaw,
+                'status' => $statusRaw,
+                'trnId' => $trnIdRaw
+            ]);
             http_response_code(404);
             echo 'ORDER_NOT_FOUND';
             exit;
@@ -1757,6 +1869,12 @@ class OrderController extends BaseController
             && KokoGateway::verifyStatusSignature($orderIdRaw, $trnIdRaw, $statusRaw, $signatureParam, (string) ($settings['koko_public_key'] ?? ''));
 
         if (!$signatureValid) {
+            $this->logKokoEvent('response_invalid_signature', [
+                'order_id' => $order['id'] ?? null,
+                'order_number' => $order['order_number'] ?? null,
+                'status' => $statusRaw,
+                'trnId' => $trnIdRaw
+            ]);
             http_response_code(400);
             echo 'INVALID_SIGNATURE';
             exit;
@@ -1764,6 +1882,13 @@ class OrderController extends BaseController
 
         $paymentStatus = KokoGateway::normalizeStatus($statusRaw);
         $message = trim($descRaw) !== '' ? trim($descRaw) : 'KOKO payment status updated.';
+        $this->logKokoEvent('response_applied', [
+            'order_id' => $order['id'] ?? null,
+            'order_number' => $order['order_number'] ?? null,
+            'payment_status' => $paymentStatus,
+            'status' => $statusRaw,
+            'trnId' => $trnIdRaw
+        ]);
         $this->applyKokoPaymentResult($order, $paymentStatus, $trnIdRaw, $statusRaw, $message, $_REQUEST, 'response_verified');
 
         echo 'OK';
@@ -1792,6 +1917,34 @@ class OrderController extends BaseController
         if (($order['payment_status'] ?? 'pending') === 'pending' && $signatureValid && $normalizedStatus !== 'pending') {
             $message = 'KOKO payment status updated from return URL.';
             $order = $this->applyKokoPaymentResult($order, $normalizedStatus, $trnIdRaw, $statusRaw, $message, $_REQUEST, 'return_verified');
+            $this->logKokoEvent('return_applied_verified', [
+                'order_id' => $order['id'] ?? null,
+                'order_number' => $order['order_number'] ?? null,
+                'payment_status' => $normalizedStatus,
+                'status' => $statusRaw,
+                'trnId' => $trnIdRaw
+            ]);
+        } elseif (($order['payment_status'] ?? 'pending') === 'pending' && $normalizedStatus !== 'pending' && $trnIdRaw !== '') {
+            $message = 'KOKO payment status updated from return URL while waiting for callback confirmation.';
+            $order = $this->applyKokoPaymentResult($order, $normalizedStatus, $trnIdRaw, $statusRaw, $message, $_REQUEST, 'return_fallback');
+            $this->logKokoEvent('return_applied_fallback', [
+                'order_id' => $order['id'] ?? null,
+                'order_number' => $order['order_number'] ?? null,
+                'payment_status' => $normalizedStatus,
+                'status' => $statusRaw,
+                'trnId' => $trnIdRaw,
+                'signature_present' => $signatureParam !== ''
+            ]);
+        } else {
+            $this->logKokoEvent('return_no_state_change', [
+                'order_id' => $order['id'] ?? null,
+                'order_number' => $order['order_number'] ?? null,
+                'status' => $statusRaw,
+                'normalized_status' => $normalizedStatus,
+                'trnId' => $trnIdRaw,
+                'signature_present' => $signatureParam !== '',
+                'current_payment_status' => $order['payment_status'] ?? null
+            ]);
         }
 
         if (($order['payment_status'] ?? 'pending') === 'paid' && !empty($_SESSION['cart'])) {
@@ -1822,6 +1975,18 @@ class OrderController extends BaseController
                 $_REQUEST,
                 'cancel_return'
             );
+            $this->logKokoEvent('cancel_applied', [
+                'order_id' => $order['id'] ?? null,
+                'order_number' => $order['order_number'] ?? null,
+                'status' => (string) ($_REQUEST['status'] ?? 'CANCELED'),
+                'trnId' => (string) ($_REQUEST['trnId'] ?? '')
+            ]);
+        } else {
+            $this->logKokoEvent('cancel_no_state_change', [
+                'order_id' => $order['id'] ?? null,
+                'order_number' => $order['order_number'] ?? null,
+                'current_payment_status' => $order['payment_status'] ?? null
+            ]);
         }
 
         unset($_SESSION['pending_order_number']);
