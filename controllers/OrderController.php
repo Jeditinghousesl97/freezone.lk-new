@@ -10,6 +10,8 @@ require_once 'helpers/OrderSmsService.php';
 require_once 'helpers/StockAlertService.php';
 require_once 'helpers/KokoGateway.php';
 require_once 'helpers/ImageHelper.php';
+require_once 'helpers/RecaptchaHelper.php';
+require_once 'helpers/RateLimitHelper.php';
 
 class OrderController extends BaseController
 {
@@ -30,6 +32,39 @@ class OrderController extends BaseController
         $this->orderEmailService = new OrderEmailService();
         $this->orderSmsService = new OrderSmsService();
         $this->stockAlertService = new StockAlertService();
+    }
+
+    private function clientIp()
+    {
+        return trim((string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
+    }
+
+    private function guardCheckoutRequest(array $settings, $redirectUrl)
+    {
+        $rateLimitKey = 'checkout_submit:' . $this->clientIp();
+        if (RateLimitHelper::tooManyAttempts($rateLimitKey, 15, 600)) {
+            $_SESSION['order_error'] = 'Too many checkout attempts detected. Please wait a few minutes and try again.';
+            $this->redirect($redirectUrl);
+        }
+
+        RateLimitHelper::hit($rateLimitKey, 600);
+
+        if (!empty($_POST['company_name'])) {
+            $_SESSION['order_error'] = 'Security verification failed. Please try again.';
+            $this->redirect($redirectUrl);
+        }
+
+        if (RecaptchaHelper::shouldProtectCheckout($settings)) {
+            $verification = RecaptchaHelper::verifyToken(
+                $settings,
+                (string) ($_POST['g_recaptcha_response'] ?? ''),
+                'checkout_order'
+            );
+            if (empty($verification['ok'])) {
+                $_SESSION['order_error'] = 'Security verification failed. Please try again.';
+                $this->redirect($redirectUrl);
+            }
+        }
     }
 
     private function smsQueueToken()
@@ -1022,6 +1057,7 @@ class OrderController extends BaseController
         }
 
         $settings = $this->settingModel->getAllPairs();
+        $this->guardCheckoutRequest($settings, 'cart');
         $cart = $this->buildCartItemsWithDeliveryData($_SESSION['cart'] ?? []);
 
         if (empty($cart)) {
@@ -1106,6 +1142,7 @@ class OrderController extends BaseController
         }
 
         $settings = $this->settingModel->getAllPairs();
+        $this->guardCheckoutRequest($settings, 'cart');
         $cart = $this->buildCartItemsWithDeliveryData($_SESSION['cart'] ?? []);
 
         if (empty($cart)) {
@@ -1220,6 +1257,7 @@ class OrderController extends BaseController
         }
 
         $settings = $this->settingModel->getAllPairs();
+        $this->guardCheckoutRequest($settings, 'cart');
         $cart = $this->buildCartItemsWithDeliveryData($_SESSION['cart'] ?? []);
 
         if (empty($cart)) {
@@ -1281,6 +1319,7 @@ class OrderController extends BaseController
         }
 
         $settings = $this->settingModel->getAllPairs();
+        $this->guardCheckoutRequest($settings, 'cart');
         $cart = $this->buildCartItemsWithDeliveryData($_SESSION['cart'] ?? []);
 
         if (empty($cart)) {
@@ -1344,13 +1383,15 @@ class OrderController extends BaseController
         }
 
         $settings = $this->settingModel->getAllPairs();
+        $productId = (int) ($_POST['product_id'] ?? 0);
+        $singleRedirect = $productId > 0 ? 'shop/product/' . $productId : 'cart';
+        $this->guardCheckoutRequest($settings, $singleRedirect);
 
         if (empty($settings['payhere_enabled']) || empty($settings['payhere_merchant_id']) || empty($settings['payhere_merchant_secret'])) {
             $_SESSION['order_error'] = 'PayHere is not configured for this shop yet.';
             $this->redirect('cart');
         }
 
-        $productId = (int) ($_POST['product_id'] ?? 0);
         $qty = max(1, (int) ($_POST['quantity'] ?? 1));
         $variantText = trim((string) ($_POST['variants'] ?? ''));
         $variantKey = trim((string) ($_POST['variant_key'] ?? ''));
@@ -1438,13 +1479,15 @@ class OrderController extends BaseController
         }
 
         $settings = $this->settingModel->getAllPairs();
+        $productId = (int) ($_POST['product_id'] ?? 0);
+        $singleRedirect = $productId > 0 ? 'shop/product/' . $productId : 'cart';
+        $this->guardCheckoutRequest($settings, $singleRedirect);
 
         if (!KokoGateway::isConfigured($settings)) {
             $_SESSION['order_error'] = 'KOKO is not configured for this shop yet.';
             $this->redirect('cart');
         }
 
-        $productId = (int) ($_POST['product_id'] ?? 0);
         $qty = max(1, (int) ($_POST['quantity'] ?? 1));
         $variantText = trim((string) ($_POST['variants'] ?? ''));
         $variantKey = trim((string) ($_POST['variant_key'] ?? ''));
@@ -1518,12 +1561,14 @@ class OrderController extends BaseController
         }
 
         $settings = $this->settingModel->getAllPairs();
+        $productId = (int) ($_POST['product_id'] ?? 0);
+        $singleRedirect = $productId > 0 ? 'shop/product/' . $productId : 'cart';
+        $this->guardCheckoutRequest($settings, $singleRedirect);
         if (isset($settings['cod_enabled']) && empty($settings['cod_enabled'])) {
             $_SESSION['order_error'] = 'Cash on Delivery is not enabled for this shop.';
             $this->redirect('cart');
         }
 
-        $productId = (int) ($_POST['product_id'] ?? 0);
         $qty = max(1, (int) ($_POST['quantity'] ?? 1));
         $variantText = trim((string) ($_POST['variants'] ?? ''));
         $variantKey = trim((string) ($_POST['variant_key'] ?? ''));
@@ -1588,12 +1633,14 @@ class OrderController extends BaseController
         }
 
         $settings = $this->settingModel->getAllPairs();
+        $productId = (int) ($_POST['product_id'] ?? 0);
+        $singleRedirect = $productId > 0 ? 'shop/product/' . $productId : 'cart';
+        $this->guardCheckoutRequest($settings, $singleRedirect);
         if (empty($settings['bank_transfer_enabled']) || trim((string) ($settings['bank_transfer_details'] ?? '')) === '') {
             $_SESSION['order_error'] = 'Bank Transfer is not enabled for this shop.';
             $this->redirect('cart');
         }
 
-        $productId = (int) ($_POST['product_id'] ?? 0);
         $qty = max(1, (int) ($_POST['quantity'] ?? 1));
         $variantText = trim((string) ($_POST['variants'] ?? ''));
         $variantKey = trim((string) ($_POST['variant_key'] ?? ''));

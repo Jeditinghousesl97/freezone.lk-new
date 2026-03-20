@@ -1393,7 +1393,7 @@ if ($sgImg):
         });
     }
 
-    function submitOrderToPayHere(data) {
+    async function submitOrderToPayHere(data) {
         const qty = parseInt(document.getElementById('qtyInput').value) || 1;
         const variantStr = getVariantText();
         const variantKey = getSelectedVariantKey();
@@ -1426,7 +1426,10 @@ if ($sgImg):
             form.appendChild(input);
         });
 
-        appendCsrfToken(form);
+        const ready = await prepareProtectedFormSubmission(form, 'checkout_order');
+        if (!ready) {
+            return;
+        }
         trackAnalyticsEvent('add_payment_info', {
             currency: window.APP_CURRENCY,
             payment_type: 'payhere',
@@ -1437,7 +1440,7 @@ if ($sgImg):
         form.submit();
     }
 
-    function submitOrderToCod(data) {
+    async function submitOrderToCod(data) {
         const qty = parseInt(document.getElementById('qtyInput').value) || 1;
         const variantStr = getVariantText();
         const variantKey = getSelectedVariantKey();
@@ -1470,7 +1473,10 @@ if ($sgImg):
             form.appendChild(input);
         });
 
-        appendCsrfToken(form);
+        const ready = await prepareProtectedFormSubmission(form, 'checkout_order');
+        if (!ready) {
+            return;
+        }
         trackAnalyticsEvent('add_payment_info', {
             currency: window.APP_CURRENCY,
             payment_type: 'cod',
@@ -1481,7 +1487,7 @@ if ($sgImg):
         form.submit();
     }
 
-    function submitOrderToKoko(data) {
+    async function submitOrderToKoko(data) {
         const qty = parseInt(document.getElementById('qtyInput').value) || 1;
         const variantStr = getVariantText();
         const variantKey = getSelectedVariantKey();
@@ -1514,7 +1520,10 @@ if ($sgImg):
             form.appendChild(input);
         });
 
-        appendCsrfToken(form);
+        const ready = await prepareProtectedFormSubmission(form, 'checkout_order');
+        if (!ready) {
+            return;
+        }
         trackAnalyticsEvent('add_payment_info', {
             currency: window.APP_CURRENCY,
             payment_type: 'koko',
@@ -1525,7 +1534,7 @@ if ($sgImg):
         form.submit();
     }
 
-    function submitOrderToBankTransfer(data) {
+    async function submitOrderToBankTransfer(data) {
         const qty = parseInt(document.getElementById('qtyInput').value) || 1;
         const variantStr = getVariantText();
         const variantKey = getSelectedVariantKey();
@@ -1558,7 +1567,10 @@ if ($sgImg):
             form.appendChild(input);
         });
 
-        appendCsrfToken(form);
+        const ready = await prepareProtectedFormSubmission(form, 'checkout_order');
+        if (!ready) {
+            return;
+        }
         trackAnalyticsEvent('add_payment_info', {
             currency: window.APP_CURRENCY,
             payment_type: 'bank_transfer',

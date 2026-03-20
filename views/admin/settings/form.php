@@ -443,6 +443,42 @@
             </div>
 
             <div class="integration-box">
+                <h3 style="margin:0 0 14px;">Bot Protection & Google reCAPTCHA v3</h3>
+                <p style="font-size:12px; color:#777; margin:0 0 16px;">Recommended for admin login and checkout submissions. This setup keeps protection invisible for normal users while helping block bots and repeated abuse.</p>
+
+                <label style="display:flex; align-items:center; gap:8px; margin-bottom:14px; font-size:14px; color:#333;">
+                    <input type="checkbox" name="recaptcha_v3_enabled" value="1" <?= !empty($settings['recaptcha_v3_enabled']) ? 'checked' : '' ?>>
+                    Enable Google reCAPTCHA v3 protection
+                </label>
+
+                <label class="label">reCAPTCHA v3 Site Key</label>
+                <input type="text" name="recaptcha_v3_site_key" class="input-box" placeholder="Site Key"
+                    value="<?= htmlspecialchars($settings['recaptcha_v3_site_key'] ?? '') ?>">
+
+                <label class="label">reCAPTCHA v3 Secret Key</label>
+                <input type="password" name="recaptcha_v3_secret_key" class="input-box" autocomplete="new-password"
+                    placeholder="Leave blank to keep current Secret Key" value="">
+
+                <label class="label">Minimum Score</label>
+                <input type="number" name="recaptcha_v3_min_score" class="input-box" min="0.1" max="0.9" step="0.1"
+                    placeholder="0.5"
+                    value="<?= htmlspecialchars($settings['recaptcha_v3_min_score'] ?? '0.50') ?>">
+                <p style="margin:-6px 0 14px; font-size:11px; color:#777; line-height:1.7;">
+                    A good starting point is <strong>0.5</strong>. Increase it only if you still see bot abuse and real customers are not getting blocked.
+                </p>
+
+                <label style="display:flex; align-items:center; gap:8px; margin-bottom:12px; font-size:14px; color:#333;">
+                    <input type="checkbox" name="recaptcha_v3_admin_login" value="1" <?= !empty($settings['recaptcha_v3_admin_login']) ? 'checked' : '' ?>>
+                    Protect shop owner admin login
+                </label>
+
+                <label style="display:flex; align-items:center; gap:8px; margin-bottom:0; font-size:14px; color:#333;">
+                    <input type="checkbox" name="recaptcha_v3_checkout" value="1" <?= !empty($settings['recaptcha_v3_checkout']) ? 'checked' : '' ?>>
+                    Protect customer checkout submissions
+                </label>
+            </div>
+
+            <div class="integration-box">
                 <h3 style="margin:0 0 14px;">Cloudflare Image Delivery</h3>
                 <p style="font-size:12px; color:#777; margin:0 0 16px;">Use Cloudflare R2 + Cloudflare edge delivery for new uploads. When enabled and configured correctly, new images stop generating many local optimized files on this server.</p>
 

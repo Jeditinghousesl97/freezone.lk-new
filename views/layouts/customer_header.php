@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <?php require_once 'helpers/SeoHelper.php'; ?>
     <?php require_once ROOT_PATH . 'helpers/ImageHelper.php'; ?>
+    <?php require_once ROOT_PATH . 'helpers/RecaptchaHelper.php'; ?>
     <title>
         <?= htmlspecialchars(isset($seo_title) ? $seo_title : (isset($title) ? $title : 'Ecom Shop')) ?>
     </title>
@@ -26,6 +27,8 @@
     }
     $googleAnalyticsId = trim((string) ($settings['google_analytics_id'] ?? ''));
     $metaPixelId = preg_replace('/[^0-9]/', '', (string) ($settings['meta_pixel_id'] ?? ''));
+    $recaptchaEnabled = RecaptchaHelper::shouldProtectCheckout($settings ?? []);
+    $recaptchaSiteKey = $recaptchaEnabled ? RecaptchaHelper::siteKey($settings ?? []) : '';
     ?>
     <meta name="description" content="<?= htmlspecialchars($metaDescription) ?>">
     <meta name="robots" content="<?= htmlspecialchars($metaRobots) ?>">
@@ -110,10 +113,16 @@
         </noscript>
     <?php endif; ?>
 
+    <?php if ($recaptchaEnabled && $recaptchaSiteKey !== ''): ?>
+        <script src="https://www.google.com/recaptcha/api.js?render=<?= htmlspecialchars($recaptchaSiteKey) ?>"></script>
+    <?php endif; ?>
+
     <script>
         window.APP_CSRF_TOKEN = '<?= htmlspecialchars(csrf_token(), ENT_QUOTES) ?>';
         window.APP_BASE_URL = '<?= htmlspecialchars(BASE_URL, ENT_QUOTES) ?>';
         window.APP_CURRENCY = '<?= htmlspecialchars($currencyCode, ENT_QUOTES) ?>';
+        window.APP_RECAPTCHA_ENABLED = <?= $recaptchaEnabled ? 'true' : 'false' ?>;
+        window.APP_RECAPTCHA_SITE_KEY = '<?= htmlspecialchars($recaptchaSiteKey, ENT_QUOTES) ?>';
 
         window.appendCsrfToken = function (form) {
             if (!form || !window.APP_CSRF_TOKEN) {
@@ -136,6 +145,64 @@
             var nextHeaders = headers || {};
             nextHeaders['X-CSRF-Token'] = window.APP_CSRF_TOKEN;
             return nextHeaders;
+        };
+
+        window.prepareProtectedFormSubmission = async function (form, actionName) {
+            if (!form) {
+                return false;
+            }
+
+            window.appendCsrfToken(form);
+
+            var honeypot = form.querySelector('input[name="company_name"]');
+            if (!honeypot) {
+                honeypot = document.createElement('input');
+                honeypot.type = 'text';
+                honeypot.name = 'company_name';
+                honeypot.value = '';
+                honeypot.tabIndex = -1;
+                honeypot.autocomplete = 'off';
+                honeypot.style.position = 'absolute';
+                honeypot.style.left = '-9999px';
+                form.appendChild(honeypot);
+            }
+
+            if (!window.APP_RECAPTCHA_ENABLED || !window.APP_RECAPTCHA_SITE_KEY || typeof window.grecaptcha === 'undefined') {
+                return true;
+            }
+
+            try {
+                await new Promise(function (resolve) {
+                    window.grecaptcha.ready(resolve);
+                });
+
+                var token = await window.grecaptcha.execute(window.APP_RECAPTCHA_SITE_KEY, {
+                    action: actionName || 'checkout_order'
+                });
+
+                var tokenInput = form.querySelector('input[name="g_recaptcha_response"]');
+                if (!tokenInput) {
+                    tokenInput = document.createElement('input');
+                    tokenInput.type = 'hidden';
+                    tokenInput.name = 'g_recaptcha_response';
+                    form.appendChild(tokenInput);
+                }
+                tokenInput.value = token || '';
+
+                var actionInput = form.querySelector('input[name="g_recaptcha_action"]');
+                if (!actionInput) {
+                    actionInput = document.createElement('input');
+                    actionInput.type = 'hidden';
+                    actionInput.name = 'g_recaptcha_action';
+                    form.appendChild(actionInput);
+                }
+                actionInput.value = actionName || 'checkout_order';
+                return true;
+            } catch (error) {
+                console.warn('reCAPTCHA token generation failed', error);
+                alert('Security check failed. Please try again.');
+                return false;
+            }
         };
 
         window.trackAnalyticsEvent = function (eventName, params, metaEventName, metaParams) {

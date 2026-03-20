@@ -5,9 +5,16 @@
  * Handles Login, Logout, and Session management.
  */
 require_once 'models/User.php';
+require_once 'models/Setting.php';
+require_once 'helpers/RecaptchaHelper.php';
+require_once 'helpers/RateLimitHelper.php';
 
 class AuthController extends BaseController
 {
+    private function clientIp()
+    {
+        return trim((string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
+    }
 
     // Default action: Redirect to login
     public function index()
@@ -47,6 +54,39 @@ class AuthController extends BaseController
     {
         // Check if form was submitted
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $settingModel = new Setting();
+            $settings = $settingModel->getMultiple([
+                'recaptcha_v3_enabled',
+                'recaptcha_v3_site_key',
+                'recaptcha_v3_secret_key',
+                'recaptcha_v3_min_score',
+                'recaptcha_v3_admin_login'
+            ]);
+            $rateLimitKey = 'admin_login:' . $this->clientIp();
+
+            if (RateLimitHelper::tooManyAttempts($rateLimitKey, 8, 900)) {
+                $this->redirect('auth/login?error=too_many_attempts');
+                return;
+            }
+            RateLimitHelper::hit($rateLimitKey, 900);
+
+            if (!empty($_POST['company_name'])) {
+                $this->redirect('auth/login?error=security_check_failed');
+                return;
+            }
+
+            if (RecaptchaHelper::shouldProtectAdminLogin($settings)) {
+                $verification = RecaptchaHelper::verifyToken(
+                    $settings,
+                    (string) ($_POST['g_recaptcha_response'] ?? ''),
+                    'admin_login'
+                );
+                if (empty($verification['ok'])) {
+                    $this->redirect('auth/login?error=security_check_failed');
+                    return;
+                }
+            }
+
             // Get inputs
             $username = trim($_POST['username'] ?? '');
             $password = trim($_POST['password'] ?? '');
@@ -66,6 +106,7 @@ class AuthController extends BaseController
             if ($user) {
                 // SUCCESS: Login verified
                 // Store user info in Session
+                RateLimitHelper::clear($rateLimitKey);
                 session_regenerate_id(true);
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['role'] = $user['role'];

@@ -2,6 +2,7 @@
 <html lang="en">
 
 <?php require_once ROOT_PATH . 'helpers/ImageHelper.php'; ?>
+<?php require_once ROOT_PATH . 'helpers/RecaptchaHelper.php'; ?>
 
 <head>
     <meta charset="UTF-8">
@@ -9,6 +10,13 @@
     <title>
         <?= $title ?? 'Login' ?>
     </title>
+    <?php
+    $adminLoginRecaptchaEnabled = RecaptchaHelper::shouldProtectAdminLogin($settings ?? []);
+    $adminLoginRecaptchaSiteKey = $adminLoginRecaptchaEnabled ? RecaptchaHelper::siteKey($settings ?? []) : '';
+    ?>
+    <?php if ($adminLoginRecaptchaEnabled && $adminLoginRecaptchaSiteKey !== ''): ?>
+        <script src="https://www.google.com/recaptcha/api.js?render=<?= htmlspecialchars($adminLoginRecaptchaSiteKey) ?>"></script>
+    <?php endif; ?>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -144,12 +152,18 @@
                     echo "Please fill in all fields.";
                 if ($_GET['error'] == 'invalid_credentials')
                     echo "Invalid Username or Password.";
+                if ($_GET['error'] == 'security_check_failed')
+                    echo "Security verification failed. Please try again.";
+                if ($_GET['error'] == 'too_many_attempts')
+                    echo "Too many login attempts. Please wait a few minutes and try again.";
                 ?>
             </div>
         <?php endif; ?>
 
-        <form action="<?= BASE_URL ?>auth/authenticate" method="POST">
+        <form action="<?= BASE_URL ?>auth/authenticate" method="POST" id="adminLoginForm">
             <?= csrf_input() ?>
+            <input type="text" name="company_name" value="" autocomplete="off" tabindex="-1"
+                style="position:absolute; left:-9999px;">
             <div class="form-group">
                 <label for="username">Username</label>
                 <input type="text" id="username" name="username" required placeholder="Enter username">
@@ -187,6 +201,49 @@
                 this.src = '<?= BASE_URL ?>assets/icons/eye-open.png';
             }
         });
+
+        const adminLoginForm = document.getElementById('adminLoginForm');
+        <?php if ($adminLoginRecaptchaEnabled && $adminLoginRecaptchaSiteKey !== ''): ?>
+        adminLoginForm.addEventListener('submit', async function (event) {
+            if (adminLoginForm.dataset.recaptchaReady === '1') {
+                return;
+            }
+
+            event.preventDefault();
+            try {
+                await new Promise(function (resolve) {
+                    window.grecaptcha.ready(resolve);
+                });
+
+                const token = await window.grecaptcha.execute('<?= htmlspecialchars($adminLoginRecaptchaSiteKey, ENT_QUOTES) ?>', {
+                    action: 'admin_login'
+                });
+
+                let tokenInput = adminLoginForm.querySelector('input[name="g_recaptcha_response"]');
+                if (!tokenInput) {
+                    tokenInput = document.createElement('input');
+                    tokenInput.type = 'hidden';
+                    tokenInput.name = 'g_recaptcha_response';
+                    adminLoginForm.appendChild(tokenInput);
+                }
+                tokenInput.value = token || '';
+
+                let actionInput = adminLoginForm.querySelector('input[name="g_recaptcha_action"]');
+                if (!actionInput) {
+                    actionInput = document.createElement('input');
+                    actionInput.type = 'hidden';
+                    actionInput.name = 'g_recaptcha_action';
+                    adminLoginForm.appendChild(actionInput);
+                }
+                actionInput.value = 'admin_login';
+
+                adminLoginForm.dataset.recaptchaReady = '1';
+                adminLoginForm.submit();
+            } catch (error) {
+                alert('Security check failed. Please try again.');
+            }
+        });
+        <?php endif; ?>
     </script>
 
 

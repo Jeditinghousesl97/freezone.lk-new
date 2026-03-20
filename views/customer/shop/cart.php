@@ -669,7 +669,7 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
         submitOrderToCod(data);
     }
 
-    function submitOrderToPayHere(data) {
+    async function submitOrderToPayHere(data) {
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = '<?= BASE_URL ?>order/startPayhere';
@@ -694,7 +694,10 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
             form.appendChild(input);
         });
 
-        appendCsrfToken(form);
+        const ready = await prepareProtectedFormSubmission(form, 'checkout_order');
+        if (!ready) {
+            return;
+        }
         trackAnalyticsEvent('add_payment_info', {
             currency: window.APP_CURRENCY,
             payment_type: 'payhere'
@@ -704,7 +707,7 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
         form.submit();
     }
 
-    function submitOrderToCod(data) {
+    async function submitOrderToCod(data) {
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = '<?= BASE_URL ?>order/startCod';
@@ -729,7 +732,10 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
             form.appendChild(input);
         });
 
-        appendCsrfToken(form);
+        const ready = await prepareProtectedFormSubmission(form, 'checkout_order');
+        if (!ready) {
+            return;
+        }
         trackAnalyticsEvent('add_payment_info', {
             currency: window.APP_CURRENCY,
             payment_type: 'cod'
@@ -739,7 +745,7 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
         form.submit();
     }
 
-    function submitOrderToKoko(data) {
+    async function submitOrderToKoko(data) {
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = '<?= BASE_URL ?>order/startKoko';
@@ -764,7 +770,10 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
             form.appendChild(input);
         });
 
-        appendCsrfToken(form);
+        const ready = await prepareProtectedFormSubmission(form, 'checkout_order');
+        if (!ready) {
+            return;
+        }
         trackAnalyticsEvent('add_payment_info', {
             currency: window.APP_CURRENCY,
             payment_type: 'koko'
@@ -774,7 +783,7 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
         form.submit();
     }
 
-    function submitOrderToBankTransfer(data) {
+    async function submitOrderToBankTransfer(data) {
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = '<?= BASE_URL ?>order/startBankTransfer';
@@ -799,7 +808,10 @@ $currency = $settings['currency_symbol'] ?? 'LKR';
             form.appendChild(input);
         });
 
-        appendCsrfToken(form);
+        const ready = await prepareProtectedFormSubmission(form, 'checkout_order');
+        if (!ready) {
+            return;
+        }
         trackAnalyticsEvent('add_payment_info', {
             currency: window.APP_CURRENCY,
             payment_type: 'bank_transfer'

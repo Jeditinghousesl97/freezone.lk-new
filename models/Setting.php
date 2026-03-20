@@ -15,7 +15,8 @@ class Setting extends BaseModel
         'koko_private_key',
         'koko_callback_secret',
         'cloudflare_r2_access_key_id',
-        'cloudflare_r2_secret_access_key'
+        'cloudflare_r2_secret_access_key',
+        'recaptcha_v3_secret_key'
     ];
 
     // Get value by key

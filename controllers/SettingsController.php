@@ -64,6 +64,12 @@ class SettingsController extends BaseController
             'shop_whatsapp',
             'google_analytics_id',
             'meta_pixel_id',
+            'recaptcha_v3_enabled',
+            'recaptcha_v3_site_key',
+            'recaptcha_v3_secret_key',
+            'recaptcha_v3_min_score',
+            'recaptcha_v3_admin_login',
+            'recaptcha_v3_checkout',
             'cloudflare_images_enabled',
             'local_image_optimization_enabled',
             'cloudflare_r2_account_id',
@@ -206,6 +212,8 @@ class SettingsController extends BaseController
                 'shop_whatsapp',
                 'google_analytics_id',
                 'meta_pixel_id',
+                'recaptcha_v3_site_key',
+                'recaptcha_v3_min_score',
                 'cloudflare_r2_account_id',
                 'cloudflare_r2_bucket',
                 'cloudflare_r2_public_base_url',
@@ -290,10 +298,22 @@ class SettingsController extends BaseController
                 $this->settingModel->set('cloudflare_r2_secret_access_key', trim((string) $_POST['cloudflare_r2_secret_access_key']));
             }
 
+            if (isset($_POST['recaptcha_v3_secret_key']) && trim((string) $_POST['recaptcha_v3_secret_key']) !== '') {
+                $this->settingModel->set('recaptcha_v3_secret_key', trim((string) $_POST['recaptcha_v3_secret_key']));
+            }
+
+            $this->settingModel->set(
+                'recaptcha_v3_min_score',
+                number_format(min(0.9, max(0.1, (float) ($_POST['recaptcha_v3_min_score'] ?? 0.5))), 2, '.', '')
+            );
+
             $this->settingModel->set('payhere_enabled', !empty($_POST['payhere_enabled']) ? '1' : '0');
             $this->settingModel->set('payhere_sandbox', !empty($_POST['payhere_sandbox']) ? '1' : '0');
             $this->settingModel->set('koko_enabled', !empty($_POST['koko_enabled']) ? '1' : '0');
             $this->settingModel->set('koko_sandbox', !empty($_POST['koko_sandbox']) ? '1' : '0');
+            $this->settingModel->set('recaptcha_v3_enabled', !empty($_POST['recaptcha_v3_enabled']) ? '1' : '0');
+            $this->settingModel->set('recaptcha_v3_admin_login', !empty($_POST['recaptcha_v3_admin_login']) ? '1' : '0');
+            $this->settingModel->set('recaptcha_v3_checkout', !empty($_POST['recaptcha_v3_checkout']) ? '1' : '0');
             $this->settingModel->set('sms_enabled', !empty($_POST['sms_enabled']) ? '1' : '0');
             $this->settingModel->set('sms_owner_enabled', !empty($_POST['sms_owner_enabled']) ? '1' : '0');
             $this->settingModel->set('cloudflare_images_enabled', !empty($_POST['cloudflare_images_enabled']) ? '1' : '0');
