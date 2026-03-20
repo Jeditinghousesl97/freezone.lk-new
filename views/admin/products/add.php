@@ -666,6 +666,7 @@
     <!-- Form -->
     <form action="<?= BASE_URL ?>product/<?= isset($mode) && $mode === 'edit' ? 'update' : 'store' ?>" method="POST"
         enctype="multipart/form-data" id="productForm" novalidate>
+        <?= csrf_input() ?>
         <div class="container" style="padding-bottom: 80px;">
 
             <div class="header-bar">

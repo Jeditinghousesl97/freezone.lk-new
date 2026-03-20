@@ -764,9 +764,17 @@
     }
 
     .pd-price-row {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: start !important;
         margin-bottom: 28px !important;
         padding-bottom: 22px;
         border-bottom: 1px solid rgba(82, 58, 32, 0.1);
+    }
+
+    .pd-price-stack {
+        gap: 10px !important;
+        min-width: 0;
     }
 
     .pd-sale-price {
@@ -778,9 +786,22 @@
     }
 
     .btn-size-guide {
+        justify-self: end;
+        align-self: start;
         border-radius: 14px !important;
         padding: 12px 18px !important;
         box-shadow: var(--desktop-shadow-soft);
+        margin-left: 20px;
+        white-space: nowrap;
+    }
+
+    .koko-installment-teaser-single {
+        font-size: 16px !important;
+        gap: 8px !important;
+    }
+
+    .koko-installment-teaser-single .koko-installment-logo {
+        width: 72px !important;
     }
 
     .var-section {
